@@ -1,0 +1,11 @@
+# Ignorando
+accesoSSO.php
+configuracion.php
+*.BASE.*
+*.BACKUP.*
+*.LOCAL.*
+*.REMOTE.*
+rankings_old
+.project
+*.orig
+*_old*

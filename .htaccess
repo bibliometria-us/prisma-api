@@ -1,0 +1,15 @@
+order deny,allow
+deny from all
+
+allow from 150.214.182
+# idus / idus pruebas
+allow from 150.214.187.27
+
+RewriteEngine On
+
+RewriteRule "^investigadores$" "investigadores.php"
+RewriteRule "^investigador$" "investigador.php"
+
+ErrorDocument 403 https://bibliometria.us.es/prisma/restringido.php
+
+
