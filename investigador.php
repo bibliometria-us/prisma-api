@@ -4,6 +4,9 @@ $bd = new BaseDatos();
 $ident = 0;
 if (isset($_GET['idus']) && isset($_GET['idus']) != ''){
     $ident = $_GET['idus'];
+    $identificador = $bd->obtenerPorIdentificador('idus', $ident);
+} else if (isset($_GET['id']) && isset($_GET['id']) != '' && is_numeric($_GET['id'])){
+    $identificador = $_GET['id'];
 } else {
     header("HTTP/1.0 400 Bad Request");
     exit();
@@ -13,12 +16,12 @@ $metodo = $_SERVER['REQUEST_METHOD'];
 switch ($metodo) {
     case 'GET':
         ob_start();
-        $identificador = $bd->obtenerPorIdentificador('idus', $ident);
         $investigador = $bd->obtenerInvestigador($identificador);
         $identificadores = $bd->obtenerIdentificadoresInves($identificador);
         echo "<investigador>";
         if (gettype($investigador) == 'object') {
             echo "<nombre_administrativo>" . $investigador->apellidos . ", ". $investigador->nombre . "</nombre_administrativo>";
+            echo "<categoria>" . $investigador->categoria . "</categoria>";
             echo "<prisma>" . $identificador . "</prisma>";
             if (array_key_exists('orcid', $identificadores)) {
                 echo "<orcid>" . $identificadores['orcid'] . "</orcid>";
@@ -33,7 +36,7 @@ switch ($metodo) {
             if (array_key_exists('sisius', $identificadores)) {
                 echo "<sisius>" . $identificadores['sisius'] . "</sisius>";
             } else {
-	        echo "<sisius></sisus>";
+	        echo "<sisius></sisius>";
 	    }
             if (array_key_exists('scopus', $identificadores)) {
                 echo "<scopus>" . $identificadores['scopus'] . "</scopus>";
@@ -68,5 +71,4 @@ switch ($metodo) {
     default:
         header("HTTP/1.0 404 Not Found");
 }
-
 ?>

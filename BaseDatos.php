@@ -33,7 +33,7 @@ class BaseDatos {
 	public function obtenerInvestigador($id) {
 	    $id = $this->conexion->real_escape_string($id);
 	    $sql = "SELECT idInvestigador as idInves, i.nombre, apellidos, email, i.idDepartamento, d.nombre AS departamento, i.idGrupo, g.nombre AS grupo, i.idArea, a.nombre AS area,
-			    i.idCentro, b.nombre AS centro, i.idCategoria, c.nombre AS categoria, perfilPublico FROM i_investigador i INNER JOIN i_departamento d ON i.idDepartamento = d.idDepartamento INNER JOIN
+			    i.idCentro, b.nombre AS centro, i.idCategoria, CASE WHEN i.sexo = 0 THEN c.femenino ELSE c.nombre END AS categoria, perfilPublico FROM i_investigador i INNER JOIN i_departamento d ON i.idDepartamento = d.idDepartamento INNER JOIN
                 i_grupo g ON i.idGrupo = g.idGrupo INNER JOIN i_area a ON i.idArea = a.idArea INNER JOIN i_centro b ON i.idCentro = b.idCentro
 				INNER JOIN i_categoria c ON i.idCategoria = c.idCategoria WHERE i.idInvestigador = $id";
 	    $consulta = $this->conexion->query($sql);

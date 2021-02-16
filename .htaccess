@@ -4,6 +4,10 @@ deny from all
 allow from 150.214.182
 # idus / idus pruebas
 allow from 150.214.187.27
+allow from 193.147.175.253
+allow from 193.147.175.254
+allow from 192.168.21.21
+allow from 192.168.21.42
 
 RewriteEngine On
 
