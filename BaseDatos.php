@@ -71,7 +71,7 @@ class BaseDatos {
 	}
 	
 	public function obtenerIdentificadoresInvestigadores() {
-	    $sql = "SELECT concat(i.apellidos, ', ', i.nombre) as nombre, c.* FROM i_investigador_activo i 
+	    $sql = "SELECT concat(i.apellidos, ', ', i.nombre) as nombre, c.* FROM i_investigador i 
                 LEFT JOIN (SELECT ii.idInvestigador prisma, GROUP_CONCAT(if(ii.tipo = 'scopus', ii.valor, NULL)) scopus, 
                             GROUP_CONCAT(if(ii.tipo = 'orcid', ii.valor, NULL)) orcid, 
                             GROUP_CONCAT(if(ii.tipo = 'researcherid', ii.valor, NULL)) researcherid, 
