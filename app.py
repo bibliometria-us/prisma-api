@@ -75,8 +75,8 @@ class BusquedaInvestigadores(BaseResource):
             'type': 'string',
         },
         'centro': {
-            'name': 'Instituto',
-            'description': 'ID del instituto',
+            'name': 'Centro',
+            'description': 'ID del centro',
             'type': 'centro',
         },
         'doctorado': {
