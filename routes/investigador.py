@@ -60,12 +60,18 @@ class BusquedaInvestigadores(Resource):
             'centro': {
                 'name': 'Centro',
                 'description': 'ID del centro',
-                'type': 'centro',
+                'type': 'string',
             },
             'doctorado': {
                 'name': 'Instituto',
                 'description': 'ID del programa de doctorado',
-                'type': 'centro',
+                'type': 'string',
+            },
+            'activo': {
+                'name': 'Activo',
+                'description': 'Indica si se buscarán solo investigadores activos (1, por defecto) o incluir investigadores inactivos (0)',
+                'type': 'bool',
+                'enum': ["True", "False"]
             },
 
         })
@@ -86,6 +92,7 @@ class BusquedaInvestigadores(Resource):
         instituto = args.get('instituto', None)
         centro = args.get('centro', None)
         doctorado = args.get('doctorado', None)
+        activo = True if (args.get('activo', "True") == "True") else False
 
         # Comprobar api_key
         if not (request.referrer and request.referrer.startswith(request.host_url)):
@@ -134,6 +141,9 @@ class BusquedaInvestigadores(Resource):
 
         # Construir la consulta SQL parametrizada
         query = "SELECT {} FROM i_investigador".format(", ".join(columns))
+
+        if activo:
+            query += " JOIN (SELECT idInvestigador as id FROM i_investigador_activo) a ON i_investigador.idInvestigador = a.id"
 
         if conditions:
             query += " WHERE {}".format(" AND ".join(conditions))
