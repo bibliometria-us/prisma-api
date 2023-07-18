@@ -88,7 +88,7 @@ class BusquedaInvestigadores(Resource):
         doctorado = args.get('doctorado', None)
 
         # Comprobar api_key
-        if not (request.referrer and request.referrer.startswith("http://127.0.0.1:8000")):
+        if not (request.referrer and request.referrer.startswith(request.host_url)):
             if not api_key or not comprobar_api_key(api_key):
                 investigador_namespace.abort(401, 'API Key inválida')
 
