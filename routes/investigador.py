@@ -93,7 +93,7 @@ class ResumenInvestigador(Resource):
 
         elif accept_type == 'application/xml':
             dict_data = format.dict_from_table(data, "prisma")
-            return format.dict_to_xml(dict_data, "investigadores")
+            return Response(format.dict_to_xml(dict_data, "investigadores"), mimetype='application/xml')
 
         elif accept_type == 'text/csv':
             csv_data = format.format_csv(data)
