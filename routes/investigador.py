@@ -87,15 +87,15 @@ class ResumenInvestigador(Resource):
             investigador_namespace.abort(500, 'Error del servidor')
 
         # Comprobar el tipo de output esperado
-        if accept_type == 'application/json':
+        if 'application/json' in accept_type:
             dict_data = format.dict_from_table(data, "prisma")
             return jsonify(dict_data)
 
-        elif accept_type == 'application/xml':
+        elif 'application/xml' in accept_type:
             dict_data = format.dict_from_table(data, "prisma")
-            return Response(format.dict_to_xml(dict_data, "investigadores"), mimetype='application/xml')
+            return Response(format.dict_to_xml(dict_data, root_name="investigador"), mimetype='application/xml')
 
-        elif accept_type == 'text/csv':
+        elif 'text/csv' in accept_type:
             csv_data = format.format_csv(data)
             return Response(csv_data, mimetype='text/csv')
 

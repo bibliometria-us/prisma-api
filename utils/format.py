@@ -31,18 +31,23 @@ def dict_from_table(data, selectable_column):
     return result
 
 
-def dict_to_xml(data, root_name="root"):
-    root = ET.Element(root_name)
+def dict_to_xml(data, root_name=None):
+    root = ET.Element(None)
 
     def _dict_to_xml(parent, data):
         for key, value in data.items():
             if isinstance(value, dict):
                 # For nested dictionaries, create a new XML element
-                element = ET.SubElement(parent, str(key))
+                if isinstance(key, int) and root_name:
+                    element_key = f"{root_name}"
+                else:
+                    element_key = str(key)
+                element = ET.SubElement(parent, element_key)
                 _dict_to_xml(element, value)
             else:
                 # For non-dictionary values, create a new XML element and set its text
-                ET.SubElement(parent, str(key)).text = str(value)
+                element_key = str(key)
+                ET.SubElement(parent, element_key).text = str(value)
 
     # Convert the dictionary to XML recursively
     _dict_to_xml(root, data)
