@@ -17,7 +17,7 @@ class ResumenInvestigador(Resource):
     @investigador_namespace.doc(
         responses=global_responses,
 
-        produces=['application/json'],
+        produces=['application/json', 'application/xml', 'text/csv'],
 
         params={**global_params,
                 'id': {
@@ -37,8 +37,7 @@ class ResumenInvestigador(Resource):
         """Devuelve un resumen de datos de un investigador."""
         headers = request.headers
         args = request.args
-        # accept_type = headers.get('Accept', 'application/json')
-        accept_type = 'application/json'
+        accept_type = headers.get('Accept', 'application/json')
         # Cargar argumentos de búsqueda
         api_key = args.get('api_key', None)
         id = args.get('id', None)
@@ -50,9 +49,10 @@ class ResumenInvestigador(Resource):
 
         params = []
         # Columnas a mostrar
-        columns = ["i.idInvestigador as prisma", "concat(i.apellidos, ', ', i.nombre) as nombre_administrativo",
+        columns = ["i.idInvestigador as prisma", "concat(i.apellidos, ', ', i.nombre) as nombre_administrativo", "i.email as email",
                    "orcid.valor as orcid", "dialnet.valor as dialnet", "idus.valor as idus", "researcherid.valor as researcherid",
-                   "scholar.valor as scholar", "scopus.valor as scopus", "sica.valor as sica", "sisius.valor as sisius", "wos.valor as wos"]
+                   "scholar.valor as scholar", "scopus.valor as scopus", "sica.valor as sica", "sisius.valor as sisius", "wos.valor as wos",
+                   "categoria.nombre as categoria", "area.nombre as area_conocimiento", "departamento.nombre as departamento"]
 
         # Left joins para obtener identificadores y datos de otras tablas
 
@@ -66,7 +66,11 @@ class ResumenInvestigador(Resource):
                       plantilla_ids.format("scopus"),
                       plantilla_ids.format("sica"),
                       plantilla_ids.format("sisius"),
-                      plantilla_ids.format("wos")]
+                      plantilla_ids.format("wos"),
+
+                      " LEFT JOIN i_categoria categoria ON categoria.idCategoria = i.idCategoria",
+                      " LEFT JOIN i_area area ON area.idArea = i.idArea",
+                      " LEFT JOIN i_departamento departamento ON departamento.idDepartamento = i.idDepartamento",]
 
         query = f"SELECT {', '.join(columns)} FROM i_investigador_activo i"
 
@@ -86,6 +90,10 @@ class ResumenInvestigador(Resource):
         if accept_type == 'application/json':
             dict_data = format.dict_from_table(data, "prisma")
             return jsonify(dict_data)
+
+        elif accept_type == 'application/xml':
+            dict_data = format.dict_from_table(data, "prisma")
+            return format.dict_to_xml(dict_data, "investigadores")
 
         elif accept_type == 'text/csv':
             csv_data = format.format_csv(data)
