@@ -9,4 +9,11 @@ params = {'api_key': {
     'name': 'api_key',
     'description': 'API Key',
     'type': 'string',
-}}
+},
+    'salida': {
+    'name': 'salida',
+    'description': 'Formato de salida. Especificar en este campo en caso de que no pueda hacerlo mediante el header de la petición',
+    'type': 'string',
+    'enum': ["json", "xml", "csv"]
+}
+}
