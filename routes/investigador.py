@@ -190,9 +190,10 @@ class BusquedaInvestigadores(Resource):
         """Devuelve una lista de investigadores que cumpla simultáneamente todos los campos de búsqueda utilizados."""
         headers = request.headers
         args = request.args
-        accept_type = headers.get('Accept', 'application/json')
 
         # Cargar argumentos de búsqueda
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
         api_key = nombre = args.get('api_key', None)
         nombre = args.get('nombre', None)
         apellidos = args.get('apellidos', None)
