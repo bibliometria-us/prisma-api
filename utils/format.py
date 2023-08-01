@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 
 
 def format_csv(data):
@@ -50,7 +51,8 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
                 result_data_dict[d_data] = value
 
         result[row_name] = result_data_dict
-    return result
+
+    return dict(sorted(result.items(), key=lambda item: item[1][selectable_column]))
 
 
 def dict_to_xml(data, root_name=None, object_name=""):
@@ -79,3 +81,8 @@ def dict_to_xml(data, root_name=None, object_name=""):
 
     # Return the XML string representation
     return ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+
+
+def dict_to_json(data):
+    result = json.dumps(data, indent=4, sort_keys=False)
+    return result

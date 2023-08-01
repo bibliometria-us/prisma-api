@@ -111,7 +111,9 @@ class ResumenInvestigador(Resource):
         if 'json' in accept_type:
             dict_data = format.dict_from_table(
                 data, "prisma", "investigador", nested)
-            return jsonify(dict_data)
+            json_data = format.dict_to_json(dict_data)
+            response = Response(json_data, mimetype='application/json')
+            return response
 
         elif 'xml' in accept_type:
             dict_data = format.dict_from_table(
@@ -267,7 +269,9 @@ class BusquedaInvestigadores(Resource):
         if 'json' in accept_type:
             dict_data = format.dict_from_table(
                 data, "prisma", "investigador", nested)
-            return jsonify(dict_data)
+            json_data = format.dict_to_json(dict_data)
+            response = Response(json_data, mimetype='application/json')
+            return response
 
         elif 'xml' in accept_type:
             dict_data = format.dict_from_table(
@@ -277,7 +281,7 @@ class BusquedaInvestigadores(Resource):
             response = Response(xml_data, mimetype='application/xml')
             return response
 
-        elif accept_type == 'csv':
+        elif 'csv' in accept_type:
             csv_data = format.format_csv(data)
             return Response(csv_data, mimetype='text/csv')
 
