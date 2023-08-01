@@ -24,8 +24,12 @@ global_params = {**global_params,
 
 columns = ["i.idInvestigador as prisma", "concat(i.apellidos, ', ', i.nombre) as nombre_administrativo", "i.email as email",
            "orcid.valor as identificador_orcid", "dialnet.valor as identificador_dialnet", "idus.valor as identificador_idus", "researcherid.valor as identificador_researcherid",
-           "scholar.valor as identificador_scholar", "scopus.valor as identificador_scopus", "sica.valor as identificador_sica", "sisius.valor as identificador_sisius",
-           "wos.valor as identificador_wos", "categoria.nombre as categoria", "area.nombre as area_conocimiento", "departamento.nombre as departamento"]
+           "scholar.valor as identificador_scholar", "scopus.valor as identificador_scopus", "sica.valor as identificador_sica", "sisius.valor as identificador_sisius", "wos.valor as identificador_wos",
+           "categoria.nombre as categoria_nombre", "categoria.idCategoria as categoria_id",
+           "area.nombre as area_conocimiento_nombre", "area.idArea as area_id",
+           "departamento.nombre as departamento_nombre", "departamento.idDepartamento as departamento_id",
+           "grupo.nombre as grupo_nombre", "grupo.idGrupo as grupo_id",
+           "centro.nombre as centro_nombre", "centro.idCentro as centro_id",]
 
 # LEFT JOINS
 
@@ -44,11 +48,22 @@ left_joins = [plantilla_ids.format("orcid"),
 
               " LEFT JOIN i_categoria categoria ON categoria.idCategoria = i.idCategoria",
               " LEFT JOIN i_area area ON area.idArea = i.idArea",
-              " LEFT JOIN i_departamento departamento ON departamento.idDepartamento = i.idDepartamento",]
+              " LEFT JOIN i_departamento departamento ON departamento.idDepartamento = i.idDepartamento",
+              " LEFT JOIN i_grupo grupo ON grupo.idGrupo = i.idGrupo",
+              " LEFT JOIN i_centro centro ON centro.idCentro = i.idCentro",]
 
 # QUERY BASE
 
 base_query = f"SELECT {', '.join(columns)} " + "FROM {} i"
+
+# Prefijos para agrupar items en la consulta
+
+nested = {"identificador": "identificadores",
+          "categoria": "categoria",
+          "area": "area",
+          "departamento": "departamento",
+          "grupo": "grupo",
+          "centro": "centro", }
 
 
 def merge_query(query: str, left_joins: str, inactivos: bool = False) -> str:
@@ -105,8 +120,6 @@ class ResumenInvestigador(Resource):
             investigador_namespace.abort(500, 'Error del servidor')
 
         # Comprobar el tipo de output esperado
-
-        nested = {"identificador": "identificadores"}
 
         if 'json' in accept_type:
             dict_data = format.dict_from_table(
@@ -263,8 +276,6 @@ class BusquedaInvestigadores(Resource):
             investigador_namespace.abort(500, 'Error del servidor')
 
         # Comprobar el tipo de output esperado
-
-        nested = {"identificador": "identificadores"}
 
         if 'json' in accept_type:
             dict_data = format.dict_from_table(
