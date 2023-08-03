@@ -3,6 +3,7 @@ import io
 import json
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
+from utils.timing import func_timer as timer
 
 
 def format_csv(data):
@@ -20,6 +21,7 @@ def format_csv(data):
     return csv_string
 
 
+@timer
 def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
     result = {}
 
@@ -55,6 +57,7 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
     return dict(sorted(result.items(), key=lambda item: item[1][selectable_column]))
 
 
+@timer
 def dict_to_xml(data, root_name=None, object_name=""):
     root = ET.Element(root_name)
 

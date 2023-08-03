@@ -2,6 +2,7 @@ from flask import request, Response
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
 from security.api_key import (comprobar_api_key)
+from utils.timing import func_timer as timer
 import utils.format as format
 import config.global_config as gconfig
 
@@ -70,6 +71,7 @@ nested = {"identificador": "identificadores",
 # Fusiona las queries en una query utilizable
 
 
+@timer
 def merge_query(columns: str, left_joins: str, inactivos: bool = False) -> str:
 
     query = f"SELECT {', '.join(columns)} " + "FROM {} i"
@@ -79,6 +81,7 @@ def merge_query(columns: str, left_joins: str, inactivos: bool = False) -> str:
     return result
 
 
+@timer
 def get_investigador_from_id(columns, left_joins, inactivos, id):
 
     query = merge_query(columns, left_joins, inactivos)
@@ -93,6 +96,7 @@ def get_investigador_from_id(columns, left_joins, inactivos, id):
     return result
 
 
+@timer
 def get_investigadores(columns, left_joins, inactivos, conditions, params):
 
     query = merge_query(columns, left_joins, inactivos)
@@ -107,6 +111,7 @@ def get_investigadores(columns, left_joins, inactivos, conditions, params):
 
 @investigador_namespace.route('/')
 class ResumenInvestigador(Resource):
+    @timer
     @investigador_namespace.doc(
         responses=global_responses,
 
@@ -168,6 +173,7 @@ class ResumenInvestigador(Resource):
 
 @investigador_namespace.route('es/')
 class BusquedaInvestigadores(Resource):
+    @timer
     @investigador_namespace.doc(
 
         responses=global_responses,
