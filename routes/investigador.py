@@ -4,6 +4,7 @@ from db.conexion import BaseDatos
 from security.api_key import (comprobar_api_key)
 from utils.timing import func_timer as timer
 import utils.format as format
+import utils.pages as pages
 import config.global_config as gconfig
 
 investigador_namespace = Namespace(
@@ -19,7 +20,7 @@ global_params = {**global_params,
                      'type': 'bool',
                      'enum': ["True", "False"],
                  }, }
-
+paginate_params = gconfig.paginate_params
 
 # COLUMNAS DEVUELTAS EN LAS CONSULTAS DE INVESTIGADOR
 
@@ -32,8 +33,7 @@ columns = ["i.idInvestigador as prisma", "concat(i.apellidos, ', ', i.nombre) as
            "grupo.nombre as grupo_nombre", "grupo.idGrupo as grupo_id", "grupo.acronimo as grupo_acronimo", "grupo.rama as grupo_rama",
            "centro.nombre as centro_nombre", "centro.idCentro as centro_id",]
 
-columns_id = ["i.idInvestigador"]
-
+count_prefix = ["COUNT(*) as cantidad"]
 # LEFT JOINS
 
 # Plantilla para left joins de identificadores de investigador
@@ -97,11 +97,16 @@ def get_investigador_from_id(columns, left_joins, inactivos, id):
 
 
 @timer
-def get_investigadores(columns, left_joins, inactivos, conditions, params):
+def get_investigadores(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
 
     query = merge_query(columns, left_joins, inactivos)
 
     query += conditions
+
+    if limit is not None and offset is not None:
+        query += " LIMIT %s OFFSET %s"
+        params.append(limit)
+        params.append(offset)
 
     db = BaseDatos()
     result = db.ejecutarConsulta(query, params)
@@ -111,7 +116,6 @@ def get_investigadores(columns, left_joins, inactivos, conditions, params):
 
 @investigador_namespace.route('/')
 class ResumenInvestigador(Resource):
-    @timer
     @investigador_namespace.doc(
         responses=global_responses,
 
@@ -173,7 +177,6 @@ class ResumenInvestigador(Resource):
 
 @investigador_namespace.route('es/')
 class BusquedaInvestigadores(Resource):
-    @timer
     @investigador_namespace.doc(
 
         responses=global_responses,
@@ -182,6 +185,7 @@ class BusquedaInvestigadores(Resource):
 
         params={
             **global_params,
+            **paginate_params,
             'nombre': {
                 'name': 'Nombre',
                 'description': 'Nombre del investigador',
@@ -237,7 +241,9 @@ class BusquedaInvestigadores(Resource):
         # Cargar argumentos de búsqueda
         accept_type = args.get('salida', headers.get(
             'Accept', 'application/json'))
-        api_key = nombre = args.get('api_key', None)
+        api_key = args.get('api_key', None)
+        pagina = int(args.get('pagina', 1))
+        longitud_pagina = int(args.get('longitud_pagina', 100))
         nombre = args.get('nombre', None)
         apellidos = args.get('apellidos', None)
         email = args.get('email', None)
@@ -295,9 +301,15 @@ class BusquedaInvestigadores(Resource):
         if conditions:
             conditions_str = f" WHERE {' AND '.join(conditions)}"
 
+        amount = int(get_investigadores(
+            count_prefix, left_joins, inactivos, conditions_str, params)[1][0])
+
+        longitud_pagina, offset = pages.get_page_offset(
+            pagina, longitud_pagina, amount)
+
         try:
             data = get_investigadores(
-                columns, left_joins, inactivos, conditions_str, params)
+                columns, left_joins, inactivos, conditions_str, params, longitud_pagina, offset)
             dict_data = format.dict_from_table(
                 data, "prisma", "investigador", nested)
         except:
@@ -314,11 +326,11 @@ class BusquedaInvestigadores(Resource):
             xml_data = format.dict_to_xml(
                 dict_data, root_name="investigadores", object_name="investigador")
             response = Response(xml_data, mimetype='application/xml')
-            return response
 
+            return response
         elif 'csv' in accept_type:
             csv_data = format.format_csv(data)
-            return Response(csv_data, mimetype='text/csv')
+            return Response(format.stream(csv_data), mimetype='text/csv')
 
         else:
             investigador_namespace.abort(406, 'Formato de salida no soportado')

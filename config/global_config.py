@@ -17,3 +17,15 @@ params = {'api_key': {
     'enum': ["json", "xml", "csv"]
 }
 }
+
+paginate_params = {
+    'pagina': {
+        'name': 'pagina',
+        'description': 'Número de página',
+        'type': 'int',
+    }, 'longitud_pagina': {
+        'name': 'longitud_pagina',
+        'description': 'Cantidad de elementos por página',
+        'type': 'int',
+    }
+}
