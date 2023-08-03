@@ -1,4 +1,4 @@
-from flask import request, jsonify, Response
+from flask import request, Response
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
 from security.api_key import (comprobar_api_key)
@@ -6,7 +6,7 @@ import utils.format as format
 import config.global_config as gconfig
 
 investigador_namespace = Namespace(
-    'investigador', description="Búsqueda y datos de investigadores")
+    'investigador', description="")
 
 global_responses = gconfig.responses
 
@@ -25,11 +25,13 @@ global_params = {**global_params,
 columns = ["i.idInvestigador as prisma", "concat(i.apellidos, ', ', i.nombre) as nombre_administrativo", "i.email as email",
            "orcid.valor as identificador_orcid", "dialnet.valor as identificador_dialnet", "idus.valor as identificador_idus", "researcherid.valor as identificador_researcherid",
            "scholar.valor as identificador_scholar", "scopus.valor as identificador_scopus", "sica.valor as identificador_sica", "sisius.valor as identificador_sisius", "wos.valor as identificador_wos",
-           "categoria.nombre as categoria_nombre", "categoria.idCategoria as categoria_id",
+           "CASE WHEN i.sexo = 0 THEN categoria.femenino ELSE categoria.nombre END AS categoria_nombre", "categoria.idCategoria as categoria_id",
            "area.nombre as area_conocimiento_nombre", "area.idArea as area_id",
            "departamento.nombre as departamento_nombre", "departamento.idDepartamento as departamento_id",
-           "grupo.nombre as grupo_nombre", "grupo.idGrupo as grupo_id",
+           "grupo.nombre as grupo_nombre", "grupo.idGrupo as grupo_id", "grupo.acronimo as grupo_acronimo", "grupo.rama as grupo_rama",
            "centro.nombre as centro_nombre", "centro.idCentro as centro_id",]
+
+columns_id = ["i.idInvestigador"]
 
 # LEFT JOINS
 
@@ -50,8 +52,8 @@ left_joins = [plantilla_ids.format("orcid"),
               " LEFT JOIN i_area area ON area.idArea = i.idArea",
               " LEFT JOIN i_departamento departamento ON departamento.idDepartamento = i.idDepartamento",
               " LEFT JOIN i_grupo grupo ON grupo.idGrupo = i.idGrupo",
-              " LEFT JOIN i_centro centro ON centro.idCentro = i.idCentro",]
-
+              " LEFT JOIN i_centro centro ON centro.idCentro = i.idCentro",
+              " LEFT JOIN i_miembro_instituto ON i.idInvestigador = i_miembro_instituto.idInvestigador",]
 # QUERY BASE
 
 base_query = f"SELECT {', '.join(columns)} " + "FROM {} i"
@@ -65,12 +67,40 @@ nested = {"identificador": "identificadores",
           "grupo": "grupo",
           "centro": "centro", }
 
+# Fusiona las queries en una query utilizable
 
-def merge_query(query: str, left_joins: str, inactivos: bool = False) -> str:
 
+def merge_query(columns: str, left_joins: str, inactivos: bool = False) -> str:
+
+    query = f"SELECT {', '.join(columns)} " + "FROM {} i"
     tabla_investigador = "i_investigador" if inactivos else "i_investigador_activo"
     result = query.format(tabla_investigador)
     result += " ".join(left_joins)
+    return result
+
+
+def get_investigador_from_id(columns, left_joins, inactivos, id):
+
+    query = merge_query(columns, left_joins, inactivos)
+
+    params = []
+    query += " WHERE i.idInvestigador = %s"
+    params.append(id)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+def get_investigadores(columns, left_joins, inactivos, conditions, params):
+
+    query = merge_query(columns, left_joins, inactivos)
+
+    query += conditions
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
 
     return result
 
@@ -106,16 +136,8 @@ class ResumenInvestigador(Resource):
         # Comprobar api_key
         comprobar_api_key(api_key=api_key, namespace=investigador_namespace)
 
-        params = []
-        query = merge_query(base_query, left_joins, inactivos)
-
-        query += " WHERE i.idInvestigador = %s"
-
-        params.append(id)
-
         try:
-            db = BaseDatos()
-            data = db.ejecutarConsulta(query, params)
+            data = get_investigador_from_id(columns, left_joins, inactivos, id)
         except:
             investigador_namespace.abort(500, 'Error del servidor')
 
@@ -195,7 +217,7 @@ class BusquedaInvestigadores(Resource):
                 'type': 'string',
             },
             'doctorado': {
-                'name': 'Instituto',
+                'name': 'Doctorado',
                 'description': 'ID del programa de doctorado',
                 'type': 'string',
             },
@@ -223,8 +245,6 @@ class BusquedaInvestigadores(Resource):
                              == "true") else False
         # Comprobar api_key
         comprobar_api_key(api_key=api_key, namespace=investigador_namespace)
-
-        query = merge_query(base_query, left_joins, inactivos)
 
         conditions = []
         params = []
@@ -263,30 +283,28 @@ class BusquedaInvestigadores(Resource):
                 "i_investigador.idInvestigador IN (SELECT idInvestigador FROM i_profesor_doctorado WHERE idDoctorado = %s)")
             params.append(doctorado)
 
-        # Decidir si se filtra o no por investigadores activos
-
         # Concatenar las queries de campos de búsqueda
+        conditions_str = ""
+
         if conditions:
-            query += f" WHERE {' AND '.join(conditions)}"
+            conditions_str = f" WHERE {' AND '.join(conditions)}"
 
         try:
-            db = BaseDatos()
-            data = db.ejecutarConsulta(query, params)
+            data = get_investigadores(
+                columns, left_joins, inactivos, conditions_str, params)
+            dict_data = format.dict_from_table(
+                data, "prisma", "investigador", nested)
         except:
             investigador_namespace.abort(500, 'Error del servidor')
 
-        # Comprobar el tipo de output esperado
+        # Generar diccionario con las ids de cada investigador
 
         if 'json' in accept_type:
-            dict_data = format.dict_from_table(
-                data, "prisma", "investigador", nested)
             json_data = format.dict_to_json(dict_data)
             response = Response(json_data, mimetype='application/json')
             return response
 
         elif 'xml' in accept_type:
-            dict_data = format.dict_from_table(
-                data, "prisma", "investigador", nested)
             xml_data = format.dict_to_xml(
                 dict_data, root_name="investigadores", object_name="investigador")
             response = Response(xml_data, mimetype='application/xml')
