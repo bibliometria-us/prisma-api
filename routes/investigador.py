@@ -5,6 +5,7 @@ from security.api_key import (comprobar_api_key)
 from utils.timing import func_timer as timer
 import utils.format as format
 import utils.pages as pages
+import utils.response as response
 import config.global_config as gconfig
 
 investigador_namespace = Namespace(
@@ -115,7 +116,7 @@ def get_investigadores(columns, left_joins, inactivos, conditions, params, limit
 
 
 @investigador_namespace.route('/')
-class ResumenInvestigador(Resource):
+class Investigador(Resource):
     @investigador_namespace.doc(
         responses=global_responses,
 
@@ -130,7 +131,6 @@ class ResumenInvestigador(Resource):
 
     )
     def get(self):
-        """Devuelve un resumen de datos de un investigador."""
         headers = request.headers
         args = request.args
 
@@ -152,31 +152,18 @@ class ResumenInvestigador(Resource):
 
         # Comprobar el tipo de output esperado
 
-        if 'json' in accept_type:
-            dict_data = format.dict_from_table(
-                data, "prisma", "investigador", nested)
-            json_data = format.dict_to_json(dict_data)
-            response = Response(json_data, mimetype='application/json')
-            return response
-
-        elif 'xml' in accept_type:
-            dict_data = format.dict_from_table(
-                data, "prisma", "investigador", nested)
-            xml_data = format.dict_to_xml(
-                dict_data, root_name=None, object_name="investigador")
-            response = Response(xml_data, mimetype='application/xml')
-            return response
-
-        elif 'csv' in accept_type:
-            csv_data = format.format_csv(data)
-            return Response(csv_data, mimetype='text/csv')
-
-        else:
-            investigador_namespace.abort(406, 'Formato de salida no soportado')
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=investigador_namespace,
+                                          dict_selectable_column="prisma",
+                                          object_name="investigador",
+                                          xml_root_name="",)
 
 
 @investigador_namespace.route('es/')
-class BusquedaInvestigadores(Resource):
+class Investigadores(Resource):
     @investigador_namespace.doc(
 
         responses=global_responses,
@@ -264,35 +251,35 @@ class BusquedaInvestigadores(Resource):
         # Comprobar qué parámetros de búsqueda están activos y generar filtros para la consulta
         if nombre:
             conditions.append(
-                "nombre COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
+                "i.nombre COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
             params.append(nombre)
         if apellidos:
             conditions.append(
-                "apellidos COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
+                "i.apellidos COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
             params.append(apellidos)
         if email:
             conditions.append(
-                "email COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
+                "i.email COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
             params.append(email)
         if departamento:
-            conditions.append("idDepartamento = %s")
+            conditions.append("i.idDepartamento = %s")
             params.append(departamento)
         if grupo:
-            conditions.append("idGrupo = %s")
+            conditions.append("i.idGrupo = %s")
             params.append(grupo)
         if area:
-            conditions.append("idArea = %s")
+            conditions.append("i.idArea = %s")
             params.append(area)
         if instituto:
             conditions.append(
-                "i_investigador.idInvestigador IN (SELECT idInvestigador FROM i_miembro_instituto WHERE idInstituto = %s)")
+                "i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_instituto WHERE idInstituto = %s)")
             params.append(instituto)
         if centro:
-            conditions.append("idCentro = %s")
+            conditions.append("i.idCentro = %s")
             params.append(centro)
         if doctorado:
             conditions.append(
-                "i_investigador.idInvestigador IN (SELECT idInvestigador FROM i_profesor_doctorado WHERE idDoctorado = %s)")
+                "i.idInvestigador IN (SELECT idInvestigador FROM i_profesor_doctorado WHERE idDoctorado = %s)")
             params.append(doctorado)
 
         # Concatenar las queries de campos de búsqueda
@@ -310,27 +297,16 @@ class BusquedaInvestigadores(Resource):
         try:
             data = get_investigadores(
                 columns, left_joins, inactivos, conditions_str, params, longitud_pagina, offset)
-            dict_data = format.dict_from_table(
-                data, "prisma", "investigador", nested)
         except:
             investigador_namespace.abort(500, 'Error del servidor')
 
         # Generar diccionario con las ids de cada investigador
 
-        if 'json' in accept_type:
-            json_data = format.dict_to_json(dict_data)
-            response = Response(json_data, mimetype='application/json')
-            return response
-
-        elif 'xml' in accept_type:
-            xml_data = format.dict_to_xml(
-                dict_data, root_name="investigadores", object_name="investigador")
-            response = Response(xml_data, mimetype='application/xml')
-
-            return response
-        elif 'csv' in accept_type:
-            csv_data = format.format_csv(data)
-            return Response(format.stream(csv_data), mimetype='text/csv')
-
-        else:
-            investigador_namespace.abort(406, 'Formato de salida no soportado')
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=investigador_namespace,
+                                          dict_selectable_column="prisma",
+                                          object_name="investigador",
+                                          xml_root_name="investigadores",)
