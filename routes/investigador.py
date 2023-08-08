@@ -14,13 +14,13 @@ investigador_namespace = Namespace(
 global_responses = gconfig.responses
 
 global_params = gconfig.params
-global_params = {**global_params,
-                 'inactivos': {
-                     'name': 'ID',
-                     'description': 'Incluir investigadores que han finalizado su relación con la US',
-                     'type': 'bool',
-                     'enum': ["True", "False"],
-                 }, }
+global_params_inactivos = {**global_params,
+                           'inactivos': {
+                               'name': 'ID',
+                               'description': 'Incluir investigadores que han finalizado su relación con la US',
+                               'type': 'bool',
+                               'enum': ["True", "False"],
+                           }, }
 paginate_params = gconfig.paginate_params
 
 # COLUMNAS DEVUELTAS EN LAS CONSULTAS DE INVESTIGADOR
@@ -122,7 +122,7 @@ class Investigador(Resource):
 
         produces=['application/json', 'application/xml', 'text/csv'],
 
-        params={**global_params,
+        params={**global_params_inactivos,
                 'id': {
                     'name': 'ID',
                     'description': 'ID del investigador',
@@ -171,7 +171,7 @@ class Investigadores(Resource):
         produces=['application/json', 'application/xml', 'text/csv'],
 
         params={
-            **global_params,
+            **global_params_inactivos,
             **paginate_params,
             'nombre': {
                 'name': 'Nombre',
@@ -300,8 +300,6 @@ class Investigadores(Resource):
         except:
             investigador_namespace.abort(500, 'Error del servidor')
 
-        # Generar diccionario con las ids de cada investigador
-
         return response.generate_response(data=data,
                                           output_types=["json", "xml", "csv"],
                                           accept_type=accept_type,
@@ -310,3 +308,70 @@ class Investigadores(Resource):
                                           dict_selectable_column="prisma",
                                           object_name="investigador",
                                           xml_root_name="investigadores",)
+
+
+# INSTITUTOS DE UN INVESTIGADOR
+query_institutos = "SELECT {} FROM i_miembro_instituto m_i"
+
+institutos_columns = ["i.idInstituto as id", "i.nombre", "i.acronimo"]
+
+institutos_left_joins = [
+    " LEFT JOIN i_instituto i ON i.idInstituto = m_i.idInstituto"]
+
+
+def get_institutos_from_investigador(id):
+    params = []
+    query = query_institutos.format(
+        ",".join(institutos_columns)) + " ".join(institutos_left_joins)
+    query += " WHERE m_i.idInvestigador = %s"
+    params.append(id)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@investigador_namespace.route('/institutos/')
+class InstitutosInvestigador(Resource):
+    @investigador_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'id': {
+                    'name': 'ID',
+                    'description': 'ID del investigador',
+                    'type': 'int',
+                }, }
+
+    )
+    def get(self):
+        headers = request.headers
+        args = request.args
+
+        # Cargar argumentos de búsqueda
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        id = args.get('id', None)
+
+        # Comprobar api_key
+        comprobar_api_key(api_key=api_key, namespace=investigador_namespace)
+
+        try:
+            data = get_institutos_from_investigador(id)
+        except:
+            investigador_namespace.abort(500, 'Error del servidor')
+
+        # Comprobar el tipo de output esperado
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested={},
+                                          namespace=investigador_namespace,
+                                          dict_selectable_column="id",
+                                          object_name="instituto",
+                                          xml_root_name="institutos",)
