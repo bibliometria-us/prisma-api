@@ -401,5 +401,5 @@ class PublicacionesInvestigador(Resource):
 
         request_url = f'http://{request.host}/'
         request_urn = f'publicaciones/?salida={accept_type}&api_key={api_key}&investigador={id}'
-
-        return response.generate_response_from_uri(request_url, request_urn)
+        referrer = request.referrer
+        return response.generate_response_from_uri(request_url, request_urn, referrer)

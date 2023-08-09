@@ -31,11 +31,11 @@ def generate_response(data: list, output_types: list[str], accept_type: str, nes
         namespace.abort(406, 'Formato de salida no soportado')
 
 
-def generate_response_from_uri(url: str, urn: str) -> Response:
+def generate_response_from_uri(url: str, urn: str, referrer: str) -> Response:
     request_uri = url + urn
 
     headers = {
-        'Referer': url,
+        'Referer': referrer,
     }
     response = requests.get(request_uri, headers=headers)
     flask_response = Response(
