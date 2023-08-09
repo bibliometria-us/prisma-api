@@ -1,4 +1,4 @@
-from flask import request, Response
+from flask import request, jsonify, Response
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
 from security.api_key import (comprobar_api_key)
@@ -7,6 +7,7 @@ import utils.format as format
 import utils.pages as pages
 import utils.response as response
 import config.global_config as gconfig
+import requests
 
 investigador_namespace = Namespace(
     'investigador', description="")
@@ -72,7 +73,6 @@ nested = {"identificador": "identificadores",
 # Fusiona las queries en una query utilizable
 
 
-@timer
 def merge_query(columns: str, left_joins: str, inactivos: bool = False) -> str:
 
     query = f"SELECT {', '.join(columns)} " + "FROM {} i"
@@ -82,7 +82,6 @@ def merge_query(columns: str, left_joins: str, inactivos: bool = False) -> str:
     return result
 
 
-@timer
 def get_investigador_from_id(columns, left_joins, inactivos, id):
 
     query = merge_query(columns, left_joins, inactivos)
@@ -90,24 +89,6 @@ def get_investigador_from_id(columns, left_joins, inactivos, id):
     params = []
     query += " WHERE i.idInvestigador = %s"
     params.append(id)
-
-    db = BaseDatos()
-    result = db.ejecutarConsulta(query, params)
-
-    return result
-
-
-@timer
-def get_investigadores(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
-
-    query = merge_query(columns, left_joins, inactivos)
-
-    query += conditions
-
-    if limit is not None and offset is not None:
-        query += " LIMIT %s OFFSET %s"
-        params.append(limit)
-        params.append(offset)
 
     db = BaseDatos()
     result = db.ejecutarConsulta(query, params)
@@ -160,6 +141,24 @@ class Investigador(Resource):
                                           dict_selectable_column="prisma",
                                           object_name="investigador",
                                           xml_root_name="",)
+
+
+def get_investigadores(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
+
+    query = merge_query(columns, left_joins, inactivos)
+
+    query += conditions
+
+    if limit is not None and offset is not None:
+        query += " ORDER BY prisma"
+        query += " LIMIT %s OFFSET %s"
+        params.append(limit)
+        params.append(offset)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
 
 
 @investigador_namespace.route('es/')
@@ -375,3 +374,47 @@ class InstitutosInvestigador(Resource):
                                           dict_selectable_column="id",
                                           object_name="instituto",
                                           xml_root_name="institutos",)
+
+
+@investigador_namespace.route('/publicaciones/')
+class PublicacionesInvestigador(Resource):
+    @investigador_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'id': {
+                    'name': 'ID',
+                    'description': 'ID del investigador',
+                    'type': 'int',
+                }, }
+
+    )
+    def get(self):
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json')).replace("/", "")
+        api_key = args.get('api_key', None)
+        id = args.get('id', None)
+
+        request_url = f'http://{request.host}/'
+        request_urn = f'publicaciones/?salida={accept_type}&api_key={api_key}&investigador={id}'
+        request_uri = request_url + request_urn
+
+        headers = {
+            'Referer': request_url,
+        }
+
+        response = requests.get(request_uri, headers=headers)
+
+        flask_response = Response(
+            response.content, status=response.status_code)
+
+        # Set the headers for the Flask response
+        for key, value in response.headers.items():
+            flask_response.headers[key] = value
+
+        return flask_response

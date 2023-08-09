@@ -54,7 +54,7 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
 
         result[row_name] = result_data_dict
 
-    return dict(sorted(result.items(), key=lambda item: item[1][selectable_column]))
+    return result
 
 
 @timer
