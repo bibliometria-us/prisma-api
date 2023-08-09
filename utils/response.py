@@ -1,6 +1,7 @@
 from utils import format
 from flask import Response
 from flask_restx import Namespace
+import requests
 
 
 def generate_response(data: list, output_types: list[str], accept_type: str, nested: dict,
@@ -28,3 +29,18 @@ def generate_response(data: list, output_types: list[str], accept_type: str, nes
 
     else:
         namespace.abort(406, 'Formato de salida no soportado')
+
+
+def generate_response_from_uri(url: str, urn: str) -> Response:
+    request_uri = url + urn
+
+    headers = {
+        'Referer': url,
+    }
+    response = requests.get(request_uri, headers=headers)
+    flask_response = Response(
+        response.content, status=response.status_code)
+    # Set the headers for the Flask response
+    for key, value in response.headers.items():
+        flask_response.headers[key] = value
+    return flask_response

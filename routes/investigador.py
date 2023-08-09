@@ -7,7 +7,6 @@ import utils.format as format
 import utils.pages as pages
 import utils.response as response
 import config.global_config as gconfig
-import requests
 
 investigador_namespace = Namespace(
     'investigador', description="")
@@ -402,19 +401,5 @@ class PublicacionesInvestigador(Resource):
 
         request_url = f'http://{request.host}/'
         request_urn = f'publicaciones/?salida={accept_type}&api_key={api_key}&investigador={id}'
-        request_uri = request_url + request_urn
 
-        headers = {
-            'Referer': request_url,
-        }
-
-        response = requests.get(request_uri, headers=headers)
-
-        flask_response = Response(
-            response.content, status=response.status_code)
-
-        # Set the headers for the Flask response
-        for key, value in response.headers.items():
-            flask_response.headers[key] = value
-
-        return flask_response
+        return response.generate_response_from_uri(request_url, request_urn)
