@@ -25,7 +25,7 @@ global_params = {**global_params,
 paginate_params = gconfig.paginate_params
 # COLUMNAS DEVUELTAS EN LAS CONSULTAS DE PUBLICACION
 
-columns = ["p.idPublicacion as id", "p.titulo", "p.agno as año",
+columns = ["p.idPublicacion as id", "p.titulo", "p.tipo as tipo", "p.agno as año",
            "fuente.tipo as fuente_tipo", "fuente.titulo as fuente_titulo", "fuente.editorial as fuente_editorial",
            "dialnet.valor as identificador_dialnet", "doi.valor as identificador_doi", "idus.valor as identificador_idus",
            "pubmed.valor as identificador_pubmed", "scopus.valor as identificador_scopus", "wos.valor as identificador_wos",]
@@ -135,6 +135,45 @@ def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=
 
     return result
 
+# Calcula las estadísticas de una búsqueda de publicaciones
+
+
+def get_estadisticas_publicaciones(columns, left_joins, inactivos, conditions, params):
+    table = get_publicaciones(
+        columns, left_joins, inactivos, conditions, params)
+
+    # Total de publicaciones
+    total_rows = len(table) - 1
+
+    # Almacenar índices
+    indexes = {column: index for index, column in enumerate(
+        table[0]) if column == 'tipo' or column.startswith('identificador_')}
+
+    # Función para insertar contadores en diccionario
+
+    def count_in_dict(dict: dict, key: str):
+        if key not in dict:
+            dict[key] = 1
+        else:
+            dict[key] += 1
+    # Recorrer tabla para contar
+    result_dict = {"Total": total_rows}
+    for row in table[1:]:
+        for index in indexes:
+            value = row[indexes[index]]
+            if index == "tipo":
+                count_in_dict(result_dict, value)
+            if index.startswith("identificador_"):
+                if value is not None:
+                    count_in_dict(result_dict, index)
+
+    result = [("tipo", "valor")]
+
+    for res in result_dict:
+        result.append((res, result_dict[res]))
+
+    return result
+
 
 @publicacion_namespace.route('es/')
 class Publicaciones(Resource):
@@ -169,6 +208,8 @@ class Publicaciones(Resource):
         titulo = args.get('titulo', None)
         inactivos = True if (args.get('inactivos', "False").lower()
                              == "true") else False
+        estadisticas = True if (args.get('estadisticas', "False").lower()
+                                == "true") else False
 
         comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
 
@@ -192,8 +233,18 @@ class Publicaciones(Resource):
             pagina, longitud_pagina, amount)
 
         try:
-            data = get_publicaciones(
-                columns, left_joins, inactivos, conditions, params, longitud_pagina, offset)
+            if not estadisticas:
+                data = get_publicaciones(
+                    columns, left_joins, inactivos, conditions, params, longitud_pagina, offset)
+                dict_selectable_column = "id"
+                object_name = "publicacion"
+                xml_root_name = "publicaciones"
+            else:
+                data = get_estadisticas_publicaciones(
+                    columns, left_joins, inactivos, conditions, params)
+                dict_selectable_column = "tipo"
+                object_name = "estadistica"
+                xml_root_name = "estadisticas"
         except:
             publicacion_namespace.abort(500, 'Error del servidor')
 
@@ -202,6 +253,6 @@ class Publicaciones(Resource):
                                           accept_type=accept_type,
                                           nested=nested,
                                           namespace=publicacion_namespace,
-                                          dict_selectable_column="id",
-                                          object_name="publicacion",
-                                          xml_root_name="publicaciones",)
+                                          dict_selectable_column=dict_selectable_column,
+                                          object_name=object_name,
+                                          xml_root_name=xml_root_name,)

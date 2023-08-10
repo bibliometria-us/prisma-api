@@ -374,6 +374,8 @@ class InstitutosInvestigador(Resource):
                                           object_name="instituto",
                                           xml_root_name="institutos",)
 
+# PUBLICACIONES DE UN INVESTIGADOR
+
 
 @investigador_namespace.route('/publicaciones/')
 class PublicacionesInvestigador(Resource):
@@ -403,3 +405,70 @@ class PublicacionesInvestigador(Resource):
         request_urn = f'publicaciones/?salida={accept_type}&api_key={api_key}&investigador={id}'
         referrer = request.referrer
         return response.generate_response_from_uri(request_url, request_urn, referrer)
+
+
+# PROGRAMAS DE DOCTORADO DE UN INVESTIGADOR
+query_programas_doctorado = "SELECT {} FROM i_profesor_doctorado pd"
+
+programas_doctorado_columns = ["d.idDoctorado as id", "d.nombre"]
+
+programas_doctorado_left_joins = [
+    " LEFT JOIN i_doctorado d ON d.idDoctorado = pd.idDoctorado"]
+
+
+def get_programas_doctorado_from_investigador(id):
+    params = []
+    query = query_programas_doctorado.format(
+        ",".join(programas_doctorado_columns)) + " ".join(programas_doctorado_left_joins)
+    query += " WHERE pd.idInvestigador = %s"
+    params.append(id)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@investigador_namespace.route('/programas_doctorado/')
+class ProgramasDoctoradoInvestigador(Resource):
+    @investigador_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'id': {
+                    'name': 'ID',
+                    'description': 'ID del investigador',
+                    'type': 'int',
+                }, }
+
+    )
+    def get(self):
+        headers = request.headers
+        args = request.args
+
+        # Cargar argumentos de búsqueda
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        id = args.get('id', None)
+
+        # Comprobar api_key
+        comprobar_api_key(api_key=api_key, namespace=investigador_namespace)
+
+        try:
+            data = get_programas_doctorado_from_investigador(id)
+        except:
+            investigador_namespace.abort(500, 'Error del servidor')
+
+        # Comprobar el tipo de output esperado
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested={},
+                                          namespace=investigador_namespace,
+                                          dict_selectable_column="id",
+                                          object_name="programa_doctorado",
+                                          xml_root_name=None,)
