@@ -24,8 +24,12 @@ paginate_params = {
         'description': 'Número de página',
         'type': 'int',
     }, 'longitud_pagina': {
-        'name': 'longitud_pagina',
+        'name': 'Longitud de páginas',
         'description': 'Cantidad de elementos por página',
+        'type': 'int',
+    }, 'total_elementos': {
+        'name': 'Total de elementos',
+        'description': 'Total de elementos en la búsqueda. De ser conocido, introducirlo en la consulta para mejorar la eficiencia de la paginación',
         'type': 'int',
     }
 }

@@ -6,6 +6,7 @@ from utils.timing import func_timer as timer
 import utils.format as format
 import utils.pages as pages
 import utils.response as response
+import utils.date as date_utils
 import config.global_config as gconfig
 
 
@@ -113,6 +114,7 @@ class Publicacion(Resource):
                                           xml_root_name=None,)
 
 
+@timer
 def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
     query = f"SELECT {', '.join(columns)} " + "FROM p_publicacion p"
     query += " ".join(left_joins)
@@ -122,7 +124,8 @@ def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=
     else:
         query += " WHERE p.eliminado = 0"
 
-    query += f" AND ({' OR '.join(conditions)})"
+    query += " AND p.tipo != 'tesis'"
+    query += f" AND ({' AND '.join(conditions)})"
     query += " ORDER BY p.agno DESC, p.titulo ASC"
 
     if limit is not None and offset is not None:
@@ -184,6 +187,12 @@ class Publicaciones(Resource):
 
         params={**global_params,
                 **paginate_params,
+                'estadisticas': {
+                    'name': 'Estadísticas',
+                            'description': 'Si se activa, se devolverá un resumen de estadísticas de la búsqueda',
+                            'type': 'bool',
+                            'enum': ["True", "False"],
+                },
                 'investigador': {
                     'name': 'Investigador',
                             'description': 'ID de investigador',
@@ -192,6 +201,23 @@ class Publicaciones(Resource):
                 'titulo': {
                     'name': 'Título',
                             'description': 'Título de la publicación',
+                            'type': 'int',
+                },
+
+                'comienzo': {
+                    'name': 'Año de comienzo',
+                            'description': 'Año a partir del cual buscar las publicaciones (inclusive)',
+                            'type': 'int',
+                },
+
+                'fin': {
+                    'name': 'Año de fin',
+                            'description': 'Año hasta el cual buscar las publicaciones (inclusive)',
+                            'type': 'int',
+                },
+                'departamento': {
+                    'name': 'Departamento',
+                            'description': 'ID del departamento por el que filtrar',
                             'type': 'int',
                 }, }
     )
@@ -203,6 +229,7 @@ class Publicaciones(Resource):
             'Accept', 'application/json'))
         pagina = int(args.get('pagina', 1))
         longitud_pagina = int(args.get('longitud_pagina', 100))
+        total_elementos = args.get('total_elementos', None)
         api_key = args.get('api_key', None)
         investigador = args.get('investigador', None)
         titulo = args.get('titulo', None)
@@ -210,8 +237,12 @@ class Publicaciones(Resource):
                              == "true") else False
         estadisticas = True if (args.get('estadisticas', "False").lower()
                                 == "true") else False
-
+        comienzo = int(args.get('comienzo', 1900))
+        fin = int(args.get('fin', date_utils.get_current_year()))
+        departamento = args.get('departamento', None)
         comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
+
+        # Cargar condiciones de búsqueda
 
         conditions = []
         params = []
@@ -225,20 +256,39 @@ class Publicaciones(Resource):
                 "p.titulo COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')"
             )
             params.append(titulo)
+        if comienzo and fin:
+            conditions.append("p.agno BETWEEN %s AND %s")
+            params.append(comienzo)
+            params.append(fin)
+        if departamento:
+            conditions.append(
+                "p.idPublicacion IN (SELECT a.idPublicacion FROM p_autor a LEFT JOIN i_investigador i ON i.idInvestigador = a.idInvestigador WHERE i.idDepartamento = %s)")
+            params.append(departamento)
 
-        amount = int(get_publicaciones(
-            count_prefix, left_joins, inactivos, conditions, params)[1][0])
+        # Parámetros de paginación
+        is_paginable = not estadisticas
 
-        longitud_pagina, offset = pages.get_page_offset(
-            pagina, longitud_pagina, amount)
+        offset = None
+
+        if is_paginable:
+            if not total_elementos:
+                amount = int(get_publicaciones(
+                    count_prefix, left_joins, inactivos, conditions, params)[1][0])
+            else:
+                amount = int(total_elementos)
+
+            longitud_pagina, offset = pages.get_page_offset(
+                pagina, longitud_pagina, amount)
 
         try:
+            # Consulta normal de investigadores
             if not estadisticas:
                 data = get_publicaciones(
                     columns, left_joins, inactivos, conditions, params, longitud_pagina, offset)
                 dict_selectable_column = "id"
                 object_name = "publicacion"
                 xml_root_name = "publicaciones"
+            # Consulta de estadísticas de la búsqueda
             else:
                 data = get_estadisticas_publicaciones(
                     columns, left_joins, inactivos, conditions, params)
