@@ -6,7 +6,7 @@ def get_page_offset(page, page_size, amount):
         page_size = amount
 
     min_page = 1
-    max_page = math.ceil(amount/page_size)
+    max_page = math.ceil(amount/page_size) if page_size > 0 else 1
 
     # Limitar el número de página entre el mínimo y el máximo posible
     page = constrain_to_range(page, min_page, max_page)

@@ -1,9 +1,8 @@
-from flask import request, Response
+from flask import request
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
 from security.api_key import (comprobar_api_key)
 from utils.timing import func_timer as timer
-import utils.format as format
 import utils.pages as pages
 import utils.response as response
 import utils.date as date_utils
@@ -16,13 +15,7 @@ publicacion_namespace = Namespace(
 global_responses = gconfig.responses
 
 global_params = gconfig.params
-global_params = {**global_params,
-                 'inactivos': {
-                     'name': 'ID',
-                     'description': 'Incluir publicaciones eliminadas',
-                     'type': 'bool',
-                     'enum': ["True", "False"],
-                 }, }
+
 paginate_params = gconfig.paginate_params
 # COLUMNAS DEVUELTAS EN LAS CONSULTAS DE PUBLICACION
 
@@ -51,16 +44,13 @@ nested = {"fuente": "fuente",
           "identificador": "identificadores"}
 
 
-def get_publicacion_from_id(columns: list[str], left_joins: list[str], inactivos: bool, id: int):
+def get_publicacion_from_id(columns: list[str], left_joins: list[str], id: int):
     query = f"SELECT {', '.join(columns)} " + "FROM p_publicacion p"
     query += " ".join(left_joins)
 
     params = []
     query += " WHERE p.idPublicacion = %s"
     params.append(id)
-
-    if not inactivos:
-        query += " AND p.eliminado = 0"
 
     db = BaseDatos()
     result = db.ejecutarConsulta(query, params)
@@ -83,6 +73,7 @@ class Publicacion(Resource):
                 }, }
     )
     def get(self):
+        '''Información de una publicación'''
         headers = request.headers
         args = request.args
 
@@ -91,14 +82,12 @@ class Publicacion(Resource):
             'Accept', 'application/json'))
         api_key = args.get('api_key', None)
         id = args.get('id', None)
-        inactivos = True if (args.get('inactivos', "False").lower()
-                             == "true") else False
 
         # Comprobar api_key
         comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
 
         try:
-            data = get_publicacion_from_id(columns, left_joins, inactivos, id)
+            data = get_publicacion_from_id(columns, left_joins, id)
         except:
             publicacion_namespace.abort(500, 'Error del servidor')
 
@@ -114,7 +103,6 @@ class Publicacion(Resource):
                                           xml_root_name=None,)
 
 
-@timer
 def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
     query = f"SELECT {', '.join(columns)} " + "FROM p_publicacion p"
     query += " ".join(left_joins)
@@ -187,6 +175,17 @@ class Publicaciones(Resource):
 
         params={**global_params,
                 **paginate_params,
+                'total_elementos': {
+                    'name': 'Total de elementos',
+                    'description': 'Total de elementos en la búsqueda. De ser conocido, introducirlo en la consulta para mejorar la eficiencia de la paginación',
+                    'type': 'int',
+                },
+                'inactivos': {
+                    'name': 'ID',
+                    'description': 'Incluir publicaciones eliminadas',
+                    'type': 'bool',
+                    'enum': ["True", "False"],
+                },
                 'estadisticas': {
                     'name': 'Estadísticas',
                             'description': 'Si se activa, se devolverá un resumen de estadísticas de la búsqueda',
@@ -219,9 +218,35 @@ class Publicaciones(Resource):
                     'name': 'Departamento',
                             'description': 'ID del departamento por el que filtrar',
                             'type': 'int',
+                },
+                'grupo': {
+                    'name': 'Grupo',
+                            'description': 'ID del grupo de investigación por el que filtrar',
+                            'type': 'int',
+                },
+                'instituto': {
+                    'name': 'Instituto',
+                            'description': 'ID del instituto por el que filtrar',
+                            'type': 'int',
+                },
+                'doctorado': {
+                    'name': 'Programa de doctorado',
+                            'description': 'ID del programa de doctorado por el que filtrar',
+                            'type': 'int',
+                },
+                'fuente': {
+                    'name': 'Fuente',
+                            'description': 'ID de la fuente de la publicación por la que filtrar',
+                            'type': 'int',
+                },
+                'coleccion': {
+                    'name': 'Colección',
+                            'description': 'ID de la colección por la que filtrar',
+                            'type': 'int',
                 }, }
     )
     def get(self):
+        '''Búsqueda de publicaciones'''
         headers = request.headers
         args = request.args
 
@@ -240,6 +265,12 @@ class Publicaciones(Resource):
         comienzo = int(args.get('comienzo', 1900))
         fin = int(args.get('fin', date_utils.get_current_year()))
         departamento = args.get('departamento', None)
+        grupo = args.get('grupo', None)
+        instituto = args.get('instituto', None)
+        doctorado = args.get('doctorado', None)
+        fuente = args.get('fuente', None)
+        coleccion = args.get('coleccion', None)
+
         comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
 
         # Cargar condiciones de búsqueda
@@ -262,9 +293,29 @@ class Publicaciones(Resource):
             params.append(fin)
         if departamento:
             conditions.append(
-                "p.idPublicacion IN (SELECT a.idPublicacion FROM p_autor a LEFT JOIN i_investigador i ON i.idInvestigador = a.idInvestigador WHERE i.idDepartamento = %s)")
+                "p.idPublicacion IN (SELECT a.idPublicacion FROM p_autor a LEFT JOIN i_investigador_activo i ON i.idInvestigador = a.idInvestigador WHERE i.idDepartamento = %s)")
             params.append(departamento)
-
+        if grupo:
+            conditions.append(
+                "p.idPublicacion IN (SELECT a.idPublicacion FROM p_autor a LEFT JOIN i_investigador_activo i ON i.idInvestigador = a.idInvestigador WHERE i.idGrupo = %s)")
+            params.append(grupo)
+        if instituto:
+            conditions.append(
+                "p.idPublicacion IN (SELECT a.idPublicacion FROM p_autor a WHERE a.idInvestigador in (SELECT mi.idInvestigador FROM i_miembro_instituto mi WHERE mi.idInstituto = %s))")
+            params.append(instituto)
+        if doctorado:
+            conditions.append(
+                "p.idPublicacion IN (SELECT a.idPublicacion FROM p_autor a WHERE a.idInvestigador in (SELECT pd.idInvestigador FROM i_profesor_doctorado pd WHERE pd.idDoctorado = %s))")
+            params.append(doctorado)
+        if fuente:
+            conditions.append(
+                "p.idFuente = %s "
+            )
+            params.append(fuente)
+        if coleccion:
+            conditions.append(
+                "p.idFuente IN (SELECT df.idFuente FROM p_dato_fuente df WHERE df.valor = %s AND df.tipo = 'coleccion')")
+            params.append(coleccion)
         # Parámetros de paginación
         is_paginable = not estadisticas
 
@@ -306,3 +357,317 @@ class Publicaciones(Resource):
                                           dict_selectable_column=dict_selectable_column,
                                           object_name=object_name,
                                           xml_root_name=xml_root_name,)
+
+
+# AUTORES DE PUBLICACIÓN
+
+def get_autores_from_publicacion(id_publicacion: int):
+    params = []
+    query = "SELECT a.idAutor, a.idInvestigador, a.firma, a.rol, a.orden FROM p_autor a WHERE a.idPublicacion = %s ORDER BY rol ASC, orden ASC"
+
+    params.append(id_publicacion)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@publicacion_namespace.route('/autores/')
+class AutoresPublicacion(Resource):
+    @publicacion_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'publicacion': {
+                    'name': 'Publicación',
+                    'description': 'ID de la publicación',
+                    'type': 'int',
+                }, })
+    def get(self):
+        '''Autores de la publicación'''
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        publicacion = args.get('publicacion', None)
+
+        comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
+
+        try:
+            data = get_autores_from_publicacion(publicacion)
+        except:
+            publicacion_namespace.abort(500, 'Error del servidor')
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=publicacion_namespace,
+                                          dict_selectable_column="idAutor",
+                                          object_name="autor",
+                                          xml_root_name="autores",)
+
+# DATOS DE PUBLICACIÓN
+
+
+def get_datos_from_publicacion(id_publicacion: int):
+    params = []
+    query = "SELECT dp.tipo, dp.valor FROM p_dato_publicacion dp WHERE dp.idPublicacion = %s"
+
+    params.append(id_publicacion)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@publicacion_namespace.route('/datos/')
+class DatosPublicacion(Resource):
+    @publicacion_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'publicacion': {
+                    'name': 'Publicación',
+                    'description': 'ID de la publicación',
+                    'type': 'int',
+                }, })
+    def get(self):
+        '''Datos de la publicación, como número de páginas, página de inicio/fin, nota, volumen, congreso...'''
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        publicacion = args.get('publicacion', None)
+
+        comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
+
+        try:
+            data = get_datos_from_publicacion(publicacion)
+        except:
+            publicacion_namespace.abort(500, 'Error del servidor')
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=publicacion_namespace,
+                                          dict_selectable_column="tipo",
+                                          object_name="dato",
+                                          xml_root_name="datos",)
+
+# OPEN ACCESS PUBLICACIÓN
+
+
+def get_acceso_abierto_from_publicacion(id_publicacion: int):
+    params = []
+    query = "SELECT aa.id, aa.valor as via, aa.origen FROM p_acceso_abierto aa WHERE aa.publicacion_id = %s"
+
+    params.append(id_publicacion)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@publicacion_namespace.route('/acceso_abierto/')
+class AccesoAbiertoPublicacion(Resource):
+    @publicacion_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'publicacion': {
+                    'name': 'Publicación',
+                    'description': 'ID de la publicación',
+                    'type': 'int',
+                }, })
+    def get(self):
+        '''Datos de acceso abierto de una publicación'''
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        publicacion = args.get('publicacion', None)
+
+        comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
+
+        try:
+            data = get_acceso_abierto_from_publicacion(publicacion)
+        except:
+            publicacion_namespace.abort(500, 'Error del servidor')
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=publicacion_namespace,
+                                          dict_selectable_column="id",
+                                          object_name="acceso_abierto",
+                                          xml_root_name="accesos_abiertos",)
+
+# MÉTRICAS DE PUBLICACIÓN
+
+
+def get_metricas_from_publicacion(id_publicacion: int):
+    params = []
+    query = "SELECT m.idMetrica as id, m.metrica, m.basedatos, m.valor, DATE_FORMAT(m.fechaActualizacion,'%d/%m/%Y') as fecha_actualizacion FROM m_publicaciones m WHERE m.idPublicacion = %s"
+
+    params.append(id_publicacion)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@publicacion_namespace.route('/metricas/')
+class MetricasPublicacion(Resource):
+    @publicacion_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'publicacion': {
+                    'name': 'Publicación',
+                    'description': 'ID de la publicación',
+                    'type': 'int',
+                },
+                })
+    def get(self):
+        '''Métricas de la publicación: citas de la publicación y Premio Extraordinario de Doctorado US'''
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        publicacion = args.get('publicacion', None)
+
+        comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
+
+        try:
+            data = get_metricas_from_publicacion(publicacion)
+        except:
+            publicacion_namespace.abort(500, 'Error del servidor')
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=publicacion_namespace,
+                                          dict_selectable_column="id",
+                                          object_name="metrica",
+                                          xml_root_name="metricas",)
+
+# INDICIOS DE CALIDAD DE PUBLICACIONES
+
+
+def get_indicios_calidad_from_publicacion(id_publicacion: int, tipo: str):
+    params = []
+
+    def merge_queries(table_name, select, issn_amount):
+        check_issn_2 = "OR issn_2 IN (SELECT valor FROM lista_issn)" if issn_amount == 2 else ""
+
+        result = f"""
+        {lista_issns}
+        SELECT {select} FROM {table_name} AS m
+        WHERE
+        (issn IN (SELECT valor FROM lista_issn) {check_issn_2})
+        {group}
+        {order}
+        """
+
+        return result
+    # Consulta que almacena todos los posibles ISSNs asociados a la publicación
+    lista_issns = """
+    WITH lista_issn AS (
+    SELECT i.valor
+    FROM p_identificador_fuente i
+    WHERE 
+        i.tipo IN ('eissn', 'issn')
+        AND i.idFuente = (
+            SELECT p.idFuente
+            FROM p_publicacion p
+            WHERE p.idPublicacion = %s
+        )
+    )
+    """
+    order = "ORDER BY año ASC, categoria ASC"
+    group = "GROUP BY revista, categoria, año"
+
+    queries = {"jif": merge_queries(select="""m.id_jcr as id, m.journal as revista, m.year as año, m.edition as edicion,
+                          m.category as categoria, CAST(m.impact_factor AS DOUBLE) as valor,
+                          m.rank as posicion, m.quartile as cuartil, m.decil, m.tercil""",
+                                    table_name="m_jcr",
+                                    issn_amount=2)}
+    query = queries[tipo]
+
+    params.append(id_publicacion)
+
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+# @publicacion_namespace.route('/metricas/indicios_calidad')
+class IndiciosCalidadPublicacion(Resource):
+    @publicacion_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'publicacion': {
+                    'name': 'Publicación',
+                    'description': 'ID de la publicación',
+                    'type': 'int',
+                },
+                'tipo': {
+                    'name': 'Tipo',
+                    'description': 'Indicio de calidad a solicitar',
+                    'type': 'int',
+                    'enum': ['JIF'],
+                    'default': 'JIF',
+                }, })
+    def get(self):
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        publicacion = args.get('publicacion', None)
+        tipo = args.get('tipo', None).lower()
+
+        comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
+
+        try:
+            data = get_indicios_calidad_from_publicacion(publicacion, tipo)
+        except:
+            publicacion_namespace.abort(500, 'Error del servidor')
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested=nested,
+                                          namespace=publicacion_namespace,
+                                          dict_selectable_column="id",
+                                          object_name="metrica",
+                                          xml_root_name="metricas",)

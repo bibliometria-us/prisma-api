@@ -27,9 +27,5 @@ paginate_params = {
         'name': 'Longitud de páginas',
         'description': 'Cantidad de elementos por página',
         'type': 'int',
-    }, 'total_elementos': {
-        'name': 'Total de elementos',
-        'description': 'Total de elementos en la búsqueda. De ser conocido, introducirlo en la consulta para mejorar la eficiencia de la paginación',
-        'type': 'int',
-    }
+    },
 }

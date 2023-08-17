@@ -111,6 +111,7 @@ class Investigador(Resource):
 
     )
     def get(self):
+        '''Información de un investigador'''
         headers = request.headers
         args = request.args
 
@@ -219,7 +220,8 @@ class Investigadores(Resource):
 
         })
     def get(self):
-        """Devuelve una lista de investigadores que cumpla simultáneamente todos los campos de búsqueda utilizados."""
+        '''Búsqueda de investigadores'''
+
         headers = request.headers
         args = request.args
 
@@ -346,6 +348,8 @@ class InstitutosInvestigador(Resource):
 
     )
     def get(self):
+        '''Institutos de un investigador'''
+
         headers = request.headers
         args = request.args
 
@@ -393,6 +397,7 @@ class PublicacionesInvestigador(Resource):
 
     )
     def get(self):
+        '''Publicaciones de un investigador'''
         headers = request.headers
         args = request.args
 
@@ -445,6 +450,7 @@ class ProgramasDoctoradoInvestigador(Resource):
 
     )
     def get(self):
+        '''Programas de doctorado de un investigador'''
         headers = request.headers
         args = request.args
 

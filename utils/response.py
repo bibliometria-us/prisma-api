@@ -44,3 +44,7 @@ def generate_response_from_uri(url: str, urn: str, referrer: str) -> Response:
     for key, value in response.headers.items():
         flask_response.headers[key] = value
     return flask_response
+
+
+def empty_string_if_none(string: str) -> str:
+    return string if string is not None else ""
