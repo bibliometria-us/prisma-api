@@ -209,7 +209,7 @@ class IdentificadoresFuente(Resource):
                 }, }
     )
     def get(self):
-        '''Identificadores de una fuente (ISSN, eISSN, ISBN, eISBN, DOI...)'''
+        '''Identificadores de una fuente (ISSN, eISSN, ISBN, eISBN, DOI)'''
         headers = request.headers
         args = request.args
 
@@ -289,3 +289,136 @@ class PublicacionesFuente(Resource):
             f'&longitud_pagina=0&estadisticas={estadisticas}&coleccion={response.empty_string_if_none(coleccion)}'
         referrer = request.referrer
         return response.generate_response_from_uri(request_url, request_urn, referrer)
+
+# MÉTRICAS DE PUBLICACIONES
+
+
+def get_metricas_publicacion(id_fuente: int, tipo: str, año: int):
+    params = []
+
+    def merge_queries(table_name, select, issn_amount, issn_2_name="issn_2"):
+        check_issn_2 = f"OR {issn_2_name} IN (SELECT valor FROM lista_issn)" if issn_amount == 2 else ""
+        select_string = ', '.join(
+            f"{value} as {key}" for key, value in select.items())
+        group = f"GROUP BY {select['revista']}, {select['categoria']}, {select['id']}"
+
+        result = f"""
+        {lista_issns}
+        SELECT {select_string} FROM {table_name} AS m
+        WHERE
+        (issn IN (SELECT valor FROM lista_issn) {check_issn_2})
+        {f" AND {select['año']} = %s" if año else ""}
+        {group}
+        {order}
+        """
+
+        return result
+    # Consulta que almacena todos los posibles ISSNs asociados a la publicación
+    lista_issns = """
+    WITH lista_issn AS (
+    SELECT i.valor
+    FROM p_identificador_fuente i
+    WHERE 
+        i.tipo IN ('eissn', 'issn')
+        AND i.idFuente = %s
+    )
+    """
+    order = "ORDER BY año ASC, categoria ASC"
+
+    queries = {"jif": merge_queries(select={'id': 'm.id_jcr', 'revista': 'm.journal', 'año': 'm.year', 'edicion': 'm.edition',
+                                            'categoria': 'm.category', 'valor': 'CAST(m.impact_factor AS DOUBLE)',
+                                            'posicion': 'm.rank', 'cuartil': 'm.quartile', 'decil': 'm.decil', 'tercil': 'm.tercil'},
+                                    table_name="m_jcr",
+                                    issn_amount=2),
+               "jci": merge_queries(select={'id': 'm.id', 'revista': 'm.revista', 'año': 'm.agno',
+                                            'categoria': 'm.categoria', 'valor': 'CAST(m.jci AS DOUBLE)',
+                                            'posicion': 'm.posicion', 'cuartil': 'm.cuartil', 'decil': 'm.decil',
+                                            'tercil': 'm.tercil', 'percentil': 'm.percentil'},
+                                    table_name="m_jci",
+                                    issn_amount=1),
+               "citescore": merge_queries(select={'id': 'm.id', 'revista': 'm.revista', 'año': 'm.agno',
+                                                  'categoria': 'm.categoria', 'valor': 'CAST(m.citeScore AS DOUBLE)',
+                                                  'posicion': 'm.posicion', 'cuartil': 'm.cuartil', 'decil': 'm.decil',
+                                                  'tercil': 'm.tercil'},
+                                          table_name="m_citescore",
+                                          issn_amount=1),
+               "sjr": merge_queries(select={'id': 'm.id_sjr', 'revista': 'm.journal', 'año': 'm.year',
+                                                  'categoria': 'm.category', 'valor': 'CAST(m.impact_factor AS DOUBLE)',
+                                                  'posicion': 'm.rank', 'cuartil': 'm.quartile', 'decil': 'm.decil',
+                                                  'tercil': 'm.tercil'},
+                                    table_name="m_sjr",
+                                    issn_amount=2),
+               "idr": merge_queries(select={'id': 'm.id', 'revista': 'm.titulo', 'año': 'm.anualidad',
+                                            'categoria': 'm.categoria', 'valor': 'CAST(m.factorImpacto AS DOUBLE)',
+                                                  'posicion': 'm.posicion', 'cuartil': 'm.cuartil', 'percentil': 'm.percentil', },
+                                    table_name="m_idr",
+                                    issn_amount=1),
+               "fecyt": merge_queries(select={'id': 'm.id', 'revista': 'm.titulo', 'año': 'm.agno',
+                                              'categoria': 'm.categoria', 'valor': 'CAST(m.puntuacion AS DOUBLE)',
+                                              'posicion': 'm.posicion', 'cuartil': 'm.cuartil', 'convocatoria': 'm.convocatoria',
+                                              'url': 'm.url', },
+                                      table_name="m_fecyt",
+                                      issn_amount=2,
+                                      issn_2_name="eissn"), }
+    query = queries[tipo]
+
+    params.append(id_fuente)
+    if año:
+        params.append(año)
+    db = BaseDatos()
+    result = db.ejecutarConsulta(query, params)
+
+    return result
+
+
+@fuente_namespace.route('/metricas/')
+class MetricasFuente(Resource):
+    @fuente_namespace.doc(
+        responses=global_responses,
+
+        produces=['application/json', 'application/xml', 'text/csv'],
+
+        params={**global_params,
+                'fuente': {
+                    'name': 'Fuente',
+                    'description': 'ID de la fuente',
+                    'type': 'int',
+                },
+                'tipo': {
+                    'name': 'Tipo',
+                    'description': 'Indicio de calidad a solicitar',
+                    'type': 'int',
+                    'enum': ['JIF', 'JCI', 'CiteScore', 'SJR', 'IDR', 'FECYT'],
+                    'default': 'JIF',
+                },
+                'año': {
+                    'name': 'Año',
+                    'description': 'Año de la métrica',
+                    'type': 'int',
+                }, })
+    def get(self):
+        headers = request.headers
+        args = request.args
+
+        accept_type = args.get('salida', headers.get(
+            'Accept', 'application/json'))
+        api_key = args.get('api_key', None)
+        fuente = args.get('fuente', None)
+        tipo = args.get('tipo', '').lower()
+        año = args.get('año', None)
+
+        comprobar_api_key(api_key=api_key, namespace=fuente_namespace)
+
+        try:
+            data = get_metricas_publicacion(fuente, tipo, año)
+        except:
+            fuente_namespace.abort(500, 'Error del servidor')
+
+        return response.generate_response(data=data,
+                                          output_types=["json", "xml", "csv"],
+                                          accept_type=accept_type,
+                                          nested={},
+                                          namespace=fuente_namespace,
+                                          dict_selectable_column="id",
+                                          object_name="metrica",
+                                          xml_root_name="metricas",)
