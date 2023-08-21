@@ -103,7 +103,7 @@ class Publicacion(Resource):
                                           xml_root_name=None,)
 
 
-def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
+def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None, tesis=False):
     query = f"SELECT {', '.join(columns)} " + "FROM p_publicacion p"
     query += " ".join(left_joins)
 
@@ -112,7 +112,10 @@ def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=
     else:
         query += " WHERE p.eliminado = 0"
 
-    query += " AND p.tipo != 'tesis'"
+    if not tesis:
+        query += " AND p.tipo != 'tesis'"
+    else:
+        query += " AND p.tipo = 'tesis'"
     query += f" AND ({' AND '.join(conditions)})"
     query += " ORDER BY p.agno DESC, p.titulo ASC"
 
@@ -129,9 +132,9 @@ def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=
 # Calcula las estadísticas de una búsqueda de publicaciones
 
 
-def get_estadisticas_publicaciones(columns, left_joins, inactivos, conditions, params):
+def get_estadisticas_publicaciones(columns, left_joins, inactivos, conditions, params, tesis=False):
     table = get_publicaciones(
-        columns, left_joins, inactivos, conditions, params)
+        columns, left_joins, inactivos, conditions, params, tesis=tesis)
 
     # Total de publicaciones
     total_rows = len(table) - 1
@@ -181,7 +184,7 @@ class Publicaciones(Resource):
                     'type': 'int',
                 },
                 'inactivos': {
-                    'name': 'ID',
+                    'name': 'inactivos',
                     'description': 'Incluir publicaciones eliminadas',
                     'type': 'bool',
                     'enum': ["True", "False"],
@@ -191,6 +194,13 @@ class Publicaciones(Resource):
                             'description': 'Si se activa, se devolverá un resumen de estadísticas de la búsqueda',
                             'type': 'bool',
                             'enum': ["True", "False"],
+                },
+                'tesis': {
+                    'name': 'Tesis',
+                    'description': 'Si está activo, se devolverán las tesis asociadas a los filtros de búsqueda',
+                    'type': 'bool',
+                    'enum': ["True", "False"],
+                    'default': "False"
                 },
                 'investigador': {
                     'name': 'Investigador',
@@ -262,6 +272,8 @@ class Publicaciones(Resource):
                              == "true") else False
         estadisticas = True if (args.get('estadisticas', "False").lower()
                                 == "true") else False
+        tesis = True if (args.get('tesis', "False").lower()
+                         == "true") else False
         comienzo = int(args.get('comienzo', 1900))
         fin = int(args.get('fin', date_utils.get_current_year()))
         departamento = args.get('departamento', None)
@@ -281,6 +293,10 @@ class Publicaciones(Resource):
         if investigador:
             conditions.append(
                 "p.idPublicacion in (SELECT idPublicacion from p_autor WHERE idInvestigador = %s)")
+            left_joins.append(
+                " LEFT JOIN p_autor autor ON autor.idPublicacion = p.idPublicacion AND autor.idInvestigador = %s")
+            columns.append("autor.rol as rol")
+            params.append(investigador)
             params.append(investigador)
         if titulo:
             conditions.append(
@@ -324,7 +340,7 @@ class Publicaciones(Resource):
         if is_paginable:
             if not total_elementos:
                 amount = int(get_publicaciones(
-                    count_prefix, left_joins, inactivos, conditions, params)[1][0])
+                    count_prefix, left_joins, inactivos, conditions, params, tesis=tesis)[1][0])
             else:
                 amount = int(total_elementos)
 
@@ -335,14 +351,14 @@ class Publicaciones(Resource):
             # Consulta normal de investigadores
             if not estadisticas:
                 data = get_publicaciones(
-                    columns, left_joins, inactivos, conditions, params, longitud_pagina, offset)
+                    columns, left_joins, inactivos, conditions, params, limit=longitud_pagina, offset=offset, tesis=tesis)
                 dict_selectable_column = "id"
                 object_name = "publicacion"
                 xml_root_name = "publicaciones"
             # Consulta de estadísticas de la búsqueda
             else:
                 data = get_estadisticas_publicaciones(
-                    columns, left_joins, inactivos, conditions, params)
+                    columns, left_joins, inactivos, conditions, params, tesis=tesis)
                 dict_selectable_column = "tipo"
                 object_name = "estadistica"
                 xml_root_name = "estadisticas"
