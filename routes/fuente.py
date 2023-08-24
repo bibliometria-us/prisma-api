@@ -5,7 +5,6 @@ from security.api_key import (comprobar_api_key)
 from utils.timing import func_timer as timer
 import utils.pages as pages
 import utils.response as response
-import utils.date as date_utils
 import config.global_config as gconfig
 
 fuente_namespace = Namespace('fuente', description="")

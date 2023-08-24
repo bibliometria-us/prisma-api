@@ -1,5 +1,5 @@
 # Import from the new location
-from routes import (investigador, publicacion, fuente)
+from routes import (investigador, publicacion, fuente, proyecto)
 
 from flask import Flask
 from flask_restx import Api
@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.INFO)
 api.add_namespace(investigador.investigador_namespace)
 api.add_namespace(publicacion.publicacion_namespace)
 api.add_namespace(fuente.fuente_namespace)
+api.add_namespace(proyecto.proyecto_namespace)
+
 
 # ERRORES GLOBALES
 
