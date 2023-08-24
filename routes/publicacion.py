@@ -10,7 +10,7 @@ import config.global_config as gconfig
 
 
 publicacion_namespace = Namespace(
-    'publicacion', description="")
+    'publicacion', description="Publicaciones")
 
 global_responses = gconfig.responses
 

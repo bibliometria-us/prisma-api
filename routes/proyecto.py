@@ -8,7 +8,8 @@ import utils.response as response
 import utils.date as date
 import config.global_config as gconfig
 
-proyecto_namespace = Namespace('proyecto', description="")
+proyecto_namespace = Namespace(
+    'proyecto', description="Proyectos (financiación)")
 
 global_responses = gconfig.responses
 
@@ -202,7 +203,7 @@ class Proyectos(Resource):
                                           namespace=proyecto_namespace,
                                           dict_selectable_column="id",
                                           object_name="proyecto",
-                                          xml_root_name=None,)
+                                          xml_root_name="proyectos",)
 
 
 def get_miembros_from_proyecto(id):
@@ -264,8 +265,8 @@ class MiembrosProyecto(Resource):
                                           nested={},
                                           namespace=proyecto_namespace,
                                           dict_selectable_column="idMiembro",
-                                          object_name="proyecto",
-                                          xml_root_name=None,)
+                                          object_name="miembro",
+                                          xml_root_name="miembros",)
 
 
 def get_publicaciones_from_proyecto(id):
@@ -330,5 +331,5 @@ class PublicacionesProyecto(Resource):
                                           nested={},
                                           namespace=proyecto_namespace,
                                           dict_selectable_column="id",
-                                          object_name="proyecto",
-                                          xml_root_name=None,)
+                                          object_name="publicacion",
+                                          xml_root_name="publicaciones",)

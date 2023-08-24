@@ -7,7 +7,7 @@ import utils.pages as pages
 import utils.response as response
 import config.global_config as gconfig
 
-fuente_namespace = Namespace('fuente', description="")
+fuente_namespace = Namespace('fuente', description="Fuentes de publicaciones")
 
 global_responses = gconfig.responses
 

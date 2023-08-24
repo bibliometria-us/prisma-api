@@ -9,7 +9,7 @@ import utils.response as response
 import config.global_config as gconfig
 
 investigador_namespace = Namespace(
-    'investigador', description="")
+    'investigador', description="Investigadores")
 
 global_responses = gconfig.responses
 
