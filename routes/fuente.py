@@ -104,6 +104,12 @@ class Fuentes(Resource):
 
         params={**global_params,
                 **paginate_params,
+                'inactivos': {
+                    'name': 'ID',
+                    'description': 'Incluir fuentes inactivas',
+                    'type': 'bool',
+                    'enum': ["True", "False"],
+                },
                 'titulo': {
                     'name': 'Título',
                     'description': 'Título de la fuente',
@@ -112,11 +118,16 @@ class Fuentes(Resource):
                 'identificador': {
                     'name': 'Identificador',
                     'description': 'Identificador de la fuente (ISSN, eISSN, ISBN, eISBN, DOI...)',
-                    'type': 'int',
+                    'type': 'str',
                 },
-                'editorial': {
-                    'name': 'Título',
-                    'description': 'Título de la fuente',
+                'nombre_editorial': {
+                    'name': 'Editorial',
+                    'description': 'Nombre de la editorial a la que pertenece la fuente',
+                    'type': 'str',
+                },
+                'id_editorial': {
+                    'name': 'Editorial ID',
+                    'description': 'ID de la editorial a la que pertenece la fuente',
                     'type': 'int',
                 }, }
     )
@@ -130,17 +141,21 @@ class Fuentes(Resource):
             'Accept', 'application/json'))
         api_key = args.get('api_key', None)
         pagina = int(args.get('pagina', 1))
+        inactivos = True if (args.get('inactivos', "False").lower()
+                             == "true") else False
         longitud_pagina = int(args.get('longitud_pagina', 100))
         titulo = args.get('titulo', None)
         identificador = args.get('identificador', None)
-        editorial = args.get('editorial', None)
+        nombre_editorial = args.get('nombre_editorial', None)
+        id_editorial = args.get('id_editorial', None)
 
         # Comprobar api_key
         comprobar_api_key(api_key=api_key, namespace=fuente_namespace)
 
         conditions = []
         params = []
-
+        if not inactivos:
+            conditions.append("f.eliminado = 0")
         if titulo:
             conditions.append(
                 "f.titulo COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
@@ -149,10 +164,14 @@ class Fuentes(Resource):
             conditions.append(
                 "f.idFuente IN (SELECT idf.idFuente FROM p_identificador_fuente idf WHERE idf.valor = %s)")
             params.append(identificador)
-        if editorial:
+        if nombre_editorial:
             conditions.append(
                 "f.editorial COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')")
-            params.append(editorial)
+            params.append(nombre_editorial)
+        if id_editorial:
+            conditions.append(
+                "f.editorial = (SELECT nombre FROM p_editor WHERE id = %s)")
+            params.append(id_editorial)
 
         amount = int(get_fuentes(count_columns, conditions, params)[1][0])
 

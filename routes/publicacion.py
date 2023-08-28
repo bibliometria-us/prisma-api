@@ -253,6 +253,11 @@ class Publicaciones(Resource):
                     'name': 'Colección',
                             'description': 'ID de la colección por la que filtrar',
                             'type': 'int',
+                },
+                'editorial': {
+                    'name': 'Editorial',
+                            'description': 'ID de la editorial por la que filtrar',
+                            'type': 'int',
                 }, }
     )
     def get(self):
@@ -282,6 +287,7 @@ class Publicaciones(Resource):
         doctorado = args.get('doctorado', None)
         fuente = args.get('fuente', None)
         coleccion = args.get('coleccion', None)
+        editorial = args.get('editorial', None)
 
         comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
 
@@ -332,6 +338,11 @@ class Publicaciones(Resource):
             conditions.append(
                 "p.idFuente IN (SELECT df.idFuente FROM p_dato_fuente df WHERE df.valor = %s AND df.tipo = 'coleccion')")
             params.append(coleccion)
+        if editorial:
+            conditions.append(
+                "p.idFuente IN (SELECT f.idFuente FROM p_fuente f WHERE f.editorial IN (SELECT e.nombre FROM p_editor e WHERE e.id = %s))")
+            params.append(editorial)
+
         # Parámetros de paginación
         is_paginable = not estadisticas
 
