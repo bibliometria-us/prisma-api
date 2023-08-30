@@ -545,7 +545,7 @@ class AccesoAbiertoPublicacion(Resource):
                                           namespace=publicacion_namespace,
                                           dict_selectable_column="id",
                                           object_name="acceso_abierto",
-                                          xml_root_name="accesos_abiertos",)
+                                          xml_root_name="acceso_abiertos",)
 
 # MÉTRICAS DE PUBLICACIÓN
 
