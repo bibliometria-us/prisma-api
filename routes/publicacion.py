@@ -22,26 +22,36 @@ paginate_params = gconfig.paginate_params
 columns = ["p.idPublicacion as id", "p.titulo", "p.tipo as tipo", "p.agno as año",
            "fuente.tipo as fuente_tipo", "fuente.titulo as fuente_titulo", "fuente.editorial as fuente_editorial",
            "dialnet.valor as identificador_dialnet", "doi.valor as identificador_doi", "idus.valor as identificador_idus",
-           "pubmed.valor as identificador_pubmed", "scopus.valor as identificador_scopus", "wos.valor as identificador_wos",]
+           "pubmed.valor as identificador_pubmed", "scopus.valor as identificador_scopus", "wos.valor as identificador_wos",
+           "cod_programa.valor as datos_cod_programa", "congreso.valor as datos_congreso", "doceuropeo.valor as datos_doceuropeo",
+           "fecha_lectura.valor as datos_fecha_lectura", "internacional.valor as datos_internacional",
+           "lugar_lectura.valor as datos_lugar_lectura", "cod_programa.valor as datos_cod_programa",
+           "nota.valor as datos_nota", "num_articulo.valor as datos_num_articulo", "numero.valor as datos_numero", ]
 
 count_prefix = ["COUNT(*) as cantidad"]
 
 # Plantilla para left joins de identificadores de publicación
 plantilla_ids = " LEFT JOIN (SELECT idPublicacion, valor FROM p_identificador_publicacion WHERE tipo = '{0}') as {0} ON {0}.idPublicacion = p.idPublicacion"
+plantilla_datos = " LEFT JOIN (SELECT idPublicacion, valor FROM p_dato_publicacion dp WHERE tipo = '{0}') as {0} ON {0}.idPublicacion = p.idPublicacion"
 
-
-left_joins = [plantilla_ids.format("dialnet"),
-              plantilla_ids.format("doi"),
-              plantilla_ids.format("idus"),
-              plantilla_ids.format("pubmed"),
-              plantilla_ids.format("scopus"),
-              plantilla_ids.format("wos"),
+left_joins = [plantilla_ids.format("dialnet"), plantilla_ids.format("doi"), plantilla_ids.format("idus"), plantilla_ids.format("pubmed"), plantilla_ids.format("scopus"), plantilla_ids.format("wos"),
+              plantilla_datos.format("cod_programa"), plantilla_datos.format(
+                  "congreso"), plantilla_datos.format("doceuropeo"),
+              plantilla_datos.format("fecha_lectura"), plantilla_datos.format(
+                  "internacional"), plantilla_datos.format("lugar_lectura"),
+              plantilla_datos.format("volumen"), plantilla_datos.format(
+                  "nota"), plantilla_datos.format("num_articulo"),
+              plantilla_datos.format("numero"), plantilla_datos.format(
+                  "pag_fin"), plantilla_datos.format("pag_inicio"),
+              plantilla_datos.format("titulo_alt"),
               " LEFT JOIN p_fuente fuente ON fuente.idFuente = p.idFuente"]
 
 # Prefijos para agrupar items en la consulta
 
 nested = {"fuente": "fuente",
-          "identificador": "identificadores"}
+          "identificador": "identificadores",
+          "autor": "autor",
+          "datos": "datos"}
 
 
 def get_publicacion_from_id(columns: list[str], left_joins: list[str], id: int):
@@ -103,7 +113,8 @@ class Publicacion(Resource):
                                           xml_root_name=None,)
 
 
-def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None, tesis=False):
+@timer
+def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
     query = f"SELECT {', '.join(columns)} " + "FROM p_publicacion p"
     query += " ".join(left_joins)
 
@@ -112,10 +123,6 @@ def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=
     else:
         query += " WHERE p.eliminado = 0"
 
-    if not tesis:
-        query += " AND p.tipo != 'tesis'"
-    else:
-        query += " AND p.tipo = 'tesis'"
     query += f" AND ({' AND '.join(conditions)})"
     query += " ORDER BY p.agno DESC, p.titulo ASC"
 
@@ -132,9 +139,9 @@ def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=
 # Calcula las estadísticas de una búsqueda de publicaciones
 
 
-def get_estadisticas_publicaciones(columns, left_joins, inactivos, conditions, params, tesis=False):
+def get_estadisticas_publicaciones(columns, left_joins, inactivos, conditions, params):
     table = get_publicaciones(
-        columns, left_joins, inactivos, conditions, params, tesis=tesis)
+        columns, left_joins, inactivos, conditions, params)
 
     # Total de publicaciones
     total_rows = len(table) - 1
@@ -293,17 +300,26 @@ class Publicaciones(Resource):
 
         # Cargar condiciones de búsqueda
 
+        _left_joins = left_joins.copy()
+        _columns = columns.copy()
         conditions = []
         params = []
 
         if investigador:
             conditions.append(
                 "p.idPublicacion in (SELECT idPublicacion from p_autor WHERE idInvestigador = %s)")
-            left_joins.append(
-                " LEFT JOIN p_autor autor ON autor.idPublicacion = p.idPublicacion AND autor.idInvestigador = %s")
-            columns.append("autor.rol as rol")
+            _left_joins.extend(
+                [" LEFT JOIN p_autor autor ON autor.idPublicacion = p.idPublicacion AND autor.idInvestigador = %s",
+                 ])
+            _columns.extend(
+                ["autor.rol as autor_rol", "autor.orden as autor_orden",
+                 "(SELECT MAX(a.orden) FROM p_autor a WHERE a.idPublicacion = p.idPublicacion) AS autor_max_orden"])
             params.append(investigador)
             params.append(investigador)
+        if tesis:
+            conditions.append("p.tipo = 'Tesis'")
+        else:
+            conditions.append("p.tipo != 'Tesis'")
         if titulo:
             conditions.append(
                 "p.titulo COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')"
@@ -351,7 +367,7 @@ class Publicaciones(Resource):
         if is_paginable:
             if not total_elementos:
                 amount = int(get_publicaciones(
-                    count_prefix, left_joins, inactivos, conditions, params, tesis=tesis)[1][0])
+                    count_prefix, _left_joins, inactivos, conditions, params)[1][0])
             else:
                 amount = int(total_elementos)
 
@@ -362,14 +378,14 @@ class Publicaciones(Resource):
             # Consulta normal de investigadores
             if not estadisticas:
                 data = get_publicaciones(
-                    columns, left_joins, inactivos, conditions, params, limit=longitud_pagina, offset=offset, tesis=tesis)
+                    _columns, _left_joins, inactivos, conditions, params, limit=longitud_pagina, offset=offset)
                 dict_selectable_column = "id"
                 object_name = "publicacion"
                 xml_root_name = "publicaciones"
             # Consulta de estadísticas de la búsqueda
             else:
                 data = get_estadisticas_publicaciones(
-                    columns, left_joins, inactivos, conditions, params, tesis=tesis)
+                    columns, _left_joins, inactivos, conditions, params)
                 dict_selectable_column = "tipo"
                 object_name = "estadistica"
                 xml_root_name = "estadisticas"

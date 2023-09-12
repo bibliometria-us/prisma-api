@@ -26,6 +26,7 @@ paginate_params = gconfig.paginate_params
 # COLUMNAS DEVUELTAS EN LAS CONSULTAS DE INVESTIGADOR
 
 columns = ["i.idInvestigador as prisma", "concat(i.apellidos, ', ', i.nombre) as nombre_administrativo", "i.email as email",
+           "DATE_FORMAT(i.fechaNombramiento, '%d/%m/%Y') as fecha_nombramiento",
            "orcid.valor as identificador_orcid", "dialnet.valor as identificador_dialnet", "idus.valor as identificador_idus", "researcherid.valor as identificador_researcherid",
            "scholar.valor as identificador_scholar", "scopus.valor as identificador_scopus", "sica.valor as identificador_sica", "sisius.valor as identificador_sisius", "wos.valor as identificador_wos",
            "CASE WHEN i.sexo = 0 THEN categoria.femenino ELSE categoria.nombre END AS categoria_nombre", "categoria.idCategoria as categoria_id",
