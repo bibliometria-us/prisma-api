@@ -9,4 +9,6 @@ MarkupSafe==2.1.3
 mysql-connector-python==8.0.33
 protobuf==3.20.3
 Werkzeug==2.3.6
-flask_saml==0.5.1
+xmlschema==2.4.0
+xmlsec==1.3.13
+python3-saml==1.15.0
