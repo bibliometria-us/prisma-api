@@ -1,15 +1,14 @@
 # Import from the new location
 from routes import (investigador, publicacion, fuente, proyecto, instituto,
-                    departamento, grupo, prog_doctorado, editorial, resultado)
+                    departamento, grupo, prog_doctorado, editorial, resultado, usuario)
 import os
 from flask import Flask, request, redirect, url_for, session, render_template, make_response
 from flask_restx import Api
-import flask_saml
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import logging
 
-prisma_base_url = "https://bibliometria.us.es/prisma"
+prisma_base_url = "https://prisma.us.es"
 
 app = Flask(__name__)
 
@@ -19,7 +18,7 @@ app.config['SAML_PATH'] = os.path.join(
 
 
 api = Api(app, version="1.0", title="Prisma API")
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 api.add_namespace(investigador.investigador_namespace)
 api.add_namespace(publicacion.publicacion_namespace)
@@ -31,6 +30,7 @@ api.add_namespace(grupo.grupo_namespace)
 api.add_namespace(prog_doctorado.doctorado_namespace)
 api.add_namespace(editorial.editorial_namespace)
 api.add_namespace(resultado.resultado_namespace)
+api.add_namespace(usuario.usuario_namespace)
 
 
 # ERRORES GLOBALES
@@ -50,9 +50,9 @@ def init_saml_auth(req):
 def prepare_flask_request(request):
     # If server is behind proxys or balancers use the HTTP_X_FORWARDED fields
     return {
-        'https': 'on' if request.scheme == 'https' else 'off',
+        'https': 'on',
         'http_host': request.host,
-        'script_name': request.path,
+        'script_name': request.full_path,
         'get_data': request.args.copy(),
         # Uncomment if using ADFS as IdP, https://github.com/onelogin/python-saml/pull/144
         # 'lowercase_urlencoding': True,
@@ -72,7 +72,7 @@ def index():
     paint_logout = False
 
     if 'sso' in request.args:
-        return redirect(auth.login())
+        return redirect(auth.login(return_to='https://api.prisma.us.es'))
         # If AuthNRequest ID need to be stored in order to later validate it, do instead
         # sso_built_url = auth.login()
         # request.session['AuthNRequestID'] = auth.get_last_request_id()
@@ -92,7 +92,7 @@ def index():
             name_id_nq = session['samlNameIdNameQualifier']
         if 'samlNameIdSPNameQualifier' in session:
             name_id_spnq = session['samlNameIdSPNameQualifier']
-
+        session.clear()
         return redirect(auth.logout(name_id=name_id, session_index=session_index, nq=name_id_nq, name_id_format=name_id_format, spnq=name_id_spnq))
     elif 'acs' in request.args:
         request_id = None
@@ -101,6 +101,7 @@ def index():
 
         auth.process_response(request_id=request_id)
         errors = auth.get_errors()
+
         not_auth_warn = not auth.is_authenticated()
         if len(errors) == 0:
             if 'AuthNRequestID' in session:
@@ -111,6 +112,8 @@ def index():
             session['samlNameIdNameQualifier'] = auth.get_nameid_nq()
             session['samlNameIdSPNameQualifier'] = auth.get_nameid_spnq()
             session['samlSessionIndex'] = auth.get_session_index()
+            session['login'] = True
+            logging.info('atributos del usuario: %s', session['samlUserdata'])
             self_url = OneLogin_Saml2_Utils.get_self_url(req)
             if 'RelayState' in request.form and self_url != request.form['RelayState']:
                 # To avoid 'Open Redirect' attacks, before execute the redirection confirm
@@ -118,6 +121,8 @@ def index():
                 return redirect(auth.redirect_to(request.form['RelayState']))
         elif auth.get_settings().is_debug_active():
             error_reason = auth.get_last_error_reason()
+            logging.info('Error: %s', error_reason)
+
     elif 'sls' in request.args:
         request_id = None
         if 'LogoutRequestID' in session:
@@ -140,16 +145,7 @@ def index():
         paint_logout = True
         if len(session['samlUserdata']) > 0:
             attributes = session['samlUserdata'].items()
-
-    return render_template(
-        'index.html',
-        errors=errors,
-        error_reason=error_reason,
-        not_auth_warn=not_auth_warn,
-        success_slo=success_slo,
-        attributes=attributes,
-        paint_logout=paint_logout
-    )
+    return redirect("/")
 
 
 @app.route('/auth/attrs/')
@@ -183,4 +179,4 @@ def metadata():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(port=8001)
