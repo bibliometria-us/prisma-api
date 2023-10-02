@@ -9,7 +9,8 @@ class BaseDatos:
             host=claves.db_host,
             user=claves.db_user,
             password=claves.db_password,
-            database=database
+            database=database,
+            autocommit=True
         )
 
     def ejecutarConsulta(self, consulta: str, params: str):

@@ -20,6 +20,7 @@ app.config['SAML_PATH'] = os.path.join(
 api = Api(app, version="1.0", title="Prisma API")
 logging.basicConfig(level=logging.DEBUG)
 
+
 api.add_namespace(investigador.investigador_namespace)
 api.add_namespace(publicacion.publicacion_namespace)
 api.add_namespace(fuente.fuente_namespace)
@@ -41,6 +42,8 @@ def handle_invalid_accept_header(error):
     """Error handler for Invalid Accept header."""
     return {'message': 'Formato de salida no soportado'}, 406
 
+
+# SAML
 
 def init_saml_auth(req):
     auth = OneLogin_Saml2_Auth(req, custom_base_path=app.config['SAML_PATH'])

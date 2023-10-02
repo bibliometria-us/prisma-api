@@ -265,6 +265,11 @@ class Publicaciones(Resource):
                     'name': 'Editorial',
                             'description': 'ID de la editorial por la que filtrar',
                             'type': 'int',
+                },
+                'tipo': {
+                    'name': 'Tipo',
+                            'description': 'Tipo de publicación',
+                            'type': 'str',
                 }, }
     )
     def get(self):
@@ -295,6 +300,7 @@ class Publicaciones(Resource):
         fuente = args.get('fuente', None)
         coleccion = args.get('coleccion', None)
         editorial = args.get('editorial', None)
+        tipo = args.get('tipo', None)
 
         comprobar_api_key(api_key=api_key, namespace=publicacion_namespace)
 
@@ -358,6 +364,10 @@ class Publicaciones(Resource):
             conditions.append(
                 "p.idFuente IN (SELECT f.idFuente FROM p_fuente f WHERE f.editorial IN (SELECT e.nombre FROM p_editor e WHERE e.id = %s))")
             params.append(editorial)
+        if tipo:
+            conditions.append(
+                "p.tipo = %s")
+            params.append(tipo)
 
         # Parámetros de paginación
         is_paginable = not estadisticas
