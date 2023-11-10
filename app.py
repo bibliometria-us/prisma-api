@@ -1,6 +1,7 @@
 # Import from the new location
 from routes import (investigador, publicacion, fuente, proyecto, instituto,
                     departamento, grupo, prog_doctorado, editorial, resultado, usuario)
+from routes.informes.main import informe_namespace
 import os
 from flask import Flask, request, redirect, url_for, session, render_template, make_response
 from flask_restx import Api
@@ -32,6 +33,7 @@ api.add_namespace(prog_doctorado.doctorado_namespace)
 api.add_namespace(editorial.editorial_namespace)
 api.add_namespace(resultado.resultado_namespace)
 api.add_namespace(usuario.usuario_namespace)
+api.add_namespace(informe_namespace)
 
 
 # ERRORES GLOBALES

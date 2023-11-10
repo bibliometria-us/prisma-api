@@ -284,3 +284,7 @@ claves.py
 db/claves.py
 saml/
 config/dummy.py
+.vscode/launch.json
+temp/*
+tests/temp/*
+/prueba.*

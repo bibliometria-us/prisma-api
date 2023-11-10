@@ -1,5 +1,6 @@
 import mysql.connector
 import db.claves as claves
+from utils.timing import func_timer as timer
 
 
 class BaseDatos:
@@ -10,10 +11,11 @@ class BaseDatos:
             user=claves.db_user,
             password=claves.db_password,
             database=database,
-            autocommit=True
+            autocommit=True,
         )
 
-    def ejecutarConsulta(self, consulta: str, params: str):
+    # #@timer
+    def ejecutarConsulta(self, consulta: str, params: str = []):
         cursor = self.connection.cursor()
         try:
             cursor.execute(consulta, params=params)

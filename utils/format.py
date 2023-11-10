@@ -4,6 +4,8 @@ import json
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from utils.timing import func_timer as timer
+import openpyxl
+from openpyxl.styles import Font, Alignment
 
 
 def format_csv(data):
@@ -21,7 +23,6 @@ def format_csv(data):
     return csv_string
 
 
-@timer
 def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
     result = {}
 
@@ -32,7 +33,9 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
         data_dict = {data[0][i]: value for i, value in enumerate(row)}
 
         # Nombre de la clave
-        row_name: str = base_name + "_" + str(row[selectable_column_index])
+        row_name: str = base_name + "_" + \
+            str(row[selectable_column_index]) if base_name else str(
+                row[selectable_column_index])
 
         result_data_dict = {}
         for d_data in data_dict:
@@ -57,7 +60,6 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
     return result
 
 
-@timer
 def dict_to_xml(data, root_name=None, object_name=""):
     root = ET.Element(root_name)
 
@@ -89,3 +91,66 @@ def dict_to_xml(data, root_name=None, object_name=""):
 def dict_to_json(data):
     result = json.dumps(data, indent=4, sort_keys=False)
     return result
+
+
+def dict_to_excel(data):
+    # Create a new Excel workbook
+    workbook = openpyxl.Workbook()
+
+    # Iterate through each page in the root dictionary
+    for page_name, page_data in data.items():
+        # Create a new worksheet for the current page
+        worksheet = workbook.create_sheet(title=page_name)
+
+        # Write column names to the first row
+        column_names = list(page_data.keys())
+        for col_idx, column_name in enumerate(column_names, 1):
+            worksheet.cell(row=1, column=col_idx, value=column_name)
+
+        # Iterate through the data for each page
+        max_rows = max(len(col_data) for col_data in page_data.values())
+        for row_idx in range(2, max_rows + 2):
+            for col_idx, column_name in enumerate(column_names, 1):
+                column_data = page_data[column_name]
+                # Adjust for 0-based index
+                value = column_data.get(row_idx - 2, '')
+                cell = worksheet.cell(row=row_idx, column=col_idx, value=value)
+
+    default_sheet = workbook['Sheet']
+    workbook.remove(default_sheet)
+
+    return workbook
+
+
+def add_hyperlinks_to_excel(workbook):
+    for sheet_name in workbook.sheetnames:
+        sheet = workbook[sheet_name]
+
+        # Iterate through all rows in the sheet
+        for row in sheet.iter_rows():
+            for cell in row:
+                # Check if the cell value starts with "http"
+                if cell.value and str(cell.value).startswith("http"):
+                    # Create a hyperlink using the cell value
+                    cell.hyperlink = cell.value
+                    cell.style = 'Hyperlink'
+
+    return workbook
+
+
+def bold_column_titles_excel(workbook):
+    # Iterate through all sheets in the workbook
+    for sheet_name in workbook.sheetnames:
+        sheet = workbook[sheet_name]
+
+        # Make the first row (header) bold
+        for cell in next(sheet.iter_rows()):
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    return workbook
+
+
+# @timer
+def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
+    workbook.save(output_file)

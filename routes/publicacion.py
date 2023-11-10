@@ -113,7 +113,7 @@ class Publicacion(Resource):
                                           xml_root_name=None,)
 
 
-@timer
+# @timer
 def get_publicaciones(columns, left_joins, inactivos, conditions, params, limit=None, offset=None):
     query = f"SELECT {', '.join(columns)} " + "FROM p_publicacion p"
     query += " ".join(left_joins)

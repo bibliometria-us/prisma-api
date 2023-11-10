@@ -331,6 +331,7 @@ def get_metricas_publicacion(id_fuente: int, tipo: str, año: int):
         """
 
         return result
+
     # Consulta que almacena todos los posibles ISSNs asociados a la publicación
     lista_issns = """
     WITH lista_issn AS (
