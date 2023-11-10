@@ -6,7 +6,7 @@ select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
 
     # IDR
-    "CAST(MAX(idr.factorImpacto) as FLOAT) AS 'IDR'",
+    "CAST(MAX(idr.factorImpacto) as DOUBLE) AS 'IDR'",
 
     # CATEGORÍAS
     """

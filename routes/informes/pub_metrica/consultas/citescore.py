@@ -6,7 +6,7 @@ select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
 
     # CiteScore
-    "CAST(MAX(citescore.citescore) as FLOAT) AS 'CiteScore'",
+    "CAST(MAX(citescore.citescore) as DOUBLE) AS 'CiteScore'",
 
     # CATEGORÍAS
     """
@@ -21,7 +21,7 @@ select = [
 
     """
     GROUP_CONCAT(DISTINCT 
-                (CASE WHEN citescore.cuartil = (SELECT MIN(cuartil) FROM m_jci WHERE revista = citescore.revista AND agno = citescore.agno)
+                (CASE WHEN citescore.cuartil = (SELECT MIN(cuartil) FROM m_citescore WHERE revista = citescore.revista AND agno = citescore.agno)
                     THEN citescore.categoria
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Cuartil CiteScore'
@@ -32,7 +32,7 @@ select = [
 
     """
     GROUP_CONCAT(DISTINCT 
-                (CASE WHEN citescore.decil = (SELECT MIN(decil) FROM m_jci WHERE revista = citescore.revista AND agno = citescore.agno)
+                (CASE WHEN citescore.decil = (SELECT MIN(decil) FROM m_citescore WHERE revista = citescore.revista AND agno = citescore.agno)
                     THEN citescore.categoria
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Decil CiteScore'
@@ -43,7 +43,7 @@ select = [
 
     """
     GROUP_CONCAT(DISTINCT 
-                (CASE WHEN citescore.tercil = (SELECT MIN(tercil) FROM m_jci WHERE revista = citescore.revista AND agno = citescore.agno)
+                (CASE WHEN citescore.tercil = (SELECT MIN(tercil) FROM m_citescore WHERE revista = citescore.revista AND agno = citescore.agno)
                     THEN citescore.categoria
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Tercil CiteScore'

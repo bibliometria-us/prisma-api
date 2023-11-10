@@ -6,7 +6,7 @@ select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
 
     # JIF
-    "CAST(MAX(jif.impact_factor) as FLOAT) AS 'JIF'",
+    "CAST(MAX(jif.impact_factor) as DOUBLE) AS 'JIF'",
 
     # --------- SCIE ------------
 

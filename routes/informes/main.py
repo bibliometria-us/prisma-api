@@ -21,7 +21,7 @@ class InformePubMetrica(Resource):
                 'name': 'salida',
                 'description': 'Formato de salida. Especificar en este campo en caso de que no pueda hacerlo mediante el header de la petición',
                 'type': 'string',
-                'enum': ["pdf", "xlsx"]
+                'enum': ["pdf", "excel"]
             },
             'departamento': {
                 'name': 'departamento',
@@ -60,23 +60,27 @@ class InformePubMetrica(Resource):
             "instituto": args.get('instituto', None),
         }
 
-        año_inicio = args.get('inicio', datetime.now().year)
-        año_fin = args.get('fin', datetime.now().year)
+        año_inicio = int(args.get('inicio', datetime.now().year))
+        año_fin = int(args.get('fin', datetime.now().year))
 
         fuentes = {key: value for key,
                    value in fuentes.items() if value is not None}
 
         timestamp = datetime.now().strftime("%d%m%Y_%H%M")
+        tipo_salida_to_format = {
+            "pdf": "pdf",
+            "excel": "xlsx",
+        }
 
-        download_filename = f"informe_{list(fuentes.keys())[0]}_{list(fuentes.values())[0]}_{timestamp}.{tipo}"
+        base_filename = f"informe_{list(fuentes.keys())[0]}_{list(fuentes.values())[0]}_{timestamp}"
+        download_filename = f"{base_filename}.{tipo_salida_to_format[tipo]}"
         internal_filename = f"temp/{download_filename}"
-        internal_filename_with_format = f"{internal_filename}.{tipo}"
 
-        generar_informe(fuentes, año_inicio, año_fin, tipo, internal_filename)
+        generar_informe(fuentes, año_inicio, año_fin, tipo, f"temp/{base_filename}")
 
         response = send_file(
-            internal_filename_with_format, as_attachment=True,  download_name=download_filename)
+            internal_filename, as_attachment=True,  download_name=download_filename)
 
-        os.remove(internal_filename_with_format)
+        os.remove(internal_filename)
 
         return response
