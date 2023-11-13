@@ -1,4 +1,5 @@
 # Import from the new location
+from logs.log_request import log_request
 from routes import (investigador, publicacion, fuente, proyecto, instituto,
                     departamento, grupo, prog_doctorado, editorial, resultado, usuario)
 from routes.informes.main import informe_namespace
@@ -36,6 +37,18 @@ api.add_namespace(usuario.usuario_namespace)
 api.add_namespace(informe_namespace)
 
 
+# FUNCIÓN DESPUÉS DE CADA RESPUESTA
+
+@app.after_request
+def after_request(response):
+    route = request.path
+    args = dict(request.args)
+    response_code = response.status_code
+    user = "anon"
+
+    log_request(route, args, response_code, user)
+
+    return response
 # ERRORES GLOBALES
 
 
