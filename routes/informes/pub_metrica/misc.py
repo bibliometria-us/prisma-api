@@ -1,3 +1,5 @@
+import copy
+
 dict_plantilla_excel = {
     "Prisma": {
         "URL Prisma": {},
@@ -126,3 +128,7 @@ dict_plantilla_excel = {
         "Mejor Tercil CiteScore": {},
         "Categorías Mejor Tercil CiteScore": {}},
 }
+
+
+def get_dict_plantilla_excel():
+    return copy.deepcopy(dict_plantilla_excel)

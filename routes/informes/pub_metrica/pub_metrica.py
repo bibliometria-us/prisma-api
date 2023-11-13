@@ -10,7 +10,7 @@ from routes.informes.pub_metrica.consultas.citescore import consulta_citescore
 from routes.informes.pub_metrica.consultas.resumen import datos_resumen
 
 
-from routes.informes.pub_metrica.misc import dict_plantilla_excel
+from routes.informes.pub_metrica.misc import get_dict_plantilla_excel
 from utils.utils import list_index_map, replace_none_values
 from utils.format import dict_to_excel, save_excel_to_file, add_hyperlinks_to_excel, bold_column_titles_excel
 
@@ -79,7 +79,7 @@ def dict_informe(investigadores, publicaciones, jif, sjr, idr, citescore):
     citescore_indices = list_index_map(citescore[0])
 
     # Crear la estructura de diccionarios anidados
-    result = dict_plantilla_excel.copy()
+    result = get_dict_plantilla_excel()
 
     # Para cada publicación, rellenar el diccionario con sus datos
     for index, publicacion in enumerate(publicaciones[1:]):
