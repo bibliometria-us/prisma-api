@@ -83,7 +83,10 @@ class InformePubMetrica(Resource):
             "excel": "xlsx",
         }
 
-        base_filename = f"informe_{list(fuentes.keys())[0]}_{list(fuentes.values())[0]}_{timestamp}"
+        if len(fuentes) > 1 or fuentes.get("investigadores"):
+            base_filename = f"informe_personalizado_{timestamp}"
+        else:
+            base_filename = f"informe_{list(fuentes.keys())[0]}_{list(fuentes.values())[0]}_{timestamp}"
         download_filename = f"{base_filename}.{tipo_salida_to_format[tipo]}"
         internal_filename = f"temp/{download_filename}"
 
