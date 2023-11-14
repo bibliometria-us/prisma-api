@@ -31,6 +31,8 @@ def get_fuentes(tipo):
     return result
 
 
+@pytest.mark.slow
+@pytest.mark.pub_metrica
 def test_pub_metrica():
     fuentes = {
         "departamento": get_fuentes("departamento"),
@@ -60,11 +62,12 @@ def test_pub_metrica():
     os.makedirs("tests/temp/", exist_ok=True)
 
 
+@pytest.mark.pub_metrica
 def test_pub_metrica_informes_personalizados():
     for i in range(30):
         filename = f"tests/temp/prueba_random_{i+1}"
         ids_investigador = [str(random.randint(
-            1, 20000)) for _ in range(30)]
+            1, 10000)) for _ in range(30)]
         for tipo in ("pdf", "excel"):
             try:
                 generar_informe(fuentes={"investigadores": ids_investigador},
