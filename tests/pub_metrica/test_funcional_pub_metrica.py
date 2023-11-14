@@ -5,6 +5,7 @@ from routes.informes.utils import normalize_id_list
 import os
 import shutil
 import pytest
+import random
 # Obtiene toda la lista de una determinada fuente (departamento, grupo, instituto...)
 
 
@@ -53,6 +54,24 @@ def test_pub_metrica():
                     except Exception as e:
                         pytest.fail(
                             f"Error en el informe de {nombre_fuente}: {fuente}. \n {e}")
+
+    logging.info("Test completado")
+    shutil.rmtree("tests/temp/")
+    os.makedirs("tests/temp/", exist_ok=True)
+
+
+def test_pub_metrica_informes_personalizados():
+    for i in range(30):
+        filename = f"tests/temp/prueba_random_{i+1}"
+        ids_investigador = [str(random.randint(
+            1, 20000)) for _ in range(30)]
+        for tipo in ("pdf", "excel"):
+            try:
+                generar_informe(fuentes={"investigadores": ids_investigador},
+                                año_inicio=2022, año_fin=2023, tipo=tipo, filename=filename)
+            except Exception as e:
+                pytest.fail(
+                    f"Error en informe {tipo} personalizado.")
 
     logging.info("Test completado")
     shutil.rmtree("tests/temp/")

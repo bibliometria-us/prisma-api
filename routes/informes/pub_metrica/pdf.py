@@ -25,9 +25,12 @@ def generar_pdf(resumen, filename):
             'routes/informes/pub_metrica/static/logo_prisma.png', (total_width - 2046 * 0.08)/2 + 200, 710, width=2046 * 0.08, height=380 * 0.08, mask='auto')
 
         # Título del header
-        tipo_fuente = list(resumen["titulo"].keys())[0]
-        nombre_fuente = resumen["titulo"][tipo_fuente]
-        titulo = f"Informe de {tipo_fuente} ({resumen['año_inicio']}-{resumen['año_fin']}): {nombre_fuente}"
+        if list(resumen["titulo"].keys())[0] != "investigadores":
+            tipo_fuente = list(resumen["titulo"].keys())[0]
+            nombre_fuente = resumen["titulo"][tipo_fuente]
+            titulo = f"Informe de {tipo_fuente} ({resumen['año_inicio']}-{resumen['año_fin']}): {nombre_fuente}"
+        else:
+            titulo = "Informe personalizado"
         fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M")
         fecha_emision = f"Fecha de emisión: {fecha_actual}"
 
@@ -129,6 +132,12 @@ def generar_pdf(resumen, filename):
         table_style_matriz.getCommands())
     for propiedad in propiedades_leyenda:
         table_style_matriz_leyenda.add(*propiedad)
+
+    # Si es un informe personalizado, listar los nombres de investigadores
+    if resumen['titulo'].get('investigadores'):
+        lista_investigadores = Paragraph(
+            f"Investigadores incluidos en el informe: {'; '.join(resumen['titulo']['investigadores'])}", estilo_subtitulos)
+        elements.append(KeepTogether(lista_investigadores))
     # MIEMBROS
 
     titulo_miembros = Paragraph("Datos de miembros", estilo_titulos)

@@ -38,6 +38,11 @@ class InformePubMetrica(Resource):
                 'description': 'ID del instituto del que obtener el informe',
                 'type': 'string',
             },
+            'investigadores': {
+                'name': 'investigadores',
+                'description': 'Lista de ID de investigadores',
+                'type': 'str',
+            },
             'inicio': {
                 'name': 'inicio',
                 'description': 'Año de inicio',
@@ -58,7 +63,13 @@ class InformePubMetrica(Resource):
             "departamento": args.get('departamento', None),
             "grupo": args.get('grupo', None),
             "instituto": args.get('instituto', None),
+            "investigadores": args.get('investigadores', None),
         }
+
+        # Convertir lista de investigadores a lista de enteros
+        if fuentes["investigadores"]:
+            fuentes["investigadores"] = (
+                list(str(int(investigador)) for investigador in fuentes["investigadores"].split(",")))
 
         año_inicio = int(args.get('inicio', datetime.now().year))
         año_fin = int(args.get('fin', datetime.now().year))
@@ -76,7 +87,8 @@ class InformePubMetrica(Resource):
         download_filename = f"{base_filename}.{tipo_salida_to_format[tipo]}"
         internal_filename = f"temp/{download_filename}"
 
-        generar_informe(fuentes, año_inicio, año_fin, tipo, f"temp/{base_filename}")
+        generar_informe(fuentes, año_inicio, año_fin,
+                        tipo, f"temp/{base_filename}")
 
         response = send_file(
             internal_filename, as_attachment=True,  download_name=download_filename)

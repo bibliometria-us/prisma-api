@@ -67,9 +67,19 @@ def nombres_fuentes(fuentes):
                 "condicion": f"idInstituto = '{valor_fuente}'"
             })
 
+        if tipo_fuente == "investigadores":
+            _query = query.format(**{
+                "columna": "CONCAT(apellidos, ', ', nombre)",
+                "tabla": "i_investigador",
+                "condicion": f"idInvestigador IN ({(',').join(valor_fuente)})"
+            })
+
         datos = db.ejecutarConsulta(_query)
 
-        result[tipo_fuente] = datos[1][0]
+        if tipo_fuente != "investigadores":
+            result[tipo_fuente] = datos[1][0]
+        else:
+            result[tipo_fuente] = list([dato[0] for dato in datos[1:]])
 
     return result
 

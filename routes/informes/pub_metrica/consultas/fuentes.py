@@ -14,6 +14,7 @@ tipo_fuente_to_column = {
     "departamento": "i.idDepartamento",
     "grupo": "i.idGrupo",
     "instituto": "mi.idInstituto",
+    "investigadores": "i.idInvestigador",
 }
 
 # Diccionario para añadir joins si el tipo de fuente lo requiere
@@ -26,6 +27,7 @@ es_int = {
     "departamento": False,
     "grupo": False,
     "instituto": True,
+    "investigadores": False
 }
 
 
@@ -41,18 +43,20 @@ def consulta_investigadores(fuentes):
         column = tipo_fuente_to_column.get(fuente)
         joins = tipo_fuente_to_joins.get(fuente)
         value = fuentes[fuente]
-        # Si el valor no es un entero, se pone entre comillas
-        if not es_int[fuente]:
-            value = f"'{value}'"
-        if not isinstance(fuente, list):
+
+        if not isinstance(value, list):
+            # Si el valor no es un entero, se pone entre comillas
+            if not es_int[fuente]:
+                value = f"'{value}'"
             condition = condition_template.format(
                 column=column, value=value)
-            _conditions.append(condition)
             if joins:
                 _joins.append(joins)
 
+        # Si es una lista de investigadores
         else:
             condition = f"i.idInvestigador IN ({','.join(value)})"
+        _conditions.append(condition)
 
     query += f"{' '.join(_joins)}"
     query += f" WHERE {' AND '.join(_conditions)}"
