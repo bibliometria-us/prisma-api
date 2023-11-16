@@ -1,3 +1,4 @@
+from routes.informes.pub_metrica.exception.exception import InformeSinInvestigadores, InformeSinPublicaciones
 from routes.informes.pub_metrica.pdf import generar_pdf
 from routes.informes.utils import calcular_autoria_preferente, format_query
 from routes.informes.pub_metrica.consultas.fuentes import consulta_investigadores, consulta_publicaciones
@@ -23,11 +24,11 @@ def generar_informe(fuentes, año_inicio, año_fin, tipo, filename):
 
     investigadores = consulta_investigadores(fuentes)
     if not investigadores:
-        return None
+        raise InformeSinInvestigadores
 
     publicaciones = consulta_publicaciones(investigadores, año_inicio, año_fin)
     if not publicaciones:
-        return None
+        raise InformeSinPublicaciones(año_inicio, año_fin)
 
     resumen = datos_resumen(fuentes, investigadores,
                             publicaciones, año_inicio, año_fin)

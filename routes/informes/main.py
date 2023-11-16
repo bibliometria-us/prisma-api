@@ -1,5 +1,5 @@
 from flask_restx import Namespace, Resource
-from flask import request, session, redirect, url_for, send_file
+from flask import jsonify, request, session, redirect, url_for, send_file, Response
 import config.global_config as gconfig
 from routes.informes.pub_metrica.pub_metrica import generar_informe
 from datetime import datetime
@@ -90,8 +90,11 @@ class InformePubMetrica(Resource):
         download_filename = f"{base_filename}.{tipo_salida_to_format[tipo]}"
         internal_filename = f"temp/{download_filename}"
 
-        generar_informe(fuentes, año_inicio, año_fin,
-                        tipo, f"temp/{base_filename}")
+        try:
+            generar_informe(fuentes, año_inicio, año_fin,
+                            tipo, f"temp/{base_filename}")
+        except Exception as e:
+            return {'error': e.message}, 400
 
         response = send_file(
             internal_filename, as_attachment=True,  download_name=download_filename)
