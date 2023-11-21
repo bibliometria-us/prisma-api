@@ -1,4 +1,5 @@
 # Import from the new location
+import config.local_config as local_config
 from logs.log_request import log_request
 from routes import (investigador, publicacion, fuente, proyecto, instituto,
                     departamento, grupo, prog_doctorado, editorial, resultado, usuario)
@@ -17,7 +18,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'onelogindemopytoolkit'
 app.config['SAML_PATH'] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'saml')
-
+app.config['APPLICATION_ROOT'] = local_config.base_path
 
 api = Api(app, version="1.0", title="Prisma API")
 logging.basicConfig(level=logging.DEBUG)
