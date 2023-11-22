@@ -70,7 +70,7 @@ order_by = ["p.agno DESC",
 
 # @timer
 def consulta_sjr(publicaciones):
-    query = f"EXPLAIN SELECT {', '.join(select)} FROM p_publicacion p"
+    query = f"SELECT {', '.join(select)} FROM p_publicacion p"
     query += f" {' '.join(joins)} "
     query += f" WHERE p.idPublicacion IN ({','.join(publicaciones)})"
     query += f" GROUP BY {','.join(group_by)}"
