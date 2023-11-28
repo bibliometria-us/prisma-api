@@ -6,7 +6,7 @@ from collections import OrderedDict
 from utils.timing import func_timer as timer
 import openpyxl
 from openpyxl.styles import Font, Alignment
-
+import pandas
 
 def format_csv(data):
     csv_string = ''
@@ -154,3 +154,8 @@ def bold_column_titles_excel(workbook):
 # @timer
 def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
     workbook.save(output_file)
+    pandas_excel = pandas.read_excel(output_file, sheet_name=None)
+    with pandas.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+    # Iterate over all sheets in the dictionary and write each sheet to the new file
+        for sheet_name, df in pandas_excel.items():
+            df.to_excel(writer, sheet_name=sheet_name, index=False)

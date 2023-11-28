@@ -62,7 +62,7 @@ class DatosUsuario(Resource):
                                           namespace=usuario_namespace,
                                           dict_selectable_column="id",
                                           object_name="usuario",
-                                          xml_root_name=None,)
+                                          xml_root_name="usuario",)
 
 
 @usuario_namespace.route('/login/')
