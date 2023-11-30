@@ -101,7 +101,7 @@ def index():
     success_slo = False
     attributes = False
     paint_logout = False
-    redirect_url = request.args.get("redirect_url") or local_config.api_url
+    redirect_url = request.args.get("redirect_url") or local_config.prisma_url
     if 'sso' in request.args:
         return redirect(auth.login(return_to=redirect_url))
         # If AuthNRequest ID need to be stored in order to later validate it, do instead
@@ -176,7 +176,7 @@ def index():
         paint_logout = True
         if len(session['samlUserdata']) > 0:
             attributes = session['samlUserdata'].items()
-    return redirect("/")
+    return redirect(redirect_url)
 
 
 @api_bp.route('/auth/attrs/')
