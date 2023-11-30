@@ -65,14 +65,16 @@ class DatosUsuario(Resource):
                                           xml_root_name="usuario",)
 
 
-@usuario_namespace.route('/login/')
+@usuario_namespace.route('/login/', endpoint="login")
 class LoginUsuario(Resource):
     def get(self):
+        args = request.args
+        redirect_url = args.get("redirect_url", "")
         if dummy_user:
             session['login'] = True
             session['samlUserdata'] = dummy_user
             return redirect("/")
-        return redirect("/auth/?sso")
+        return redirect(url_for("api.auth", sso=True, redirect_url=redirect_url ,_external=True))
 
 
 @usuario_namespace.route('/logout/')

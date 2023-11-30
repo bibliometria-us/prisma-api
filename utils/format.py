@@ -151,7 +151,7 @@ def bold_column_titles_excel(workbook):
     return workbook
 
 
-# @timer
+@timer
 def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
     workbook.save(output_file)
     pandas_excel = pandas.read_excel(output_file, sheet_name=None)

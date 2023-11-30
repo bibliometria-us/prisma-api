@@ -4,6 +4,9 @@ import config.global_config as gconfig
 from routes.informes.pub_metrica.pub_metrica import generar_informe
 from datetime import datetime
 import os
+
+from routes.informes.pub_metrica.security import comprobar_permisos
+
 informe_namespace = Namespace(
     'informe', description="Consultas para obtener informes")
 
@@ -11,8 +14,7 @@ global_responses = gconfig.responses
 
 global_params = gconfig.params
 
-
-@informe_namespace.route('/pub_metrica/')
+@informe_namespace.route('/pub_metrica/', endpoint = "pub_metrica")
 class InformePubMetrica(Resource):
     @informe_namespace.doc(
         responses=global_responses,
@@ -65,6 +67,11 @@ class InformePubMetrica(Resource):
             "instituto": args.get('instituto', None),
             "investigadores": args.get('investigadores', None),
         }
+        
+        try:
+            comprobar_permisos(fuentes)
+        except:
+            return {'message': 'No autorizado'}, 401
 
         # Convertir lista de investigadores a lista de enteros
         if fuentes["investigadores"]:

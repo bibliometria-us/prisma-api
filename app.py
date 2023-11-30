@@ -5,11 +5,12 @@ from routes import (investigador, publicacion, fuente, proyecto, instituto,
                     departamento, grupo, prog_doctorado, editorial, resultado, usuario)
 from routes.informes.main import informe_namespace
 import os
-from flask import Flask, request, redirect, url_for, session, render_template, make_response
-from flask_restx import Api
+from flask import Flask, request, redirect, url_for, session, render_template, make_response, jsonify, Blueprint
+from flask_restx import Api, apidoc
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import logging
+from security.protected_routes import mandatory_auth_endpoints
 
 prisma_base_url = "https://prisma.us.es"
 
@@ -18,10 +19,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'onelogindemopytoolkit'
 app.config['SAML_PATH'] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'saml')
+api_bp = Blueprint("api", __name__, url_prefix=local_config.api_base_path)
 
-api = Api(app, version="1.0", title="Prisma API")
+api = Api(api_bp, version="1.0", title="Prisma API")
 logging.basicConfig(level=logging.DEBUG)
-
 
 api.add_namespace(investigador.investigador_namespace)
 api.add_namespace(publicacion.publicacion_namespace)
@@ -36,8 +37,19 @@ api.add_namespace(resultado.resultado_namespace)
 api.add_namespace(usuario.usuario_namespace)
 api.add_namespace(informe_namespace)
 
+@app.before_request
+def auth_check():
+    args = request.args
+    requires_mandatory_auth = request.endpoint in mandatory_auth_endpoints
+    try:
+        if requires_mandatory_auth:
+            if not session.get("samlUserdata"):
+                return redirect(url_for("api.login", redirect_url= request.url))
+            if not session.get("samlUserdata"):
+                raise Exception
+    except:
+        return {'message': 'No autorizado'}, 401
 
-# FUNCIÓN DESPUÉS DE CADA RESPUESTA
 
 @app.after_request
 def after_request(response):
@@ -49,9 +61,8 @@ def after_request(response):
     log_request(route, args, response_code, user)
 
     return response
+
 # ERRORES GLOBALES
-
-
 @api.errorhandler(ValueError)  # Custom error handler for ValueError
 def handle_invalid_accept_header(error):
     """Error handler for Invalid Accept header."""
@@ -78,7 +89,7 @@ def prepare_flask_request(request):
     }
 
 
-@app.route('/auth/', methods=['GET', 'POST'])
+@api_bp.route('/auth/', methods=['GET', 'POST'], endpoint="auth")
 def index():
     req = prepare_flask_request(request)
     auth = init_saml_auth(req)
@@ -88,9 +99,9 @@ def index():
     success_slo = False
     attributes = False
     paint_logout = False
-
+    redirect_url = request.args.get("redirect_url") or local_config.api_url
     if 'sso' in request.args:
-        return redirect(auth.login(return_to='https://api.prisma.us.es'))
+        return redirect(auth.login(return_to=redirect_url))
         # If AuthNRequest ID need to be stored in order to later validate it, do instead
         # sso_built_url = auth.login()
         # request.session['AuthNRequestID'] = auth.get_last_request_id()
@@ -166,7 +177,7 @@ def index():
     return redirect("/")
 
 
-@app.route('/auth/attrs/')
+@api_bp.route('/auth/attrs/')
 def attrs():
     paint_logout = False
     attributes = False
@@ -180,7 +191,7 @@ def attrs():
                            attributes=attributes)
 
 
-@app.route('/auth/metadata/')
+@api_bp.route('/auth/metadata/')
 def metadata():
     req = prepare_flask_request(request)
     auth = init_saml_auth(req)
@@ -195,6 +206,7 @@ def metadata():
         resp = make_response(', '.join(errors), 500)
     return resp
 
+app.register_blueprint(api_bp)
 
 if __name__ == '__main__':
     app.run(port=8001)
