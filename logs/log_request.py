@@ -6,7 +6,7 @@ route_blacklist = [
     "/swagger*",
     "/auth*",
     "/favicon.ico"
-    "/usuario"
+    "/usuario*"
 
 ]
 
