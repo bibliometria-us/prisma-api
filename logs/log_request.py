@@ -3,7 +3,11 @@ import fnmatch
 
 route_blacklist = [
     "/",
-    "/swagger*"
+    "/swagger*",
+    "/auth*",
+    "/favicon.ico"
+    "/usuario"
+
 ]
 
 

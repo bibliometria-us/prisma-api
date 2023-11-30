@@ -57,6 +57,8 @@ def after_request(response):
     args = dict(request.args)
     response_code = response.status_code
     user = "anon"
+    if session.get("samlUserdata"):
+        user = session["samlUserdata"]["mail"][0].split("@")[0]
 
     log_request(route, args, response_code, user)
 
