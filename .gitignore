@@ -289,3 +289,4 @@ temp/*
 tests/temp/*
 /prueba.*
 config/local_config.py
+config/_dummy.py
