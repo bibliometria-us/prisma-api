@@ -5,13 +5,14 @@ from utils.timing import func_timer as timer
 
 class BaseDatos:
 
-    def __init__(self, database: str = "prisma") -> None:
+    def __init__(self, database: str = "prisma", local_infile = False) -> None:
         self.connection = mysql.connector.connect(
             host=claves.db_host,
             user=claves.db_user,
             password=claves.db_password,
             database=database,
             autocommit=True,
+            allow_local_infile = local_infile
         )
 
     # #@timer

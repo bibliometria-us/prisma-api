@@ -38,7 +38,7 @@ def pertenece_a_departamento(departamento):
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
-    assert result != 0
+    return result != 0
 
 def pertenece_a_grupo(grupo):
     db = BaseDatos()
@@ -52,7 +52,7 @@ def pertenece_a_grupo(grupo):
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
-    assert result != 0
+    return result != 0
 
 def pertenece_a_instituto(instituto):
     db = BaseDatos()
@@ -66,6 +66,6 @@ def pertenece_a_instituto(instituto):
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
-    assert result != 0
+    return result != 0
 
 

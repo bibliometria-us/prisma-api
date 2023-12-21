@@ -4,6 +4,7 @@ from logs.log_request import log_request
 from routes import (investigador, publicacion, fuente, proyecto, instituto,
                     departamento, grupo, prog_doctorado, editorial, resultado, usuario)
 from routes.informes.main import informe_namespace
+from routes.carga.main import carga_namespace
 import os
 from flask import Flask, request, redirect, url_for, session, render_template, make_response, jsonify, Blueprint
 from flask_restx import Api, apidoc
@@ -36,6 +37,7 @@ api.add_namespace(editorial.editorial_namespace)
 api.add_namespace(resultado.resultado_namespace)
 api.add_namespace(usuario.usuario_namespace)
 api.add_namespace(informe_namespace)
+api.add_namespace(carga_namespace)
 
 @app.before_request
 def auth_check():

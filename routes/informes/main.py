@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 
 from routes.informes.pub_metrica.security import comprobar_permisos
+from security.check_users import es_admin, pertenece_a_departamento
 
 informe_namespace = Namespace(
     'informe', description="Consultas para obtener informes")
@@ -108,4 +109,30 @@ class InformePubMetrica(Resource):
 
         os.remove(internal_filename)
 
+        return response
+    
+@informe_namespace.route('/medias_departamento/', endpoint = "medias_departamento", doc = False)
+class InformeMediasDepartamento(Resource):
+    def get(self):
+        args = request.args
+
+        departamento = args.get("departamento", None)
+
+        try:
+           assert(pertenece_a_departamento(departamento) | es_admin())
+        except:
+            return {'message': 'No autorizado'}, 401
+        
+        directory_path = "routes/informes/medias_departamento/docs"
+        file_names = [f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+        
+        departamentos = []
+        for file_name in file_names:
+            departamentos.append(file_name.split("_")[1])
+            if file_name.split("_")[1] == departamento:
+                internal_filename = f"{directory_path}/{file_name}"
+                response = send_file(
+            internal_filename, as_attachment=True,  download_name=file_name)
+        
+        departamentos = set(departamentos)
         return response

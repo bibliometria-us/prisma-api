@@ -6,9 +6,8 @@ import os
 import shutil
 import pytest
 import random
+
 # Obtiene toda la lista de una determinada fuente (departamento, grupo, instituto...)
-
-
 def get_fuentes(tipo):
     tipo_to_columna = {
         "departamento": "idDepartamento",
