@@ -23,7 +23,7 @@ def pertenece_a_conjunto(tipo, dato):
     } 
 
     func = tipo_to_func.get(tipo)
-    func(dato)
+    return func(dato)
         
 
 def pertenece_a_departamento(departamento):
