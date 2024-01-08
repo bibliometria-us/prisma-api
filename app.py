@@ -46,7 +46,7 @@ def auth_check():
     try:
         if requires_mandatory_auth:
             if not session.get("samlUserdata"):
-                return redirect(url_for("api.login", redirect_url= request.url))
+                return redirect(url_for("api.login", redirect_url = request.url))
             if not session.get("samlUserdata"):
                 raise Exception
     except:

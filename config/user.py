@@ -1,5 +1,5 @@
 try:
-    from config._dummy import dummy_user
+    from config.dummy import dummy_user
 except ImportError:
     dummy_user = None
 
