@@ -46,7 +46,7 @@ def actualizar_grupos():
 def añadir_grupos():
     query = f"""
     TRUNCATE TABLE prisma.i_grupo;
-    INSERT INTO prisma.i_grupo VALUES ('0', 'Sin Grupo US', 'Sin Grupo US', '0', 0, '');
+    INSERT INTO prisma.i_grupo VALUES ('0', 'Sin Grupo', 'Sin Grupo', '0', 0, '');
     REPLACE INTO prisma.i_grupo (idGrupo, nombre, acronimo, rama, codigo, institucion)
     SELECT CONCAT(g.RAMA, '-', g.CODIGO),
             g.NOMBRE,
@@ -56,7 +56,7 @@ def añadir_grupos():
             i.ENTIDAD
     FROM sica2.t_grupos g
     LEFT JOIN sica2.t_instituciones i ON i.ID_ENTIDAD = g.ID_ENTIDAD
-    WHERE g.ID_ENTIDAD = 78 AND g.ESTADO = 'Válido';
+    WHERE g.ESTADO = 'Válido';
     """
 
     db = BaseDatos(database = None)
