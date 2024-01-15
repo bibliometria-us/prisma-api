@@ -28,13 +28,13 @@ def pertenece_a_conjunto(tipo, dato):
 
 def pertenece_a_departamento(departamento):
     db = BaseDatos()
-    email = session["samlUserdata"]['mail'][0]
+    emails = session["samlUserdata"]['mail']
     
-    query = """SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
-                    i.email = %s
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
                     AND i.idDepartamento = %s)"""
     
-    params = [email, departamento]
+    params = [departamento]
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
@@ -42,13 +42,13 @@ def pertenece_a_departamento(departamento):
 
 def pertenece_a_grupo(grupo):
     db = BaseDatos()
-    email = session["samlUserdata"]['mail'][0]
+    emails = session["samlUserdata"]['mail']
     
-    query = """SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
-                    i.email = %s
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
                     AND i.idGrupo = %s)"""
     
-    params = [email, grupo]
+    params = [grupo]
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
@@ -56,13 +56,13 @@ def pertenece_a_grupo(grupo):
 
 def pertenece_a_instituto(instituto):
     db = BaseDatos()
-    email = session["samlUserdata"]['mail'][0]
+    emails = session["samlUserdata"]['mail']
     
-    query = """SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
-                    i.email = %s
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
                     AND i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_instituto WHERE idInstituto = %s))"""
     
-    params = [email, instituto]
+    params = [instituto]
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
