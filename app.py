@@ -1,6 +1,7 @@
 # Import from the new location
+from api_logging.sso_data import store_sso_data
 import config.local_config as local_config
-from logs.log_request import log_request
+from api_logging.log_request import log_request
 from routes import (investigador, publicacion, fuente, proyecto, instituto,
                     departamento, grupo, prog_doctorado, editorial, resultado, usuario)
 from routes.informes.main import informe_namespace
@@ -146,6 +147,8 @@ def index():
             session['samlNameIdSPNameQualifier'] = auth.get_nameid_spnq()
             session['samlSessionIndex'] = auth.get_session_index()
             session['login'] = True
+            store_sso_data(session['samlUserdata'])
+
             logging.info('atributos del usuario: %s', session['samlUserdata'])
             self_url = OneLogin_Saml2_Utils.get_self_url(req)
             if 'RelayState' in request.form and self_url != request.form['RelayState']:
