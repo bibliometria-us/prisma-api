@@ -36,6 +36,10 @@ def consulta_investigadores(fuentes):
 
     _conditions = []
     _joins = []
+
+     #TODO: Eliminar después de final de convocatoria del plan propio
+    _conditions.append("i.idCategoria != 'honor'")
+
     condition_template = "{column} = {value}"
 
     for fuente in fuentes:
