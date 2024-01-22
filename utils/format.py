@@ -159,3 +159,9 @@ def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
     # Iterate over all sheets in the dictionary and write each sheet to the new file
         for sheet_name, df in pandas_excel.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+def table_to_pandas(table: list):
+    result = pandas.DataFrame(table[1:], columns=table[0])
+    table.clear()
+
+    return result

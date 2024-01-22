@@ -7,12 +7,13 @@ from routes import (investigador, publicacion, fuente, proyecto, instituto,
 from routes.informes.main import informe_namespace
 from routes.carga.main import carga_namespace
 import os
-from flask import Flask, request, redirect, url_for, session, render_template, make_response, jsonify, Blueprint
-from flask_restx import Api, apidoc
+from flask import Flask, request, redirect, url_for, session, render_template, make_response, Blueprint
+from flask_restx import Api
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import logging
 from security.protected_routes import mandatory_auth_endpoints
+from celery import Celery
 
 prisma_base_url = "https://prisma.us.es"
 
@@ -22,6 +23,7 @@ app.config['SECRET_KEY'] = 'onelogindemopytoolkit'
 app.config['SAML_PATH'] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'saml')
 api_bp = Blueprint("api", __name__, url_prefix=local_config.api_base_path)
+app.config.from_object('celery_config')
 
 api = Api(api_bp, version="1.0", title="Prisma API")
 logging.basicConfig(level=logging.DEBUG)
@@ -39,6 +41,10 @@ api.add_namespace(resultado.resultado_namespace)
 api.add_namespace(usuario.usuario_namespace)
 api.add_namespace(informe_namespace)
 api.add_namespace(carga_namespace)
+
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+celery.conf.update(app.config)
+celery.set_default()
 
 @app.before_request
 def auth_check():
@@ -155,6 +161,7 @@ def index():
                 # To avoid 'Open Redirect' attacks, before execute the redirection confirm
                 # the value of the request.form['RelayState'] is a trusted URL.
                 return redirect(auth.redirect_to(request.form['RelayState']))
+            
         elif auth.get_settings().is_debug_active():
             error_reason = auth.get_last_error_reason()
             logging.info('Error: %s', error_reason)

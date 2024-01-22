@@ -1,6 +1,5 @@
 from flask import request, session, redirect, url_for
 from flask_restx import Namespace, Resource
-from db.conexion import BaseDatos
 from config import user as user_data
 import utils.response as response
 import security.api_key as api_key
