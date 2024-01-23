@@ -25,20 +25,19 @@ def actualizar_tabla_sica(file_path: str):
         temp_file.write(csv_data)
         temp_file_path = temp_file.name
         
-    db = BaseDatos(database="sica2", local_infile = True)
-    query = f"""
-        LOAD DATA LOCAL INFILE %s
-        INTO TABLE {table_name}
-        CHARACTER SET UTF8
-        COLUMNS TERMINATED BY ';'
-        OPTIONALLY ENCLOSED BY '\"'
-        LINES TERMINATED BY '\\n'
-        IGNORE 1 LINES;
-    """
-    
-    params = [temp_file_path]
-    result = db.ejecutarConsulta(query, params)
-    os.remove(file_path)
+        db = BaseDatos(database="sica2", local_infile = True)
+        query = f"""
+            LOAD DATA LOCAL INFILE %s
+            INTO TABLE {table_name}
+            CHARACTER SET UTF8
+            COLUMNS TERMINATED BY ';'
+            OPTIONALLY ENCLOSED BY '\"'
+            LINES TERMINATED BY '\\n'
+            IGNORE 1 LINES;
+        """
+        
+        params = [temp_file_path]
+        result = db.ejecutarConsulta(query, params)
     return result
 
 @shared_task(queue='cargas', name='actualizar_grupos_sica', ignore_result=True)
