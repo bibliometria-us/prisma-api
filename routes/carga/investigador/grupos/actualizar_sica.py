@@ -2,7 +2,7 @@ import tempfile
 from routes.carga.investigador.grupos.config import tablas
 from flask import request
 from db.conexion import BaseDatos
-from celery import shared_task, current_app, chain, group
+from celery import shared_task, current_app, group
 from celery.utils.log import get_task_logger
 import os
 

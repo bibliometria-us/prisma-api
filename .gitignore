@@ -290,3 +290,6 @@ tests/temp/*
 /prueba.*
 config/local_config.py
 config/_dummy.py
+integration/apis/clarivate/journals/config.py
+*.log
+.metadata.json

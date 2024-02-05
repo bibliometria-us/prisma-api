@@ -1,0 +1,15 @@
+[Unit]
+Description=Servicio de Celery para Prisma
+After=network.target
+
+[Service]
+User=operador
+WorkingDirectory=/var/www/prisma-api
+Environment="PATH=/var/www/prisma-api/env/bin"
+ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery -A app.celery worker --loglevel=error --concurrency=1 -Q cargas & \
+                        /var/www/prisma-api/env/bin/celery -A app.celery worker --loglevel=error --concurrency=1 -Q logs'
+Restart=always
+
+
+[Install]
+WantedBy=multi-user.target

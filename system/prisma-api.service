@@ -1,0 +1,13 @@
+[Unit]
+Description=Prisma API Service
+After=network.target
+
+[Service]
+User=operador
+WorkingDirectory=/var/www/prisma-api
+Environment="PATH=/var/www/prisma-api/env/bin"
+ExecStart=/var/www/prisma-api/env/bin/gunicorn app:app -b localhost:8001 --access-logfile /var/www/prisma-api/access.log --error-logfile /var/www/prisma-api/errors.log --log-level debug --timeout 600
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
