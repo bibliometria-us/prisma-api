@@ -52,7 +52,7 @@ def carga_unitaria(año, id_fuente, fecha):
     except ExcepcionJournalWoS as e:
         pass
     except Exception as e:
-        api.logger.add_log(log=Log(text=f"Error inesperado: {str(e)}", type="error"))
+        api.logger.add_log(log=Log(text=f"Error inesperado: {str(e)}", type="error"), close=True)
         
     
 

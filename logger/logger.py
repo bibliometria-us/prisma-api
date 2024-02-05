@@ -28,7 +28,7 @@ class TaskLogger():
         self.logs.append(log)
         if log.type == "error":
             self.has_errors = True
-        if log.type == "error" or close:
+        if close:
             self.close()
 
     def add_exception_log(self, exception: Exception, type: str, close: bool = False):

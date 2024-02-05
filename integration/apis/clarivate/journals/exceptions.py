@@ -28,3 +28,10 @@ class MetricaNoEncontrada(ExcepcionJournalWoS):
     
     def __str__(self):
         return self.message
+    
+class ErrorCargaMetrica(ExcepcionJournalWoS):
+    def __init__(self, id_fuente, id_wos,  año, tipo):
+        self.message = f"Error cargando la métrica {tipo} para la revista {id_wos} ({id_fuente}) en el año {año}"
+    
+    def __str__(self):
+        return self.message

@@ -2,7 +2,7 @@ from db.conexion import BaseDatos
 from integration.apis.api import API
 from urllib.parse import quote
 from integration.apis.clarivate.journals import config
-from integration.apis.clarivate.journals.exceptions import ISSNsNoEncontrados, MetricaNoEncontrada, MetricasNoEncontradas, RevistaWosNoEncontrada
+from integration.apis.clarivate.journals.exceptions import ErrorCargaMetrica, ISSNsNoEncontrados, MetricaNoEncontrada, MetricasNoEncontradas, RevistaWosNoEncontrada
 from integration.apis.exceptions import APIRateLimit
 from logger.logger import Log, TaskLogger
 from utils.cuantiles import calcular_cuantil
@@ -24,6 +24,7 @@ class JournalsAPI(API):
         })
         self.response_type = "json"
         self.jif: JIF = None
+        self.jci: JCI = None
         self.logger = TaskLogger(task_id=f"{id_fuente}-{año}", date=fecha_carga, task_name="carga_wos_journal")
         self.logger.metadata.parse()
 
@@ -165,13 +166,16 @@ class JournalsAPI(API):
                 id_wos = self.id_wos,           
             )
 
-            if not self.jif.almacenar():
-                exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JIF")
-                self.logger.add_exception_log(exception, "info")
-
-            else:
-                log = Log(f"Actualizado JIF para la revista {self.id_fuente} el año {self.año}", "info")
-                self.logger.add_log(log)
+            try:
+                if not self.jif.almacenar():
+                    exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JIF")
+                    self.logger.add_exception_log(exception, "info")
+                else:
+                    log = Log(f"Actualizado JIF para la revista {self.id_fuente} el año {self.año}", "info")
+                    self.logger.add_log(log)
+            
+            except ErrorCargaMetrica as e:
+                self.logger.add_exception_log(e, "error")
 
         if not metricas["ranks"].get("jci"):
             exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JCI")
@@ -194,13 +198,18 @@ class JournalsAPI(API):
                 db=self.db,
                 id_wos = self.id_wos,
             )
+            try:
+                if not self.jci.almacenar():
+                    exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JCI")
+                    self.logger.add_exception_log(exception, "info")
+                else:
+                    log = Log(f"Actualizado JCI para la revista {self.id_fuente} el año {self.año}", "info")
+                    self.logger.add_log(log)
+            
+            except ErrorCargaMetrica as e:
+                self.logger.add_exception_log(e, "error")
 
-            if not self.jci.almacenar():
-                exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JCI")
-                self.logger.add_exception_log(exception, "info")
-            else:
-                log = Log(f"Actualizado JCI para la revista {self.id_fuente} el año {self.año}", "info")
-                self.logger.add_log(log)
+
 
     
 
@@ -243,22 +252,30 @@ class JIF(MetricaWoS):
             params = [self.journal, self.issn, self.issn_2, self.year, self.edition, self.category, self.impact_factor, self.rank,
                     self.quartile, self.decil, self.tercil, self.id_fuente]
 
-            self.db.ejecutarConsulta(query, params)
-            return True
+            result = self.db.ejecutarConsulta(query, params)
 
+            if result == [()]:
+                return True
+            else:
+                raise ErrorCargaMetrica(self.id_wos, self.id_fuente, self.año, "JIF")
+                
         return False
 
     
 class JCI(MetricaWoS):
     def almacenar(self) -> bool:
         if self.rank:
-            query = """INSERT INTO m_jci (revista, issn, issn_2, agno, categoria, jci, posicion, cuartil, decil, tercil, percentil, idFuente)
+            query = """REPLACE INTO m_jci (revistaa, issn, issn_2, agno, categoria, jci, posicion, cuartil, decil, tercil, percentil, idFuente)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             params = [self.journal, self.issn, self.issn_2, self.year, self.category, self.impact_factor, self.rank,
                     self.quartile, self.decil, self.tercil, self.percentile, self.id_fuente]
 
-            self.db.ejecutarConsulta(query, params)
-            return True
+            result = self.db.ejecutarConsulta(query, params)
+
+            if result == [()]:
+                return True
+            else:
+                raise ErrorCargaMetrica(self.id_wos, self.id_fuente, self.año, "JCI")
 
         return False
 
