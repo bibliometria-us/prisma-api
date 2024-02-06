@@ -265,7 +265,7 @@ class JIF(MetricaWoS):
 class JCI(MetricaWoS):
     def almacenar(self) -> bool:
         if self.rank:
-            query = """REPLACE INTO m_jci (revistaa, issn, issn_2, agno, categoria, jci, posicion, cuartil, decil, tercil, percentil, idFuente)
+            query = """REPLACE INTO m_jci (revista, issn, issn_2, agno, categoria, jci, posicion, cuartil, decil, tercil, percentil, idFuente)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             params = [self.journal, self.issn, self.issn_2, self.year, self.category, self.impact_factor, self.rank,
                     self.quartile, self.decil, self.tercil, self.percentile, self.id_fuente]

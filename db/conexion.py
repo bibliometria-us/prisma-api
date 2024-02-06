@@ -1,4 +1,5 @@
 import mysql.connector
+from mysql.connector.errors import OperationalError
 import db.claves as claves
 from utils.timing import func_timer as timer
 
@@ -33,11 +34,15 @@ class BaseDatos:
         if not self.is_active:
             self.startConnection()
 
-        cursor = self.connection.cursor()
         try:
+            cursor = self.connection.cursor()
             cursor.execute(consulta, params=params)
             column_names = cursor.column_names
             result = [column_names] + list(cursor.fetchall())
+        except OperationalError as e:
+            if self.keep_connection_alive:
+                self.startConnection()
+                self.ejecutarConsulta(consulta, params)
         except Exception as e:
             cursor.close()
             return str(e.args)

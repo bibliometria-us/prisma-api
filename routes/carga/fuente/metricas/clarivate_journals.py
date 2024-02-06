@@ -6,14 +6,12 @@ from integration.apis.clarivate.journals.journals_api import JournalsAPI
 from logger.logger import Log, LoggerMetadata
 from utils.date import get_current_date
 
-db = BaseDatos(keep_connection_alive=True)
-
 
 
 def iniciar_carga(fuentes: str, año_inicio: int, año_fin: int) -> str:
     lista_fuentes = obtener_lista_de_fuentes(fuentes)
     tasks = []
-    current_date = get_current_date(format=True,format_str="%Y%m%d")
+    current_date = get_current_date(format=True,format_str="%Y%m%d-%H%M%S")
 
     for id_fuente in lista_fuentes:
         for año in range(año_inicio, año_fin + 1):
@@ -26,6 +24,8 @@ def iniciar_carga(fuentes: str, año_inicio: int, año_fin: int) -> str:
     return "Carga iniciada con éxito"
 
 def obtener_lista_de_fuentes(fuentes: str) -> list:
+    db = BaseDatos()
+
     query_revistas = "SELECT idFuente FROM p_fuente WHERE tipo IN ('Revista', 'Colección')"
     filtrar_revistas = " AND idFuente IN ({})"
     query_order = " ORDER BY idFuente"
@@ -45,6 +45,7 @@ def obtener_lista_de_fuentes(fuentes: str) -> list:
 
 @shared_task(queue='cargas', name='actualizar_metrica_wos_journals', ignore_result=True)
 def carga_unitaria(año, id_fuente, fecha):
+    db = BaseDatos()
 
     try:
         api = JournalsAPI(db, año, fecha, id_fuente)
@@ -52,7 +53,7 @@ def carga_unitaria(año, id_fuente, fecha):
     except ExcepcionJournalWoS as e:
         pass
     except Exception as e:
-        api.logger.add_log(log=Log(text=f"Error inesperado: {str(e)}", type="error"), close=True)
+        api.logger.add_log(log=Log(text=f"Error inesperado: {str(type(e).__name__)}. {e.args}", type="error"), close=True)
         
     
 
