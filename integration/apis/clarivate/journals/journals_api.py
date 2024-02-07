@@ -120,7 +120,7 @@ class JournalsAPI(API):
         self.get_respose()
 
         self.issn = self.response.get("issn")
-        self.essn = self.response.get("eissn")
+        self.essn = self.response.get("eIssn")
 
         return None
 
@@ -257,7 +257,7 @@ class JIF(MetricaWoS):
             if result == [()]:
                 return True
             else:
-                raise ErrorCargaMetrica(self.id_wos, self.id_fuente, self.año, "JIF")
+                raise ErrorCargaMetrica(self.id_wos, self.id_fuente, self.year, "JIF")
                 
         return False
 
@@ -275,7 +275,7 @@ class JCI(MetricaWoS):
             if result == [()]:
                 return True
             else:
-                raise ErrorCargaMetrica(self.id_wos, self.id_fuente, self.año, "JCI")
+                raise ErrorCargaMetrica(self.id_wos, self.id_fuente, self.year, "JCI")
 
         return False
 
