@@ -119,8 +119,8 @@ class JournalsAPI(API):
         self.format_uri()
         self.get_respose()
 
-        self.issn = self.response.get("issn")
-        self.essn = self.response.get("eIssn")
+        self.issn = self.response.get("issn") or (self.response.get("previousIssn")[0] if self.response.get("previousIssn") else None)
+        self.eissn = self.response.get("eIssn")
 
         return None
 
