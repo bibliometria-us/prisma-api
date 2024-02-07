@@ -3,8 +3,6 @@ import os
 import json
 import copy
 
-from logger.files import merge_sorted_logs
-
 class Log():
     def __init__(self, text: str, type: str) -> None:
         self.text = text
@@ -21,7 +19,7 @@ class TaskLogger():
         self.logs = []
         self.has_errors = False
         self.base_path = f"{config.base_path}/{self.task_name}"
-        self.file_name = f"{self.base_path}/{self.date}/{self.task_id}.log"
+        self.file_name = f"{self.base_path}/{self.date}/{self.date}.log"
         self.metadata = LoggerMetadata(self.task_name, self.date)
     
     def add_log(self, log: Log, close: bool = False):
@@ -40,8 +38,8 @@ class TaskLogger():
         logs = '\n\t'.join(list(map(lambda log: str(log), self.logs)))
         text = f"{self.task_id}:\n\t{logs}"
 
-        with open(self.file_name, 'w') as file:
-            file.write(text)
+        with open(self.file_name, 'a') as file:
+            file.write(text+"\n")
             file.close()
         
     def close(self):
@@ -89,20 +87,16 @@ class LoggerMetadata():
             self.close()
     
     def close(self):
-        result = ""
-
-        log_content, log_list = merge_sorted_logs(self.path)
+        result = "\n"
 
         try:
-            result += log_content + "\n\n"
 
             result += f"Carga finalizada. Finalizadas {self.metadata['ended_tasks']} de {self.metadata['total_tasks']} tareas.\n"
             result += f"{self.metadata['successful_tasks']} tareas exitosas.\n"
             result += f"{self.metadata['failed_tasks']} tareas con errores.\n"
 
-            with open(self.path + "/result.log", 'w') as file:
+            with open(self.path + "/" + self.date + ".log", 'a') as file:
                 file.write(result)
         except Exception:
             return None
         
-        [os.remove(file) for file in log_list]
