@@ -23,8 +23,8 @@ class MetricasNoEncontradas(ExcepcionJournalWoS):
         return self.message
     
 class MetricaNoEncontrada(ExcepcionJournalWoS):
-    def __init__(self, id_fuente, id_wos,  año, tipo):
-        self.message = f"No existe métrica {tipo} para la revista {id_wos} ({id_fuente}) en el año {año}"
+    def __init__(self, id_fuente, id_wos, año, tipo, categoria = None):
+        self.message = f"No existe métrica {tipo} para la revista {id_wos} ({id_fuente}){f' y categoría {categoria} ' if categoria else ''}en el año {año}"
     
     def __str__(self):
         return self.message

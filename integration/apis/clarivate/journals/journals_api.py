@@ -101,7 +101,6 @@ class JournalsAPI(API):
         self.id_wos = str(hits[0].get("id"))
         self.titulo_revista = str(hits[0].get("name"))
         
-
         return None
     
     def almacenar_id_wos(self) -> None:
@@ -149,65 +148,67 @@ class JournalsAPI(API):
             exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JIF")
             self.logger.add_exception_log(exception, "info")
         else:
-            jif: dict = metricas["ranks"]["jif"][0]
+            for jif in metricas["ranks"]["jif"]:
+                category = jif["category"]
+                self.jif = JIF(
+                    journal=metricas["journal"]["name"],
+                    issn=self.issn,
+                    issn_2=self.eissn,
+                    year=metricas["year"],
+                    edition=jif["edition"],
+                    category=category,
+                    impact_factor=metricas["metrics"]["impactMetrics"].get("jif"),
+                    rank=jif.get("rank"),
+                    percentile=jif.get("jifPercentile"),
+                    quartile = jif.get("quartile"),
+                    id_fuente=self.id_fuente,
+                    db=self.db,
+                    id_wos = self.id_wos,           
+                )
 
-            self.jif = JIF(
-                journal=metricas["journal"]["name"],
-                issn=self.issn,
-                issn_2=self.eissn,
-                year=metricas["year"],
-                edition=jif["edition"],
-                category=jif["category"],
-                impact_factor=metricas["metrics"]["impactMetrics"].get("jif"),
-                rank=jif.get("rank"),
-                percentile=jif.get("jifPercentile"),
-                id_fuente=self.id_fuente,
-                db=self.db,
-                id_wos = self.id_wos,           
-            )
+                try:
+                    if not self.jif.almacenar():
+                        exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JIF", categoria=category)
+                        self.logger.add_exception_log(exception, "info")
+                    else:
+                        log = Log(f"Actualizado JIF para la revista {self.id_fuente}, categoría {category} el año {self.año}", "info")
+                        self.logger.add_log(log)
 
-            try:
-                if not self.jif.almacenar():
-                    exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JIF")
-                    self.logger.add_exception_log(exception, "info")
-                else:
-                    log = Log(f"Actualizado JIF para la revista {self.id_fuente} el año {self.año}", "info")
-                    self.logger.add_log(log)
-            
-            except ErrorCargaMetrica as e:
-                self.logger.add_exception_log(e, "error")
+                except ErrorCargaMetrica as e:
+                    self.logger.add_exception_log(e, "error")
 
         if not metricas["ranks"].get("jci"):
             exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JCI")
             self.logger.add_exception_log(exception, "info")
     
         else:
-            jci: dict = metricas["ranks"]["jci"][0]
+            for jci in metricas["ranks"]["jci"]:
+                category = jci["category"]
+                self.jci = JCI(
+                    journal=metricas["journal"]["name"],
+                    issn=self.issn,
+                    issn_2=self.eissn,
+                    year=metricas["year"],
+                    edition = None,
+                    category= category,
+                    impact_factor=metricas["metrics"]["impactMetrics"].get("jci"),
+                    rank=jci.get("rank"),
+                    percentile=jci.get("jciPercentile"),
+                    quartile = jci.get("quartile"),
+                    id_fuente=self.id_fuente,
+                    db=self.db,
+                    id_wos = self.id_wos,
+                )
+                try:
+                    if not self.jci.almacenar():
+                        exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JCI", categoria=category)
+                        self.logger.add_exception_log(exception, "info")
+                    else:
+                        log = Log(f"Actualizado JCI para la revista {self.id_fuente}, categoría {category} el año {self.año}", "info")
+                        self.logger.add_log(log)
 
-            self.jci = JCI(
-                journal=metricas["journal"]["name"],
-                issn=self.issn,
-                issn_2=self.eissn,
-                year=metricas["year"],
-                edition = None,
-                category=jci["category"],
-                impact_factor=metricas["metrics"]["impactMetrics"].get("jci"),
-                rank=jci.get("rank"),
-                percentile=jci.get("jciPercentile"),
-                id_fuente=self.id_fuente,
-                db=self.db,
-                id_wos = self.id_wos,
-            )
-            try:
-                if not self.jci.almacenar():
-                    exception = MetricaNoEncontrada(self.id_wos, self.id_fuente, self.año, "JCI")
-                    self.logger.add_exception_log(exception, "info")
-                else:
-                    log = Log(f"Actualizado JCI para la revista {self.id_fuente} el año {self.año}", "info")
-                    self.logger.add_log(log)
-            
-            except ErrorCargaMetrica as e:
-                self.logger.add_exception_log(e, "error")
+                except ErrorCargaMetrica as e:
+                    self.logger.add_exception_log(e, "error")
 
 
 
@@ -216,7 +217,7 @@ class JournalsAPI(API):
     
 
 class MetricaWoS(ABC):
-    def __init__(self, journal: str, issn: str, issn_2: str, year: str, edition: str, category: str, impact_factor:float, rank:str, percentile:float, id_fuente: int, db: BaseDatos, id_wos: str) -> None:
+    def __init__(self, journal: str, issn: str, issn_2: str, year: str, edition: str, category: str, impact_factor:float, rank:str, percentile:float, quartile: str, id_fuente: int, db: BaseDatos, id_wos: str) -> None:
         self.journal = journal
         self.issn = issn
         self.issn_2 = issn_2 if issn != issn_2 else None
@@ -228,7 +229,7 @@ class MetricaWoS(ABC):
         self.percentile = percentile
         self.id_fuente = id_fuente
         self.db = db
-        self.quartile = None
+        self.quartile = quartile
         self.decil = None
         self.tercil = None
         self.calcular_cuantiles()
@@ -236,7 +237,7 @@ class MetricaWoS(ABC):
 
     def calcular_cuantiles(self):
         if self.percentile:
-            self.quartile = calcular_cuantil(self.percentile, "cuartil")
+            self.quartile = self.quartile or calcular_cuantil(self.percentile, "cuartil")
             self.decil = calcular_cuantil(self.percentile, "decil")
             self.tercil = calcular_cuantil(self.percentile, "tercil")
     
@@ -247,10 +248,10 @@ class MetricaWoS(ABC):
 class JIF(MetricaWoS):
     def almacenar(self):
         if self.rank and (self.issn or self.issn_2):
-            query = """REPLACE INTO m_jcr (journal, issn, issn_2, year, edition, category, impact_factor, rank, quartile, decil, tercil, idFuente)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            query = """REPLACE INTO m_jcr (journal, issn, issn_2, year, edition, category, impact_factor, rank, quartile, decil, tercil, percentile, idFuente)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
             params = [self.journal, self.issn, self.issn_2, self.year, self.edition, self.category, self.impact_factor, self.rank,
-                    self.quartile, self.decil, self.tercil, self.id_fuente]
+                    self.quartile, self.decil, self.tercil, self.percentile, self.id_fuente]
 
             result = self.db.ejecutarConsulta(query, params)
 
