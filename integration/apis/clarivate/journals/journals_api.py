@@ -237,7 +237,7 @@ class MetricaWoS(ABC):
 
     def calcular_cuantiles(self):
         if self.percentile:
-            self.quartile = self.quartile or calcular_cuantil(self.percentile, "cuartil")
+            self.quartile = self.quartile #or calcular_cuantil(self.percentile, "cuartil")
             self.decil = calcular_cuantil(self.percentile, "decil")
             self.tercil = calcular_cuantil(self.percentile, "tercil")
     
