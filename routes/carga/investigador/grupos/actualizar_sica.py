@@ -1,4 +1,3 @@
-import tempfile
 from routes.carga.investigador.grupos.config import tablas
 from flask import request
 from db.conexion import BaseDatos
@@ -18,26 +17,21 @@ def actualizar_tabla_sica(file_path: str):
 
     table_name = file_path.split("/")[-1].split(".")[0].lower()
 
-    with open(file_path, 'r', newline='', encoding='utf-8') as file:
-        csv_data = file.read()
+    db = BaseDatos(database="sica2", local_infile = True, keep_connection_alive=True)
+    db.ejecutarConsulta(f"TRUNCATE TABLE {table_name};")
+    query = f"""
+        LOAD DATA LOCAL INFILE %s
+        INTO TABLE {table_name}
+        CHARACTER SET UTF8
+        COLUMNS TERMINATED BY ';'
+        OPTIONALLY ENCLOSED BY '\"'
+        LINES TERMINATED BY '\\n'
+        IGNORE 1 LINES;
+    """
     
-    with tempfile.NamedTemporaryFile(mode='w+', delete=True) as temp_file:
-        temp_file.write(csv_data)
-        temp_file_path = temp_file.name
-        
-        db = BaseDatos(database="sica2", local_infile = True)
-        query = f"""
-            LOAD DATA LOCAL INFILE %s
-            INTO TABLE {table_name}
-            CHARACTER SET UTF8
-            COLUMNS TERMINATED BY ';'
-            OPTIONALLY ENCLOSED BY '\"'
-            LINES TERMINATED BY '\\n'
-            IGNORE 1 LINES;
-        """
-        
-        params = [temp_file_path]
-        result = db.ejecutarConsulta(query, params)
+    params = [file_path]
+    result = db.ejecutarConsulta(query, params)
+    db.closeConnection()
     return result
 
 @shared_task(queue='cargas', name='actualizar_grupos_sica', ignore_result=True)
