@@ -1,6 +1,7 @@
 import math
+from utils.utils import constrain_to_range
 
-def calcular_cuantil(percentil: float, tipo: str):
+def calcular_cuantil(percentil: float, tipo: str, reducir = True):
     tipo_a_division = {
         "tercil": 3.,
         "cuartil": 4.,
@@ -12,12 +13,17 @@ def calcular_cuantil(percentil: float, tipo: str):
         "cuartil": "Q",
         "decil": "D",
     }
-
+    
     division = tipo_a_division[tipo]
     letra = tipo_a_letra[tipo]
 
-    cuantil = str(math.ceil(division-percentil*(division/100)))
+    if reducir:
+        percentil -= 0.0000001
 
-    result = letra + cuantil
+    cuantil = math.ceil(division-percentil*(division/100))
+
+    cuantil = int(constrain_to_range(cuantil, 1, division))
+
+    result = letra + str(cuantil)
 
     return result

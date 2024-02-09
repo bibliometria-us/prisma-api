@@ -1,5 +1,6 @@
 import math
 
+from utils.utils import constrain_to_range
 
 def get_page_offset(page, page_size, amount):
     if page_size == 0:
@@ -14,7 +15,3 @@ def get_page_offset(page, page_size, amount):
     offset = min((page-1)*page_size, amount)
 
     return page_size, offset
-
-
-def constrain_to_range(value, min_value, max_value):
-    return max(min(value, max_value), min_value)

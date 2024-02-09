@@ -7,3 +7,6 @@ def list_index_map(input):
 
 def replace_none_values(input_list, replacement_char="-"):
     return [[replacement_char if item is None else item for item in sublist] for sublist in input_list]
+
+def constrain_to_range(value, min_value, max_value):
+    return max(min(value, max_value), min_value)
