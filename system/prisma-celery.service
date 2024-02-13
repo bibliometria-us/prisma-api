@@ -6,8 +6,7 @@ After=network.target
 User=operador
 WorkingDirectory=/var/www/prisma-api
 Environment="PATH=/var/www/prisma-api/env/bin"
-ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery -A app.celery worker --loglevel=error --concurrency=1 -Q cargas & \
-                        /var/www/prisma-api/env/bin/celery -A app.celery worker --loglevel=error --concurrency=1 -Q logs'
+ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery -A app.celery worker --loglevel=error --concurrency=1 -Q cargas --pool solo'
 Restart=always
 
 

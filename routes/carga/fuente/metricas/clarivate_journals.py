@@ -43,7 +43,7 @@ def obtener_lista_de_fuentes(fuentes: str) -> list:
 
     return result
 
-@shared_task(queue='cargas', name='actualizar_metrica_wos_journals', ignore_result=True)
+@shared_task(queue='cargas', name='actualizar_metrica_wos_journals', ignore_result=True, acks_late=True)
 def carga_unitaria(año, id_fuente, fecha):
     db = BaseDatos()
 
