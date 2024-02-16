@@ -20,6 +20,7 @@ def pertenece_a_conjunto(tipo, dato):
         "departamento": pertenece_a_departamento,
         "grupo": pertenece_a_grupo,
         "instituto": pertenece_a_instituto,
+        "centro": pertenece_a_centro,
     } 
 
     func = tipo_to_func.get(tipo)
@@ -68,4 +69,17 @@ def pertenece_a_instituto(instituto):
 
     return result != 0
 
+def pertenece_a_centro(centro):
+    db = BaseDatos()
+    emails = session["samlUserdata"]['mail']
+    
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
+                    AND i.idCentro = %s)"""
+    
+    params = [centro]
+
+    result = db.ejecutarConsulta(query, params)[1][0]
+
+    return result != 0
 

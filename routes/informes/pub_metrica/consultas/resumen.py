@@ -74,6 +74,13 @@ def nombres_fuentes(fuentes):
                 "condicion": f"idInvestigador IN ({(',').join(valor_fuente)})"
             })
 
+        if tipo_fuente == "centro":
+            _query = query.format(**{
+                "columna": "nombre",
+                "tabla": "i_centro",
+                "condicion": f"idCentro = '{valor_fuente}'"
+            })
+
         datos = db.ejecutarConsulta(_query)
 
         if tipo_fuente != "investigadores":

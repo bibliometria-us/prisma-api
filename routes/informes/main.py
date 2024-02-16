@@ -41,6 +41,12 @@ class InformePubMetrica(Resource):
                 'description': 'ID del instituto del que obtener el informe',
                 'type': 'string',
             },
+            'centro': {
+                'name': 'centro',
+                'description': 'ID del centro del que obtener el informe',
+                'type': 'string',
+            },
+            
             'investigadores': {
                 'name': 'investigadores',
                 'description': 'Lista de ID de investigadores',
@@ -67,6 +73,7 @@ class InformePubMetrica(Resource):
             "grupo": args.get('grupo', None),
             "instituto": args.get('instituto', None),
             "investigadores": args.get('investigadores', None),
+            "centro": args.get('centro', None),
         }
         
         try:

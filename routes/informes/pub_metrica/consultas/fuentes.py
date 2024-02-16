@@ -15,6 +15,7 @@ tipo_fuente_to_column = {
     "grupo": "i.idGrupo",
     "instituto": "mi.idInstituto",
     "investigadores": "i.idInvestigador",
+    "centro": "i.idCentro",
 }
 
 # Diccionario para añadir joins si el tipo de fuente lo requiere
@@ -27,7 +28,8 @@ es_int = {
     "departamento": False,
     "grupo": False,
     "instituto": True,
-    "investigadores": False
+    "investigadores": False,
+    "centro": False,
 }
 
 
