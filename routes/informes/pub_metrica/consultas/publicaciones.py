@@ -39,7 +39,7 @@ select = [
     ) AS 'Datos de la Publicación'
     """,
 
-    "fuente.editorial as 'Editor'",
+    "fuente.editorial as 'Editorial'",
 
     # Autores
     "GROUP_CONCAT(DISTINCT CASE WHEN autor.rol != 'Grupo' THEN autor.firma ELSE NULL END SEPARATOR ';') as 'Autores'",

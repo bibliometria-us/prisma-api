@@ -272,17 +272,18 @@ def generar_pdf(resumen, filename):
         table_styles_citas_publicaciones.add("SPAN", (0, row), (0, row + 1))
 
     datos_tabla_citas_publicaciones.append(
-        ["En esta tabla se excluyen las publicaciones grupales"])
+        ["En esta tabla se excluyen las publicaciones grupales. \nSolo incluidas publicaciones con citas registradas."])
     tabla_citas_publicaciones = Table(
         datos_tabla_citas_publicaciones, colWidths=75
     )
     tabla_citas_publicaciones.setStyle(table_styles_citas_publicaciones)
 
     datos_tabla_citas_publicaciones_grupales.append(
-        ["Publicaciones cuya autoría es exclusivamente grupal para el conjunto de investigadores del informe"])
+        ["Publicaciones cuya autoría es exclusivamente grupal para el conjunto de investigadores del informe. \nSolo incluidas publicaciones con citas registradas."])
     tabla_citas_publicaciones_grupales = Table(
         datos_tabla_citas_publicaciones_grupales, colWidths=75
     )
+    
     tabla_citas_publicaciones_grupales.setStyle(
         table_styles_citas_publicaciones)
 
@@ -306,7 +307,7 @@ def generar_pdf(resumen, filename):
     ))
     # TABLAS DE FACTORES DE IMPACTO
     titulo_factores_impacto = Paragraph(
-        "Distribución de publicaciones", estilo_titulos)
+        f"Distribución de publicaciones ({resumen['año_inicio']}-{resumen['año_fin']})", estilo_titulos)
 
     distribucion_publicaciones = resumen["distribucion_publicaciones"]
 
