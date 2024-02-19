@@ -4,10 +4,8 @@ import routes.informes.config as config
 
 select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
-
     # CiteScore
     "CAST(MAX(citescore.citescore) as DOUBLE) AS 'CiteScore'",
-
     # CATEGORÍAS
     """
     GROUP_CONCAT(DISTINCT  
@@ -15,10 +13,8 @@ select = [
                SEPARATOR ';')
                 AS 'Categorías CiteScore'
     """,
-
     # CUARTILES
     "MIN(citescore.cuartil) AS 'Mejor Cuartil CiteScore'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN citescore.cuartil = (SELECT MIN(cuartil) FROM m_citescore WHERE revista = citescore.revista AND agno = citescore.agno)
@@ -26,10 +22,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Cuartil CiteScore'
     """,
-
     # DECILES
     "MIN(citescore.decil) AS 'Mejor Decil CiteScore'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN citescore.decil = (SELECT MIN(decil) FROM m_citescore WHERE revista = citescore.revista AND agno = citescore.agno)
@@ -37,10 +31,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Decil CiteScore'
     """,
-
     # TERCILES
     "MIN(citescore.tercil) AS 'Mejor Tercil CiteScore'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN citescore.tercil = (SELECT MIN(tercil) FROM m_citescore WHERE revista = citescore.revista AND agno = citescore.agno)
@@ -48,8 +40,6 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Tercil CiteScore'
     """,
-
-
 ]
 
 joins = [
@@ -57,8 +47,6 @@ joins = [
     "LEFT JOIN p_fuente f ON f.idFuente = p.idFuente",
     # Métricas CiteScore de la revista de la publicación
     f"LEFT JOIN m_citescore citescore ON citescore.idFuente = f.idFuente AND citescore.agno = LEAST(p.agno, {config.max_jci_year})",
-
-
 ]
 
 
@@ -66,8 +54,7 @@ group_by = [
     "p.idPublicacion",
 ]
 
-order_by = ["p.agno DESC",
-            "p.idPublicacion"]
+order_by = ["p.agno DESC", "p.idPublicacion"]
 
 
 # @timer

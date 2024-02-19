@@ -6,7 +6,13 @@ from utils.timing import func_timer as timer
 
 class BaseDatos:
 
-    def __init__(self, database: str = "prisma", local_infile = False, keep_connection_alive = False, autocommit = True) -> None:
+    def __init__(
+        self,
+        database: str = "prisma",
+        local_infile=False,
+        keep_connection_alive=False,
+        autocommit=True,
+    ) -> None:
         self.is_active = False
         self.connection = None
         self.database = database
@@ -21,7 +27,7 @@ class BaseDatos:
             password=claves.db_password,
             database=self.database,
             autocommit=True,
-            allow_local_infile = self.local_infile
+            allow_local_infile=self.local_infile,
         )
 
         self.is_active = True
@@ -50,5 +56,5 @@ class BaseDatos:
         cursor.close()
         if not self.keep_connection_alive:
             self.closeConnection()
-            
+
         return result

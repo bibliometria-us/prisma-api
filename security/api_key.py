@@ -19,7 +19,7 @@ def buscar_api_key(api_key: str) -> bool:
 def comprobar_api_key(api_key: str, namespace):
     if not (request.referrer and request.referrer.startswith(request.host_url)):
         if not api_key or not buscar_api_key(api_key):
-            namespace.abort(401, 'API Key inválida')
+            namespace.abort(401, "API Key inválida")
 
 
 def api_key_from_user(mail: str):
@@ -44,7 +44,7 @@ def create_api_key(mail: str, length=40):
             ON DUPLICATE KEY UPDATE apikey = %s;
             """
     characters = string.ascii_lowercase + string.digits
-    api_key = ''.join(secrets.choice(characters) for _ in range(length))
+    api_key = "".join(secrets.choice(characters) for _ in range(length))
 
     params = [user, api_key, api_key]
 

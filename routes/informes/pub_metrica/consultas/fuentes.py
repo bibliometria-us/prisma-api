@@ -39,7 +39,7 @@ def consulta_investigadores(fuentes):
     _conditions = []
     _joins = []
 
-     #TODO: Eliminar después de final de convocatoria del plan propio
+    # TODO: Eliminar después de final de convocatoria del plan propio
     _conditions.append("i.idCategoria != 'honor'")
 
     condition_template = "{column} = {value}"
@@ -54,8 +54,7 @@ def consulta_investigadores(fuentes):
             # Si el valor no es un entero, se pone entre comillas
             if not es_int[fuente]:
                 value = f"'{value}'"
-            condition = condition_template.format(
-                column=column, value=value)
+            condition = condition_template.format(column=column, value=value)
             if joins:
                 _joins.append(joins)
 
@@ -78,9 +77,11 @@ def consulta_publicaciones(investigadores, año_inicio, año_fin):
     query = "SELECT DISTINCT idPublicacion FROM p_publicacion p "
 
     _conditions = conditions.copy()
-    _conditions.append(f"""p.idPublicacion IN (
+    _conditions.append(
+        f"""p.idPublicacion IN (
                     SELECT idPublicacion FROM p_autor WHERE idInvestigador IN (
-                    {','.join(investigadores)}))""")
+                    {','.join(investigadores)}))"""
+    )
 
     _conditions.append(f"p.agno BETWEEN {año_inicio} AND {año_fin}")
 

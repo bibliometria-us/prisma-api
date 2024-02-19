@@ -1,9 +1,10 @@
 from db.conexion import BaseDatos
 
+
 def store_sso_data(sso_data: dict):
     db = BaseDatos(database="api")
 
-    sso_data_string = {key : ", ".join(value) for key, value in sso_data.items()}
+    sso_data_string = {key: ", ".join(value) for key, value in sso_data.items()}
 
     query = f"""REPLACE INTO sso_data VALUES ('{sso_data_string.get('edupersonaffiliation')}',
                                             '{sso_data_string.get('givenname')}',
@@ -14,8 +15,7 @@ def store_sso_data(sso_data: dict):
                                             '{sso_data_string.get('uid')}',
                                             '{sso_data_string.get('usesrelacion')}'
                                             )"""
-    
+
     result = db.ejecutarConsulta(query)
 
     return None
-    

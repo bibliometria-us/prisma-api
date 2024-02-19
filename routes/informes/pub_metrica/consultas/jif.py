@@ -4,12 +4,9 @@ import routes.informes.config as config
 
 select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
-
     # JIF
     "CAST(MAX(jif.impact_factor) as DOUBLE) AS 'JIF'",
-
     # --------- SCIE ------------
-
     # CATEGORÍAS SCIE
     """
     GROUP_CONCAT(DISTINCT 
@@ -18,10 +15,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías JIF-SCIE'
     """,
-
     # CUARTILES SCIE
     "MIN(CASE WHEN jif.edition = 'SCIE' THEN jif.quartile ELSE NULL END) AS 'Mejor Cuartil JIF-SCIE'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN jif.edition = 'SCIE' 
@@ -30,10 +25,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Cuartil JIF-SCIE'
     """,
-
     # DECILES SCIE
     "MIN(CASE WHEN jif.edition = 'SCIE' THEN jif.decil ELSE NULL END) AS 'Mejor Decil JIF-SCIE'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN jif.edition = 'SCIE' 
@@ -42,10 +35,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Decil JIF-SCIE'
     """,
-
     # TERCILES SCIE
     "MIN(CASE WHEN jif.edition = 'SCIE' THEN jif.tercil ELSE NULL END) AS 'Mejor Tercil JIF-SCIE'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN jif.edition = 'SCIE' 
@@ -54,9 +45,7 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Tercil JIF-SCIE'
     """,
-
     # --------- SSCI ------------
-
     # CATEGORÍAS SSCI
     """
     GROUP_CONCAT(DISTINCT 
@@ -65,10 +54,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías JIF-SSCI'
     """,
-
     # CUARTILES SSCI
     "MIN(CASE WHEN jif.edition = 'SSCI' THEN jif.quartile ELSE NULL END) AS 'Mejor Cuartil JIF-SSCI'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN jif.edition = 'SSCI' 
@@ -77,10 +64,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Cuartil JIF-SSCI'
     """,
-
     # DECILES SSCI
     "MIN(CASE WHEN jif.edition = 'SSCI' THEN jif.decil ELSE NULL END) AS 'Mejor Decil JIF-SSCI'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN jif.edition = 'SSCI' 
@@ -89,11 +74,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Decil JIF-SSCI'
     """,
-
     # TERCILES SSCI
-
     "MIN(CASE WHEN jif.edition = 'SSCI' THEN jif.tercil ELSE NULL END) AS 'Mejor Tercil JIF-SSCI'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN jif.edition = 'SSCI' 
@@ -102,11 +84,6 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Tercil JIF-SSCI'
     """,
-
-
-
-
-
 ]
 
 joins = [
@@ -114,8 +91,6 @@ joins = [
     "LEFT JOIN p_fuente f ON f.idFuente = p.idFuente",
     # Métricas JIF de la revista de la publicación
     f"LEFT JOIN m_jcr jif ON jif.idFuente = f.idFuente AND jif.year = LEAST(p.agno, {config.max_jcr_year})",
-
-
 ]
 
 
@@ -123,8 +98,7 @@ group_by = [
     "p.idPublicacion",
 ]
 
-order_by = ["p.agno DESC",
-            "p.idPublicacion"]
+order_by = ["p.agno DESC", "p.idPublicacion"]
 
 
 # @timer

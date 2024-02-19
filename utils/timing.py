@@ -9,8 +9,9 @@ def func_timer(func):
         end_time = time.time()
         execution_time = end_time - start_time
         logging.info(
-            f"Function '{func.__name__}' took {execution_time:.6f} seconds to run.")
-        print(
-            f"Function '{func.__name__}' took {execution_time:.6f} seconds to run.")
+            f"Function '{func.__name__}' took {execution_time:.6f} seconds to run."
+        )
+        print(f"Function '{func.__name__}' took {execution_time:.6f} seconds to run.")
         return result
+
     return wrapper

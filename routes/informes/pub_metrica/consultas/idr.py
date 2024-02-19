@@ -4,10 +4,8 @@ import routes.informes.config as config
 
 select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
-
     # IDR
     "CAST(MAX(idr.factorImpacto) as DOUBLE) AS 'IDR'",
-
     # CATEGORÍAS
     """
     GROUP_CONCAT(DISTINCT  
@@ -15,10 +13,8 @@ select = [
                SEPARATOR ';')
                 AS 'Categorías IDR'
     """,
-
     # CUARTILES
     "MIN(idr.cuartil) AS 'Mejor Cuartil IDR'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN idr.cuartil = (SELECT MIN(cuartil) FROM m_idr WHERE titulo = idr.titulo AND anualidad = idr.anualidad)
@@ -26,10 +22,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Cuartil IDR'
     """,
-
     # PERCENTILES
     "MIN(idr.percentil) AS 'Mejor Percentil IDR'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN idr.percentil = (SELECT MIN(percentil) FROM m_idr WHERE titulo = idr.titulo AND anualidad = idr.anualidad)
@@ -37,8 +31,6 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Percentil IDR'
     """,
-
-
 ]
 
 joins = [
@@ -46,8 +38,6 @@ joins = [
     "LEFT JOIN p_fuente f ON f.idFuente = p.idFuente",
     # Métricas IDR de la revista de la publicación
     f"LEFT JOIN m_idr idr ON idr.idFuente = f.idFuente AND idr.anualidad = LEAST(p.agno, {config.max_idr_year})",
-
-
 ]
 
 
@@ -55,8 +45,7 @@ group_by = [
     "p.idPublicacion",
 ]
 
-order_by = ["p.agno DESC",
-            "p.idPublicacion"]
+order_by = ["p.agno DESC", "p.idPublicacion"]
 
 
 # @timer

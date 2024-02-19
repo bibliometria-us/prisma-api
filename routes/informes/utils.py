@@ -9,10 +9,11 @@ def normalize_id_list(id_list):
             element = id[0]
 
             if isinstance(element, str):
-                result.append(f"\"{str(element)}\"")
+                result.append(f'"{str(element)}"')
             else:
                 result.append(str(element))
     return result
+
 
 # Dada una lista de sentencias de query, las devuelve aplicado un .format con los pares clave valor del diccionario
 
@@ -41,8 +42,8 @@ def calcular_autoria_preferente(investigadores, autores: str):
     if autores == "-" or not autores:
         return "No"
     # Calcular el orden máximo
-    autores = autores.strip(';')
-    max_orden = max(int(item.split(',')[1]) for item in autores.split(';'))
+    autores = autores.strip(";")
+    max_orden = max(int(item.split(",")[1]) for item in autores.split(";"))
 
     # Buscar autores preferentes
     for autor in autores.split(";"):

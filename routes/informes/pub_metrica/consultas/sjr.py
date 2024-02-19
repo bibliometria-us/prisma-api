@@ -4,10 +4,8 @@ import routes.informes.config as config
 
 select = [
     "CONCAT('https://prisma.us.es/publicacion/', p.idPublicacion) as 'URL Prisma'",
-
     # SJR
     "CAST(MAX(sjr.impact_factor) as DOUBLE) AS 'SJR'",
-
     # CATEGORÍAS
     """
     GROUP_CONCAT(DISTINCT  
@@ -15,10 +13,8 @@ select = [
                SEPARATOR ';')
                 AS 'Categorías SJR'
     """,
-
     # CUARTILES
     "MIN(sjr.quartile) AS 'Mejor Cuartil SJR'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN sjr.quartile = (SELECT MIN(quartile) FROM m_sjr WHERE journal = sjr.journal AND year = sjr.year)
@@ -26,10 +22,8 @@ select = [
                 ELSE NULL END) SEPARATOR ';')
                 AS 'Categorías Mejor Cuartil SJR'
     """,
-
     # DECILES
     "MIN(sjr.decil) AS 'Mejor Decil SJR'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN sjr.decil = (SELECT MIN(decil) FROM m_sjr WHERE journal = sjr.journal AND year = sjr.year)
@@ -38,9 +32,7 @@ select = [
                 AS 'Categorías Mejor Decil SJR'
     """,
     # TERCILES
-
     "MIN(sjr.tercil) AS 'Mejor Tercil SJR'",
-
     """
     GROUP_CONCAT(DISTINCT 
                 (CASE WHEN sjr.tercil = (SELECT MIN(tercil) FROM m_sjr WHERE journal = sjr.journal AND year = sjr.year)
@@ -55,8 +47,6 @@ joins = [
     "LEFT JOIN p_fuente f ON f.idFuente = p.idFuente",
     # Métricas SJR de la revista de la publicación
     f"LEFT JOIN m_sjr sjr ON sjr.idFuente = f.idFuente AND sjr.year = LEAST(p.agno, {config.max_jcr_year})",
-
-
 ]
 
 
@@ -64,8 +54,7 @@ group_by = [
     "p.idPublicacion",
 ]
 
-order_by = ["p.agno DESC",
-            "p.idPublicacion"]
+order_by = ["p.agno DESC", "p.idPublicacion"]
 
 
 # @timer

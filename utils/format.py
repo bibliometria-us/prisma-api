@@ -8,11 +8,12 @@ import openpyxl
 from openpyxl.styles import Font, Alignment
 import pandas
 
+
 def format_csv(data):
-    csv_string = ''
+    csv_string = ""
     if len(data) > 0:
         csv_buffer = io.StringIO()
-        writer = csv.writer(csv_buffer, delimiter=',')
+        writer = csv.writer(csv_buffer, delimiter=",")
 
         writer.writerows(data)
 
@@ -33,9 +34,11 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
         data_dict = {data[0][i]: value for i, value in enumerate(row)}
 
         # Nombre de la clave
-        row_name: str = base_name + "_" + \
-            str(row[selectable_column_index]) if base_name else str(
-                row[selectable_column_index])
+        row_name: str = (
+            base_name + "_" + str(row[selectable_column_index])
+            if base_name
+            else str(row[selectable_column_index])
+        )
 
         result_data_dict = {}
         for d_data in data_dict:
@@ -50,8 +53,7 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
                 else:
                     result_data_dict[group_name] = {}
 
-                result_data_dict[group_name][d_data.replace(
-                    f"{suffix}_", "")] = value
+                result_data_dict[group_name][d_data.replace(f"{suffix}_", "")] = value
             else:
                 result_data_dict[d_data] = value
 
@@ -68,7 +70,7 @@ def dict_to_xml(data, root_name=None, object_name=""):
             if isinstance(value, dict):
                 # For nested dictionaries, create a new XML element
                 if isinstance(key, str) and key.startswith(object_name):
-                    element_key = object_name[0:len(object_name)]
+                    element_key = object_name[0 : len(object_name)]
                 else:
                     element_key = str(key)
                 element = ET.SubElement(parent, element_key)
@@ -113,10 +115,10 @@ def dict_to_excel(data):
             for col_idx, column_name in enumerate(column_names, 1):
                 column_data = page_data[column_name]
                 # Adjust for 0-based index
-                value = column_data.get(row_idx - 2, '')
+                value = column_data.get(row_idx - 2, "")
                 cell = worksheet.cell(row=row_idx, column=col_idx, value=value)
 
-    default_sheet = workbook['Sheet']
+    default_sheet = workbook["Sheet"]
     workbook.remove(default_sheet)
 
     return workbook
@@ -133,7 +135,7 @@ def add_hyperlinks_to_excel(workbook):
                 if cell.value and str(cell.value).startswith("http"):
                     # Create a hyperlink using the cell value
                     cell.hyperlink = cell.value
-                    cell.style = 'Hyperlink'
+                    cell.style = "Hyperlink"
 
     return workbook
 
@@ -146,7 +148,7 @@ def bold_column_titles_excel(workbook):
         # Make the first row (header) bold
         for cell in next(sheet.iter_rows()):
             cell.font = Font(bold=True)
-            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.alignment = Alignment(horizontal="center", vertical="center")
 
     return workbook
 
@@ -155,10 +157,11 @@ def bold_column_titles_excel(workbook):
 def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
     workbook.save(output_file)
     pandas_excel = pandas.read_excel(output_file, sheet_name=None)
-    with pandas.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-    # Iterate over all sheets in the dictionary and write each sheet to the new file
+    with pandas.ExcelWriter(output_file, engine="xlsxwriter") as writer:
+        # Iterate over all sheets in the dictionary and write each sheet to the new file
         for sheet_name, df in pandas_excel.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+
 
 def table_to_pandas(table: list):
     result = pandas.DataFrame(table[1:], columns=table[0])

@@ -2,8 +2,15 @@ import requests
 
 from integration.apis.exceptions import APIRateLimit
 
+
 class API:
-    def __init__(self, uri_template:str = None, uri_data:dict = {}, headers:dict = {}, response_type:str=None):
+    def __init__(
+        self,
+        uri_template: str = None,
+        uri_data: dict = {},
+        headers: dict = {},
+        response_type: str = None,
+    ):
         self.uri_template = uri_template
         self.uri_data = uri_data
         self.headers = headers
@@ -15,12 +22,10 @@ class API:
     def format_uri(self) -> None:
         if self.uri_template:
             self.uri = self.uri_template.format(**self.uri_data)
-    
+
     def get_respose(self) -> dict:
-        response_type_to_function = {
-            "json": self.get_json_response
-        }
-        
+        response_type_to_function = {"json": self.get_json_response}
+
         function = response_type_to_function.get(self.response_type)
 
         response = requests.get(self.uri, headers=self.headers)
@@ -31,7 +36,7 @@ class API:
             raise APIRateLimit()
 
         result = function(response)
-        
+
         return result
 
     def get_json_response(self, response) -> dict:
@@ -39,7 +44,7 @@ class API:
         result = response.json()
         self.response = result
         return result
-        
+
     def set_uri_template(self, uri_template) -> None:
         self.uri_template = uri_template
 

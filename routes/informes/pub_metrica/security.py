@@ -9,5 +9,3 @@ def comprobar_permisos(fuentes):
             raise Exception
         if valor:
             assert pertenece_a_conjunto(tipo_fuente, valor)
-            
-    

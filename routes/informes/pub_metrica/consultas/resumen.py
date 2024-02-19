@@ -5,6 +5,7 @@ from utils.format import dict_from_table
 from utils.utils import list_index_map, replace_none_values
 import routes.informes.config as config
 import copy
+
 # Dada una lista de investigadores y sus publicaciones, obtener un resumen de los datos
 
 
@@ -19,17 +20,17 @@ def datos_resumen(fuentes, investigadores, publicaciones, año_inicio, año_fin)
     result["numero_miembros"] = len(investigadores)
     result["investigadores_por_rama"] = investigadores_por_rama(investigadores)
     result["investigadores_por_categoria"] = investigadores_por_categoria(
-        investigadores)
-    result["publicaciones_por_año"] = publicaciones_por_año(
-        publicaciones)
-    result["publicaciones_por_tipo"] = publicaciones_por_tipo(
-        publicaciones)
+        investigadores
+    )
+    result["publicaciones_por_año"] = publicaciones_por_año(publicaciones)
+    result["publicaciones_por_tipo"] = publicaciones_por_tipo(publicaciones)
     result["publicaciones_por_autoria"] = publicaciones_por_autoria(
-        investigadores, publicaciones)
+        investigadores, publicaciones
+    )
     result["citas_publicaciones"] = citas_publicaciones(
-        publicaciones, investigadores, año_inicio, año_fin)
-    result["distribucion_publicaciones"] = distribucion_publicaciones(
-        publicaciones)
+        publicaciones, investigadores, año_inicio, año_fin
+    )
+    result["distribucion_publicaciones"] = distribucion_publicaciones(publicaciones)
 
     return result
 
@@ -47,39 +48,49 @@ def nombres_fuentes(fuentes):
         db = BaseDatos()
 
         if tipo_fuente == "departamento":
-            _query = query.format(**{
-                "columna": "nombre",
-                "tabla": "i_departamento",
-                "condicion": f"idDepartamento = '{valor_fuente}'"
-            })
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_departamento",
+                    "condicion": f"idDepartamento = '{valor_fuente}'",
+                }
+            )
 
         if tipo_fuente == "grupo":
-            _query = query.format(**{
-                "columna": "nombre",
-                "tabla": "i_grupo",
-                "condicion": f"idGrupo = '{valor_fuente}'"
-            })
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_grupo",
+                    "condicion": f"idGrupo = '{valor_fuente}'",
+                }
+            )
 
         if tipo_fuente == "instituto":
-            _query = query.format(**{
-                "columna": "nombre",
-                "tabla": "i_instituto",
-                "condicion": f"idInstituto = '{valor_fuente}'"
-            })
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_instituto",
+                    "condicion": f"idInstituto = '{valor_fuente}'",
+                }
+            )
 
         if tipo_fuente == "investigadores":
-            _query = query.format(**{
-                "columna": "CONCAT(apellidos, ', ', nombre)",
-                "tabla": "i_investigador",
-                "condicion": f"idInvestigador IN ({(',').join(valor_fuente)})"
-            })
+            _query = query.format(
+                **{
+                    "columna": "CONCAT(apellidos, ', ', nombre)",
+                    "tabla": "i_investigador",
+                    "condicion": f"idInvestigador IN ({(',').join(valor_fuente)})",
+                }
+            )
 
         if tipo_fuente == "centro":
-            _query = query.format(**{
-                "columna": "nombre",
-                "tabla": "i_centro",
-                "condicion": f"idCentro = '{valor_fuente}'"
-            })
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_centro",
+                    "condicion": f"idCentro = '{valor_fuente}'",
+                }
+            )
 
         datos = db.ejecutarConsulta(_query)
 
@@ -111,8 +122,7 @@ def investigadores_por_rama(investigadores):
     result = db.ejecutarConsulta(query)
 
     result = replace_none_values(result)
-    result = dict_from_table(
-        data=result, selectable_column="id")
+    result = dict_from_table(data=result, selectable_column="id")
     return result
 
 
@@ -133,8 +143,7 @@ def investigadores_por_categoria(investigadores):
     result = db.ejecutarConsulta(query)
 
     result = replace_none_values(result)
-    result = dict_from_table(
-        data=result, selectable_column="id")
+    result = dict_from_table(data=result, selectable_column="id")
     return result
 
 
@@ -153,8 +162,7 @@ def publicaciones_por_año(publicaciones):
     result = db.ejecutarConsulta(query)
 
     result = replace_none_values(result)
-    result = dict_from_table(
-        data=result, selectable_column="Año")
+    result = dict_from_table(data=result, selectable_column="Año")
     return result
 
 
@@ -173,8 +181,7 @@ def publicaciones_por_tipo(publicaciones):
     result = db.ejecutarConsulta(query)
 
     result = replace_none_values(result)
-    result = dict_from_table(
-        data=result, selectable_column="Tipo")
+    result = dict_from_table(data=result, selectable_column="Tipo")
     return result
 
 
@@ -249,33 +256,25 @@ def citas_publicaciones(publicaciones, investigadores, año_inicio, año_fin):
     db = BaseDatos()
 
     # Obtener datos de scopus y WOS
-    datos_scopus = db.ejecutarConsulta(
-        query.replace("DB_PLACEHOLDER", "scopus"))
-    datos_wos = db.ejecutarConsulta(
-        query.replace("DB_PLACEHOLDER", "wos"))
+    datos_scopus = db.ejecutarConsulta(query.replace("DB_PLACEHOLDER", "scopus"))
+    datos_wos = db.ejecutarConsulta(query.replace("DB_PLACEHOLDER", "wos"))
 
     # Diccionario plantilla para almacenar las métricas de cada base de datos
     metricas = {
         "cantidad_publicaciones": 0,
         "citas": 0,
         "media_citas": 0,
-        "indice_h": 0
+        "indice_h": 0,
     }
     grupos = {
         "publicaciones": copy.deepcopy(metricas),
         "publicaciones_autoria_grupal": copy.deepcopy(metricas),
     }
-    bds_metricas = {
-        "scopus":
-            copy.deepcopy(grupos),
-        "wos":
-            copy.deepcopy(grupos)
-    }
+    bds_metricas = {"scopus": copy.deepcopy(grupos), "wos": copy.deepcopy(grupos)}
 
     # Diccionario resultado
     result = {
-        "Total":
-            copy.deepcopy(bds_metricas),
+        "Total": copy.deepcopy(bds_metricas),
     }
 
     # Al diccionario resultado, añadimos una entrada por cada año
@@ -289,9 +288,15 @@ def citas_publicaciones(publicaciones, investigadores, año_inicio, año_fin):
         indices_tabla = list_index_map(datos[0])
         for publicacion in datos[1:]:
             año = int(publicacion[indices_tabla["año"]])
-            autoria_grupal_exclusiva = publicacion[indices_tabla["autoria_grupal_exclusiva"]]
+            autoria_grupal_exclusiva = publicacion[
+                indices_tabla["autoria_grupal_exclusiva"]
+            ]
             # Calculamos donde introducir el resultado en base a si es o no autoría grupal exclusiva
-            aut_gr_ex = "publicaciones" if autoria_grupal_exclusiva == "No" else "publicaciones_autoria_grupal"
+            aut_gr_ex = (
+                "publicaciones"
+                if autoria_grupal_exclusiva == "No"
+                else "publicaciones_autoria_grupal"
+            )
             citas = publicacion[indices_tabla["citas"]]
             # Se tiene en cuenta si tiene o no identificador para contar o no la publicación
             tiene_identificador = publicacion[indices_tabla["tiene_identificador"]]
@@ -315,10 +320,14 @@ def citas_publicaciones(publicaciones, investigadores, año_inicio, año_fin):
                     datos_año["indice_h"] += 1
 
                 # Actualizar media
-                datos_total["media_citas"] = str(round(datos_total["citas"] /
-                                                       datos_total["cantidad_publicaciones"], 2)).replace(".", ",")
-                datos_año["media_citas"] = str(round(datos_año["citas"] /
-                                                     datos_año["cantidad_publicaciones"], 2)).replace(".", ",")
+                datos_total["media_citas"] = str(
+                    round(
+                        datos_total["citas"] / datos_total["cantidad_publicaciones"], 2
+                    )
+                ).replace(".", ",")
+                datos_año["media_citas"] = str(
+                    round(datos_año["citas"] / datos_año["cantidad_publicaciones"], 2)
+                ).replace(".", ",")
 
     rellenar_resultados(result, datos_scopus, "scopus")
     rellenar_resultados(result, datos_wos, "wos")
@@ -345,20 +354,29 @@ def distribucion_publicaciones(publicaciones):
 
     # Diccionarios plantilla de cuartiles y deciles para el resultado
     atributos_metrica = {"valor": 0, "porcentaje": 0}
-    dict_cuartiles = {"incluidas": {f"Q{i}": copy.deepcopy(atributos_metrica) for i in range(1, 4 + 1)} |
-                      {"total": 0},
-                      "no_incluidas": 0}
-    dict_deciles = {"incluidas": {f"D{i}": copy.deepcopy(atributos_metrica) for i in range(1, 10 + 1)} |
-                    {"total": 0},
-                    "no_incluidas": 0}
+    dict_cuartiles = {
+        "incluidas": {
+            f"Q{i}": copy.deepcopy(atributos_metrica) for i in range(1, 4 + 1)
+        }
+        | {"total": 0},
+        "no_incluidas": 0,
+    }
+    dict_deciles = {
+        "incluidas": {
+            f"D{i}": copy.deepcopy(atributos_metrica) for i in range(1, 10 + 1)
+        }
+        | {"total": 0},
+        "no_incluidas": 0,
+    }
 
-    dict_metricas = {"cuartiles": copy.deepcopy(dict_cuartiles),
-                     "deciles": copy.deepcopy(dict_deciles), }
+    dict_metricas = {
+        "cuartiles": copy.deepcopy(dict_cuartiles),
+        "deciles": copy.deepcopy(dict_deciles),
+    }
 
     lista_metricas = ("JIF", "SJR")
 
-    result = {metrica: copy.deepcopy(dict_metricas)
-              for metrica in lista_metricas}
+    result = {metrica: copy.deepcopy(dict_metricas) for metrica in lista_metricas}
 
     # Rellenar la tabla de resultados
 
@@ -388,15 +406,19 @@ def distribucion_publicaciones(publicaciones):
             }
 
             if valor:
-                entrada = result[dato_a_clave[db_metrica]
-                                 ][dato_a_clave[tipo_metrica]]["incluidas"]
+                entrada = result[dato_a_clave[db_metrica]][dato_a_clave[tipo_metrica]][
+                    "incluidas"
+                ]
                 entrada[valor]["valor"] += 1
                 entrada["total"] += 1
-                entrada[valor]["porcentaje"] = (str(round(
-                    (entrada[valor]["valor"] / entrada["total"]) * 100, 2)) + "%").replace(".", ",")
+                entrada[valor]["porcentaje"] = (
+                    str(round((entrada[valor]["valor"] / entrada["total"]) * 100, 2))
+                    + "%"
+                ).replace(".", ",")
 
             else:
-                result[dato_a_clave[db_metrica]
-                       ][dato_a_clave[tipo_metrica]]["no_incluidas"] += 1
+                result[dato_a_clave[db_metrica]][dato_a_clave[tipo_metrica]][
+                    "no_incluidas"
+                ] += 1
 
     return result

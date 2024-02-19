@@ -44,7 +44,8 @@ dict_plantilla_excel = {
         "Cód. Scopus": {},
         "Citas en Scopus": {},
         "Cód. Dialnet": {},
-        "Citas en Dialnet": {}},
+        "Citas en Dialnet": {},
+    },
     "JIF": {
         "URL Prisma": {},
         "Año de Publicación": {},
@@ -71,7 +72,8 @@ dict_plantilla_excel = {
         "Mejor Decil JIF-SSCI": {},
         "Categorías Mejor Decil JIF-SSCI": {},
         "Mejor Tercil JIF-SSCI": {},
-        "Categorías Mejor Tercil JIF-SSCI": {}},
+        "Categorías Mejor Tercil JIF-SSCI": {},
+    },
     "SJR": {
         "URL Prisma": {},
         "Año de Publicación": {},
@@ -91,7 +93,8 @@ dict_plantilla_excel = {
         "Mejor Decil SJR": {},
         "Categorías Mejor Decil SJR": {},
         "Mejor Tercil SJR": {},
-        "Categorías Mejor Tercil SJR": {}},
+        "Categorías Mejor Tercil SJR": {},
+    },
     "Dialnet": {
         "URL Prisma": {},
         "Año de Publicación": {},
@@ -110,7 +113,7 @@ dict_plantilla_excel = {
         "Mejor Cuartil IDR": {},
         "Categorías Mejor Cuartil IDR": {},
         "Mejor Percentil IDR": {},
-        "Categorías Mejor Percentil IDR": {}
+        "Categorías Mejor Percentil IDR": {},
     },
     "CiteScore": {
         "URL Prisma": {},
@@ -131,7 +134,8 @@ dict_plantilla_excel = {
         "Mejor Decil CiteScore": {},
         "Categorías Mejor Decil CiteScore": {},
         "Mejor Tercil CiteScore": {},
-        "Categorías Mejor Tercil CiteScore": {}},
+        "Categorías Mejor Tercil CiteScore": {},
+    },
 }
 
 

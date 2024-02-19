@@ -1,14 +1,7 @@
 from db.conexion import BaseDatos
 import fnmatch
 
-route_blacklist = [
-    "/",
-    "/swagger*",
-    "/auth*",
-    "/favicon.ico"
-    "/usuario*"
-
-]
+route_blacklist = ["/", "/swagger*", "/auth*", "/favicon.ico" "/usuario*"]
 
 
 def log_request(route, args, response_code, user):
@@ -21,7 +14,9 @@ def log_request(route, args, response_code, user):
         return None
 
     db = BaseDatos(database="api")
-    query = "INSERT INTO logs (route, args, response_code, user) VALUES (%s, %s, %s, %s)"
+    query = (
+        "INSERT INTO logs (route, args, response_code, user) VALUES (%s, %s, %s, %s)"
+    )
     params = [route, args, response_code, user]
 
     db.ejecutarConsulta(query, params)
