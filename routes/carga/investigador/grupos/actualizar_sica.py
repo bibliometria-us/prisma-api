@@ -1,3 +1,8 @@
+from models.condition import Condition
+from models.grupo import Grupo
+from models.investigador import Investigador
+from models.linea_investigacion import LineaInvestigacion
+from models.palabra_clave import PalabraClave
 from routes.carga.investigador.grupos.config import tablas
 from flask import request
 from db.conexion import BaseDatos
@@ -12,7 +17,6 @@ logger = get_task_logger(__name__)
 db = BaseDatos(database=None)
 
 
-@shared_task(queue="cargas", name="actualizar_tabla_sica", ignore_result=True)
 def actualizar_tabla_sica(file_path: str):
 
     table_name = file_path.split("/")[-1].split(".")[0].lower()
@@ -35,11 +39,11 @@ def actualizar_tabla_sica(file_path: str):
     return result
 
 
-@shared_task(queue="cargas", name="actualizar_grupos_sica", ignore_result=True)
-def actualizar_grupos_sica(self):
+def actualizar_grupos_sica():
 
-    db = BaseDatos(database=None)
+    db = BaseDatos(database=None, keep_connection_alive=True)
 
+    # Consulta de grupos a cargar
     query_lista_grupos = f"""
     SELECT CONCAT(MIN(g.RAMA), '-', MIN(g.CODIGO)) as idGrupo,
             MIN(g.NOMBRE) as nombre,
@@ -47,163 +51,193 @@ def actualizar_grupos_sica(self):
             MIN(g.RAMA) as rama,
             MIN(g.CODIGO) as codigo,
             MIN(i.ENTIDAD) as institucion,
-            MIN(g.ESTADO) as estado
+            MIN(g.ESTADO) as estado,
+            inv.idInvestigador as idInvestigador,
+            MIN(ig.ROL) as rol
     FROM sica2.t_grupos g
     LEFT JOIN sica2.t_instituciones i ON i.ID_ENTIDAD = g.ID_ENTIDAD
-    GROUP BY g.ID_GRUPO;
-    """
-    query_lista_investigadores = f"""
-    SELECT i.idInvestigador, i.idGrupo, CONCAT(i.nombre, " ", i.apellidos) as nombre FROM prisma.i_investigador i
+    LEFT JOIN (
+        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MAX(ROL) as ROL FROM sica2.t_investigadores_grupo igp
+        WHERE STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y') = (SELECT MAX(STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y')) FROM sica2.t_investigadores_grupo ig2 WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL
+        AND (STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') IS NULL OR STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') < now()))
+        GROUP BY ID_PERSONAL
+        ) ig ON ig.ID_GRUPO = g.ID_GRUPO
+    LEFT JOIN sica2.t_investigadores inv_s ON inv_s.ID_PERSONAL = ig.ID_PERSONAL
+    JOIN prisma.i_investigador inv ON inv.docuIden = inv_s.NUMERO_DOCUMENTO
+    GROUP BY inv.idInvestigador, g.ID_GRUPO;
     """
 
     lista_grupos = table_to_pandas(db.ejecutarConsulta(query_lista_grupos))
-    lista_investigadores = table_to_pandas(
-        db.ejecutarConsulta(query_lista_investigadores)
-    )
 
     tasks_actualizar_grupo = []
     for index, grupo in lista_grupos.iterrows():
         tasks_actualizar_grupo.append(
-            current_app.tasks["actualizar_grupo_sica"].s(grupo.to_dict())
+            current_app.tasks["cargar_grupo_sica"].s(grupo.to_dict())
         )
-
-    tasks_actualizar_investigador = []
-    for index, investigador in lista_investigadores.iterrows():
-        tasks_actualizar_investigador.append(
-            current_app.tasks["actualizar_grupo_investigador"].s(investigador.to_dict())
-        )
-
     group(tasks_actualizar_grupo).apply_async()
-    group(tasks_actualizar_investigador).apply_async()
+
+    # Consulta de palabras clave a cargar y grupos asociados
+    query_lista_palabras_clave = """
+    SELECT gp.idGrupo as idGrupo,
+            PALABRA_CLAVE as palabra_clave,
+            DATE_FORMAT(MAX(STR_TO_DATE(g.FECHA_INICIO, "%d/%m/%Y")), '%Y-%m-%d') as fecha
+    FROM sica2.`t_palabrasclave` pc
+
+    LEFT JOIN sica2.t_grupos g ON g.ID_GRUPO = pc.ID_GRUPO
+    LEFT JOIN prisma.i_grupo gp ON CONCAT(g.RAMA, "-", g.CODIGO) = gp.idGrupo
+
+    GROUP BY pc.PALABRA_CLAVE, pc.ID_GRUPO
+
+    HAVING MAX(
+        CASE WHEN STR_TO_DATE(pc.FECHA_FIN, '%d/%m/%Y') = "0000-00-00" THEN "9999-01-01"
+        ELSE STR_TO_DATE(pc.FECHA_FIN, '%d/%m/%Y') END
+    ) > CURRENT_DATE
+    """
+
+    lista_palabras_clave = table_to_pandas(
+        db.ejecutarConsulta(query_lista_palabras_clave)
+    )
+
+    tasks_palabras_clave = []
+
+    for index, palabra_clave in lista_palabras_clave.iterrows():
+        tasks_palabras_clave.append(
+            current_app.tasks["cargar_palabra_clave"].s(palabra_clave.to_dict())
+        )
+
+    group(tasks_palabras_clave).apply_async()
+
+    query_lista_lineas_investigacion = """
+    SELECT gp.idGrupo as idGrupo,
+            LINEA_INVESTIGACION as linea_investigacion,
+            DATE_FORMAT(MAX(STR_TO_DATE(g.FECHA_INICIO, "%d/%m/%Y")), '%Y-%m-%d') as fecha
+    FROM sica2.`t_lineasinvestigacion` li
+
+    LEFT JOIN sica2.t_grupos g ON g.ID_GRUPO = li.ID_GRUPO
+    LEFT JOIN prisma.i_grupo gp ON CONCAT(g.RAMA, "-", g.CODIGO) = gp.idGrupo
+
+    GROUP BY li.LINEA_INVESTIGACION, li.ID_GRUPO
+
+    HAVING MAX(
+        CASE WHEN STR_TO_DATE(li.FECHA_FIN, '%d/%m/%Y') = "0000-00-00" THEN "9999-01-01"
+        ELSE STR_TO_DATE(li.FECHA_FIN, '%d/%m/%Y') END
+    ) > CURRENT_DATE
+    """
+
+    lista_lineas_investigacion = table_to_pandas(
+        db.ejecutarConsulta(query_lista_lineas_investigacion)
+    )
+
+    tasks_lineas_investigacion = []
+
+    for index, linea_investigacion in lista_lineas_investigacion.iterrows():
+        tasks_lineas_investigacion.append(
+            current_app.tasks["cargar_linea_investigacion"].s(
+                linea_investigacion.to_dict()
+            )
+        )
+
+    group(tasks_lineas_investigacion).apply_async()
     current_app.tasks["finalizar_carga_sica"].apply_async()
 
-
-@shared_task(queue="cargas", name="actualizar_grupo_sica", ignore_result=True)
-def actualizar_grupo_sica(grupo: dict):
-    id_grupo = grupo["idGrupo"]
-    query_actualizar_grupo = f"""REPLACE INTO prisma.i_grupo VALUES (
-                                '{grupo.get("idGrupo")}',
-                                '{grupo.get("nombre")}',
-                                '{grupo.get("acronimo")}',
-                                '{grupo.get("rama")}',
-                                '{grupo.get("codigo")}',
-                                '{grupo.get("institucion")}',
-                                '{grupo.get("estado")}'
-                                )
-                                """
-
-    antiguo_grupo = buscar_grupo(id_grupo)
-
-    log = None
-    nombre_grupo = f"{grupo.get('nombre')} ({grupo.get('idGrupo')})"
-
-    db.ejecutarConsulta(query_actualizar_grupo)
-
-    if len(antiguo_grupo) == 1:
-        log = f"Grupo insertado: {nombre_grupo}"
-        return log
-
-    pandas_antiguo_grupo = table_to_pandas(antiguo_grupo)
-    dict_antiguo_grupo = pandas_antiguo_grupo.to_dict("index")[0]
-
-    if (
-        dict_antiguo_grupo.get("estado") == "Válido"
-        and grupo.get("estado") == "No Válido"
-    ):
-        log = f"Grupo {nombre_grupo} actualizado como no válido"
-
-    if (
-        dict_antiguo_grupo.get("estado") == "No Válido"
-        and grupo.get("estado") == "Válido"
-    ):
-        log = f"Grupo {nombre_grupo} actualizado como válido"
-
-    return log
+    db.closeConnection()
 
 
-def buscar_grupo(id_grupo):
-    query_buscar_grupo = f"SELECT * FROM prisma.i_grupo WHERE idGrupo = '{id_grupo}'"
+@shared_task(
+    queue="cargas", name="cargar_grupo_sica", ignore_result=True, acks_late=True
+)
+def cargar_grupo_sica(datos_grupo: dict):
 
-    db = BaseDatos(database=None)
-    return db.ejecutarConsulta(query_buscar_grupo)
+    grupo = Grupo()
+    grupo.set_attributes(
+        {
+            "idGrupo": datos_grupo.get("idGrupo"),
+            "nombre": datos_grupo.get("nombre"),
+            "acronimo": datos_grupo.get("acronimo"),
+            "rama": datos_grupo.get("rama"),
+            "codigo": datos_grupo.get("codigo"),
+            "institucion": datos_grupo.get("institucion"),
+            "estado": datos_grupo.get("estado"),
+        }
+    )
+    grupo.update()
 
+    id_investigador = datos_grupo.get("idInvestigador")
+    rol = datos_grupo.get("rol")
 
-def actualizar_grupo(grupo: dict):
-    query_actualizar_grupo = f"""REPLACE INTO prisma.i_grupo VALUES (
-                            '{grupo.get("idGrupo")}',
-                            '{grupo.get("nombre")}',
-                            '{grupo.get("acronimo")}',
-                            '{grupo.get("rama")}',
-                            '{grupo.get("codigo")}',
-                            '{grupo.get("institucion")}',
-                            '{grupo.get("estado")}'
-                            )
-                            """
+    if id_investigador:
 
-
-@shared_task(queue="cargas", name="actualizar_grupo_investigador", ignore_result=True)
-def actualizar_grupo_investigador(investigador):
-
-    nuevo_grupo_investigador = buscar_grupo_investigador(investigador)
-
-    antiguo_grupo = investigador["idGrupo"]
-    nuevo_grupo = nuevo_grupo_investigador["idGrupo"]
-    rol = nuevo_grupo_investigador["rol"]
-
-    log = None
-
-    if antiguo_grupo != nuevo_grupo:
-
-        if nuevo_grupo == "0":
-            log = f"{investigador['nombre']} ({investigador['idInvestigador']}) ha abandonado el grupo {antiguo_grupo}"
-        if antiguo_grupo == "0":
-            log = f"{investigador['nombre']} ({investigador['idInvestigador']}) es nuevo miembro del grupo {nuevo_grupo} con rol {rol}"
+        if datos_grupo.get("idGrupo"):
+            investigador = Investigador()
+            investigador.set_attribute("idInvestigador", int(id_investigador))
+            investigador.get()
+            investigador.actualizar_grupo(datos_grupo.get("idGrupo"), rol)
         else:
-            log = f"{investigador['nombre']} ({investigador['idInvestigador']}) ha cambiado su grupo de {antiguo_grupo} a {nuevo_grupo} con rol {rol}"
-
-        actualizar_miembro_grupo(investigador["idInvestigador"], nuevo_grupo, rol)
-
-    return log
+            investigador.eliminar_grupo()
 
 
-def buscar_grupo_investigador(investigador):
-    query_buscar_grupo = """
-                SELECT
-                CASE WHEN pg.idGrupo IS NOT NULL THEN pg.idGrupo ELSE '0' END as idGrupo,
-                ig.ROL as rol
-                FROM (SELECT * FROM prisma.i_investigador) i
-                LEFT JOIN sica2.t_investigadores si ON si.NUMERO_DOCUMENTO = i.docuIden
-                LEFT JOIN (SELECT MAX(ID_GRUPO) ID_GRUPO, ID_PERSONAL, FECHA_FIN, TIPO_ADSCRIPCION FROM sica2.t_investigadores_grupo
-                    WHERE FECHA_FIN = ''
-                    GROUP BY ID_PERSONAL ) ig ON ig.ID_PERSONAL = si.ID_PERSONAL
-                LEFT JOIN sica2.t_grupos g ON g.ID_GRUPO = ig.ID_GRUPO
-                LEFT JOIN prisma.i_grupo pg ON pg.idGrupo =  CONCAT(g.RAMA, '-', g.CODIGO)
-                WHERE i.idInvestigador = %s
-        """
-    params = [investigador["idInvestigador"]]
+@shared_task(
+    queue="cargas", name="cargar_palabra_clave", ignore_result=True, acks_late=True
+)
+def cargar_palabra_clave(datos_palabras_clave: dict):
+    palabra_clave = PalabraClave()
+    palabra_clave.set_attribute(
+        "nombre", datos_palabras_clave.get("palabra_clave").strip()
+    )
+    conditions = [
+        Condition(query=f"nombre = '{palabra_clave.get_attribute_value('nombre')}'")
+    ]
+    palabra_clave.get(conditions=conditions)
 
-    db = BaseDatos(database=None)
+    if not palabra_clave.get_attribute_value("idPalabraClave"):
+        palabra_clave.create(attribute_filter=["idPalabraClave"])
 
-    result = table_to_pandas(db.ejecutarConsulta(query_buscar_grupo, params)).to_dict(
-        "index"
-    )[0]
+    palabra_clave.get(conditions=conditions)
 
-    return result
-
-
-def actualizar_miembro_grupo(investigador, nuevo_grupo, rol):
-    query_actualizar_grupo = """REPLACE INTO prisma.i_grupo_investigador (idInvestigador, idGrupo, rol) VALUES
-                            (%s, %s, %s);
-                            """
-
-    params = [investigador, nuevo_grupo, rol]
-
-    db = BaseDatos(database=None)
-
-    return db.ejecutarConsulta(query_actualizar_grupo, params)
+    grupo = Grupo()
+    grupo.set_attribute("idGrupo", datos_palabras_clave.get("idGrupo"))
+    grupo.get()
+    grupo.add_palabra_clave(
+        palabra_clave.get_attribute_value("idPalabraClave"),
+        datos_palabras_clave.get("fecha"),
+    )
 
 
-@shared_task(queue="cargas", name="finalizar_carga_sica", ignore_result=True)
+@shared_task(
+    queue="cargas",
+    name="cargar_linea_investigacion",
+    ignore_result=True,
+    acks_late=True,
+)
+def cargar_linea_investigacion(datos_linea_investigacion: dict):
+    linea_investigacion = LineaInvestigacion()
+    linea_investigacion.set_attribute(
+        "nombre", datos_linea_investigacion.get("linea_investigacion").strip()
+    )
+    conditions = [
+        Condition(
+            query=f"nombre = '{linea_investigacion.get_attribute_value('nombre')}'"
+        )
+    ]
+    linea_investigacion.get(conditions=conditions)
+
+    if not linea_investigacion.get_attribute_value("idLineaInvestigacion"):
+        linea_investigacion.create(attribute_filter=["idLineaInvestigacion"])
+
+    linea_investigacion.get(conditions=conditions)
+
+    grupo = Grupo()
+    grupo.set_attribute("idGrupo", datos_linea_investigacion.get("idGrupo"))
+    grupo.get()
+    grupo.add_linea_investigacion(
+        linea_investigacion.get_attribute_value("idLineaInvestigacion"),
+        datos_linea_investigacion.get("fecha"),
+    )
+
+
+@shared_task(
+    queue="cargas", name="finalizar_carga_sica", ignore_result=True, acks_late=True
+)
 def finalizar_carga_sica():
     db = BaseDatos(database=None)
     actualizar_fecha = "UPDATE prisma.a_configuracion SET valor = DATE_FORMAT(NOW(), '%d/%m/%Y') WHERE variable = 'ACTUALIZACION_GRUPOS'"
