@@ -3,6 +3,8 @@ import io
 import json
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
+
+import numpy as np
 from utils.timing import func_timer as timer
 import openpyxl
 from openpyxl.styles import Font, Alignment
@@ -164,7 +166,7 @@ def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
 
 
 def table_to_pandas(table: list):
-    result = pandas.DataFrame(table[1:], columns=table[0])
+    result = pandas.DataFrame(table[1:], columns=table[0]).replace({np.nan: None})
     table.clear()
 
     return result

@@ -12,7 +12,7 @@ conditions = [
 # Mapea el tipo de fuente a la columna correspondiente en la base de datos
 tipo_fuente_to_column = {
     "departamento": "i.idDepartamento",
-    "grupo": "i.idGrupo",
+    "grupo": "gi.idGrupo",
     "instituto": "mi.idInstituto",
     "investigadores": "i.idInvestigador",
     "centro": "i.idCentro",
@@ -20,7 +20,8 @@ tipo_fuente_to_column = {
 
 # Diccionario para añadir joins si el tipo de fuente lo requiere
 tipo_fuente_to_joins = {
-    "instituto": "LEFT JOIN i_miembro_instituto mi ON mi.idInvestigador = i.idInvestigador"
+    "instituto": "LEFT JOIN i_miembro_instituto mi ON mi.idInvestigador = i.idInvestigador",
+    "grupo": "LEFT JOIN i_grupo_investigador gi ON gi.idInvestigador = i.idInvestigador",
 }
 
 # Almacena si el dato es int o no para introducirlo en la consultra entre comillas o no
