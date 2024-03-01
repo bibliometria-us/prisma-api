@@ -37,10 +37,12 @@ class CargaGrupos(Resource):
 )
 class CargaWosJournals(Resource):
     def get(self):
-        if not es_admin():
-            return {"message": "No autorizado"}, 401
 
         args = request.args
+        api_key = args.get("api_key")
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+
         current_year = datetime.now().year
 
         fuentes = args.get("fuentes", "todas")
@@ -61,8 +63,6 @@ class CargaColectivos(Resource):
             return {"message": "No autorizado"}, 401
         if "files[]" not in request.files:
             return {"error": "No se han encontrado archivos en la petición"}, 400
-
-        args = request.args
 
         files = request.files.getlist("files[]")
         tipo = args.get("tipo", None)

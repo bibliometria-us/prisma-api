@@ -3,19 +3,32 @@ from db.conexion import BaseDatos
 from flask import session
 
 
-def es_admin():
+def tiene_rol(rol, api_key=None):
     db = BaseDatos("api")
 
-    usuario = session["samlUserdata"]["mail"][0].split("@")[0]
-    query = (
-        "SELECT EXISTS (SELECT 1 FROM permisos WHERE usuario = %s AND rol = 'admin')"
-    )
+    if not api_key:
+        usuario = session["samlUserdata"]["mail"][0].split("@")[0]
+    else:
+        query_usuario = "SELECT uvus FROM api_key a WHERE a.api_key = %(api_key)s"
+        params_usuario = {"api_key": api_key}
+        result_query_usuario = db.ejecutarConsulta(query_usuario, params_usuario)
 
-    params = [usuario]
+        if len(result_query_usuario) > 1:
+            usuario = result_query_usuario[1][0]
+        else:
+            return False
 
+    query = """SELECT EXISTS 
+    (SELECT 1 FROM permisos WHERE usuario = %(usuario)s AND rol = '%(rol)s')"""
+
+    params = {"usuario": usuario, "rol": rol}
     result = db.ejecutarConsulta(query, params)[1][0]
 
     return result != 0
+
+
+def es_admin(api_key):
+    return tiene_rol("admin", api_key=api_key)
 
 
 def pertenece_a_conjunto(tipo, dato):
