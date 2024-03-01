@@ -53,18 +53,23 @@ def actualizar_grupos_sica():
             MIN(i.ENTIDAD) as institucion,
             MIN(g.ESTADO) as estado,
             inv.idInvestigador as idInvestigador,
-            MIN(ig.ROL) as rol
-    FROM sica2.t_grupos g
-    LEFT JOIN sica2.t_instituciones i ON i.ID_ENTIDAD = g.ID_ENTIDAD
+            MIN(ig.ROL) as rol,
+            ig.FECHA_FIN
+    FROM prisma.i_investigador inv
+    LEFT JOIN sica2.t_investigadores inv_s ON inv_s.NUMERO_DOCUMENTO = inv.docuIden
+ 
     LEFT JOIN (
-        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MAX(ROL) as ROL FROM sica2.t_investigadores_grupo igp
-        WHERE STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y') = (SELECT MAX(STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y')) FROM sica2.t_investigadores_grupo ig2 WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL
-        AND (STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') IS NULL OR STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') < now()))
+        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MAX(ROL) as ROL, MAX(FECHA_FIN) as FECHA_FIN FROM sica2.t_investigadores_grupo igp
+        WHERE STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y') = (SELECT MAX(STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y')) FROM sica2.t_investigadores_grupo ig2 			
+                                                WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL)
+        AND (FECHA_FIN IS NULL OR FECHA_FIN = "" OR STR_TO_DATE(FECHA_FIN, '%d/%m/%Y') > now())
+            
         GROUP BY ID_PERSONAL
-        ) ig ON ig.ID_GRUPO = g.ID_GRUPO
-    LEFT JOIN sica2.t_investigadores inv_s ON inv_s.ID_PERSONAL = ig.ID_PERSONAL
-    JOIN prisma.i_investigador inv ON inv.docuIden = inv_s.NUMERO_DOCUMENTO
-    GROUP BY inv.idInvestigador, g.ID_GRUPO;
+        ) ig ON ig.ID_PERSONAL = inv_s.ID_PERSONAL
+ 
+    LEFT JOIN sica2.t_grupos g ON g.ID_GRUPO = ig.ID_GRUPO
+    LEFT JOIN sica2.t_instituciones i ON i.ID_ENTIDAD = g.ID_ENTIDAD
+    GROUP BY inv.idInvestigador;
     """
 
     lista_grupos = table_to_pandas(db.ejecutarConsulta(query_lista_grupos))
@@ -166,10 +171,9 @@ def cargar_grupo_sica(datos_grupo: dict):
     rol = datos_grupo.get("rol")
 
     if id_investigador:
-
+        investigador = Investigador()
+        investigador.set_attribute("idInvestigador", int(id_investigador))
         if datos_grupo.get("idGrupo"):
-            investigador = Investigador()
-            investigador.set_attribute("idInvestigador", int(id_investigador))
             investigador.get()
             investigador.actualizar_grupo(datos_grupo.get("idGrupo"), rol)
         else:

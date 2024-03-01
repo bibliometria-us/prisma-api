@@ -24,9 +24,6 @@ class Investigador(Model):
             Attribute(column_name="fechaContratacion"),
             Attribute(column_name="idDepartamento"),
             Attribute(column_name="idCentro"),
-            Attribute(column_name="idUdExcelencia"),
-            Attribute(column_name="idCentroMixto"),
-            Attribute(column_name="idInstituto"),
             Attribute(column_name="nacionalidad"),
             Attribute(column_name="sexo"),
             Attribute(column_name="fechaNacimiento"),
@@ -80,6 +77,4 @@ class Investigador(Model):
         return None
 
     def eliminar_grupo(self) -> None:
-        query = f"""DELETE FROM i_grupo_investigador WHERE idInvestigador = {self.get_attribute_value("idInvestigador")}"""
-
-        self.db.ejecutarConsulta(query)
+        self.actualizar_grupo("0", "Miembro")
