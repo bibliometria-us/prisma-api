@@ -37,7 +37,7 @@ class BaseDatos:
         self.is_active = False
 
     def ejecutarConsulta(self, consulta: str, params: str = []):
-        if not self.is_active:
+        if not self.is_active or not self.autocommit:
             self.startConnection()
 
         try:
@@ -53,7 +53,8 @@ class BaseDatos:
             cursor.close()
             return str(e.args)
 
-        cursor.close()
+        if self.autocommit:
+            cursor.close()
         if not self.keep_connection_alive:
             self.closeConnection()
 
