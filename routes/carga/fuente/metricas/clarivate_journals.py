@@ -10,7 +10,7 @@ from utils.date import get_current_date
 def iniciar_carga(fuentes: str, año_inicio: int, año_fin: int) -> str:
     lista_fuentes = obtener_lista_de_fuentes(fuentes)
     tasks = []
-    current_date = get_current_date(format=True, format_str="%Y%m%d-%H%M%S")
+    current_date = get_current_date(format=True, format_str="%Y%m%d-%H%M%S-%f")
 
     for id_fuente in lista_fuentes:
         for año in range(año_inicio, año_fin + 1):
