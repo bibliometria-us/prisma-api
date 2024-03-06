@@ -174,7 +174,10 @@ class JournalsAPI(API):
                     year=metricas["year"],
                     edition=jif["edition"],
                     category=category,
-                    impact_factor=metricas["metrics"]["impactMetrics"].get("jif"),
+                    impact_factor=metricas["metrics"]["impactMetrics"].get("jif")
+                    or metricas["metrics"]["impactMetrics"].get(
+                        "jifWithoutSelfCitations"
+                    ),
                     rank=jif.get("rank"),
                     percentile=jif.get("jifPercentile"),
                     quartile=jif.get("quartile"),
