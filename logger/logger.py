@@ -21,7 +21,9 @@ class TaskLogger:
         self.logs = []
         self.has_errors = False
         self.base_path = f"{config.base_path}/{self.task_name}"
-        self.file_name = f"{self.base_path}/{self.date}/{self.date}.log"
+        self.file_name = (
+            f"{self.base_path}/{self.date[0:8]}/{self.date[9:]}/{self.date}.log"
+        )
         self.metadata = LoggerMetadata(self.task_name, self.date)
 
     def add_log(self, log: Log, close: bool = False):
@@ -55,7 +57,7 @@ class LoggerMetadata:
         self, task_name: str, date: str, template: dict = config.metadata_template
     ) -> None:
         self.date = date
-        self.path = f"{config.base_path}/{task_name}/{self.date}"
+        self.path = f"{config.base_path}/{task_name}/{self.date[0:8]}/{self.date[9:]}"
         self.template = template
         self.metadata = None
 
