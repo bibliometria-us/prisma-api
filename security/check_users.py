@@ -27,7 +27,7 @@ def tiene_rol(rol, api_key=None):
     return result != 0
 
 
-def es_admin(api_key):
+def es_admin(api_key=None):
     return tiene_rol("admin", api_key=api_key)
 
 
