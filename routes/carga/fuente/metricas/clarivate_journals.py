@@ -50,7 +50,7 @@ def obtener_lista_de_fuentes(fuentes: str) -> list:
 
 
 @shared_task(
-    queue="cargas",
+    queue="wosjournals",
     name="actualizar_metrica_wos_journals",
     ignore_result=True,
     acks_late=True,
