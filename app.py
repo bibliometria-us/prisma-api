@@ -3,7 +3,6 @@ from api_logging.sso_data import store_sso_data
 import config.local_config as local_config
 from api_logging.log_request import log_request
 from routes import (
-    investigador,
     publicacion,
     fuente,
     proyecto,
@@ -15,8 +14,10 @@ from routes import (
     resultado,
     usuario,
 )
+from routes.investigador.main import investigador_namespace
 from routes.informes.main import informe_namespace
 from routes.carga.main import carga_namespace
+from routes.colectivo.main import colectivo_namespace
 import os
 from flask import (
     Flask,
@@ -49,7 +50,7 @@ app.config.from_object("celery_config")
 api = Api(api_bp, version="1.0", title="Prisma API")
 logging.basicConfig(level=logging.DEBUG)
 
-api.add_namespace(investigador.investigador_namespace)
+api.add_namespace(investigador_namespace)
 api.add_namespace(publicacion.publicacion_namespace)
 api.add_namespace(fuente.fuente_namespace)
 api.add_namespace(proyecto.proyecto_namespace)
@@ -62,6 +63,7 @@ api.add_namespace(resultado.resultado_namespace)
 api.add_namespace(usuario.usuario_namespace)
 api.add_namespace(informe_namespace)
 api.add_namespace(carga_namespace)
+api.add_namespace(colectivo_namespace)
 
 celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)

@@ -1,6 +1,9 @@
 from models.attribute import Attribute
 from models.grupo import Grupo
 from models.model import Component, Model
+from models.colectivo.unidad_excelencia import UnidadExcelencia
+from models.colectivo.centro_mixto import CentroMixto
+from models.colectivo.instituto import Instituto
 
 
 class Investigador(Model):
@@ -12,6 +15,9 @@ class Investigador(Model):
         alias="investigador",
         primary_key="idInvestigador",
         grupo=Grupo(),
+        unidad_excelencia=UnidadExcelencia(),
+        centro_mixto=CentroMixto(),
+        instituto=Instituto(),
     ):
         attributes = [
             Attribute(column_name="idInvestigador"),
@@ -36,9 +42,31 @@ class Investigador(Model):
                 "grupo",
                 "get_grupo",
                 enabled=True,
-            )
+            ),
+            Component(
+                UnidadExcelencia,
+                "unidad_excelencia",
+                "get_unidad_excelencia",
+                enabled=True,
+            ),
+            Component(
+                CentroMixto,
+                "centro_mixto",
+                "get_centro_mixto",
+                enabled=True,
+            ),
+            Component(
+                Instituto,
+                "instituto",
+                "get_instituto",
+                enabled=True,
+            ),
         ]
         self.grupo = grupo
+        self.unidad_excelencia = unidad_excelencia
+        self.centro_mixto = centro_mixto
+        self.instituto = instituto
+
         super().__init__(
             db_name,
             table_name,
@@ -47,6 +75,8 @@ class Investigador(Model):
             attributes=attributes,
             components=components,
         )
+
+    # GRUPOS
 
     def get_grupo(self) -> Grupo:
         query = "SELECT MAX(idGrupo) FROM prisma.i_grupo_investigador WHERE idInvestigador = %(idInvestigador)s"
@@ -78,3 +108,63 @@ class Investigador(Model):
 
     def eliminar_grupo(self) -> None:
         self.actualizar_grupo("0", "Miembro")
+
+    # UNIDADES DE EXCELENCIA
+
+    def get_unidad_excelencia(self) -> UnidadExcelencia:
+        self.unidad_excelencia.get_colectivo_from_investigador(
+            self.get_primary_key().value
+        )
+
+        return self.unidad_excelencia
+
+    def update_unidad_excelencia(self, unidad_excelencia, rol) -> None:
+        self.unidad_excelencia.set_attribute("idUdExcelencia", unidad_excelencia)
+        self.unidad_excelencia.get()
+        self.unidad_excelencia.update_colectivo_from_investigador(
+            idInvestigador=self.get_primary_key().value, rol=rol
+        )
+
+    def delete_unidad_excelencia(self) -> None:
+        self.unidad_excelencia.delete_colectivo_from_investigador(
+            self.get_primary_key().value
+        )
+        self.unidad_excelencia = UnidadExcelencia()
+
+    # CENTROS MIXTOS
+
+    def get_centro_mixto(self) -> None:
+        self.centro_mixto.get_colectivo_from_investigador(self.get_primary_key().value)
+
+        return self.centro_mixto
+
+    def update_centro_mixto(self, centro_mixto, rol) -> None:
+        self.centro_mixto.set_attribute("idCentroMixto", centro_mixto)
+        self.centro_mixto.get()
+        self.centro_mixto.update_colectivo_from_investigador(
+            idInvestigador=self.get_primary_key().value, rol=rol
+        )
+
+    def delete_centro_mixto(self) -> None:
+        self.centro_mixto.delete_colectivo_from_investigador(
+            self.get_primary_key().value
+        )
+        self.centro_mixto = CentroMixto()
+
+    # CENTROS MIXTOS
+
+    def get_instituto(self) -> None:
+        self.instituto.get_colectivo_from_investigador(self.get_primary_key().value)
+
+        return self.instituto
+
+    def update_instituto(self, instituto, rol) -> None:
+        self.instituto.set_attribute("idInstituto", instituto)
+        self.instituto.get()
+        self.instituto.update_colectivo_from_investigador(
+            idInvestigador=self.get_primary_key().value, rol=rol
+        )
+
+    def delete_instituto(self) -> None:
+        self.instituto.delete_colectivo_from_investigador(self.get_primary_key().value)
+        self.instituto = Instituto()

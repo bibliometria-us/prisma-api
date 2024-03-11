@@ -17,14 +17,24 @@ class Model(ABC):
         components: list["Component"] = list(),
     ) -> None:
         self.db = BaseDatos(database=None)
-        self.metadata = Metadata(db_name, table_name, alias, primary_key)
+        self.metadata = Metadata(
+            db_name,
+            table_name,
+            alias,
+            primary_key,
+        )
         self.attribute_list = attributes
         self.attributes = self.index_attributes()
         self.component_list = components
         self.components: dict[str, Component] = {}
         self.load_components()
 
-    def get(self, conditions: list[Condition] = None, all: bool = False) -> None:
+    def get(
+        self,
+        conditions: list[Condition] = None,
+        all: bool = False,
+        logical_operator: str = "AND",
+    ) -> None:
         columns = ", ".join(
             f"{self.metadata.alias}.{attribute.column_name} as {attribute.display_name}"
             for attribute in self.get_visible_attributes()
@@ -40,13 +50,15 @@ class Model(ABC):
             params.append(primary_key.value)
         # TODO: Implementar lógica de condiciones
         if not all:
-            where = f" WHERE {' AND '.join((condition.generate_query() for condition in conditions))}"
+            where = f" WHERE {f' {logical_operator} '.join((condition.generate_query() for condition in conditions))}"
             query += where
 
         result = self.db.ejecutarConsulta(query, params)
 
-        if len(result) > 1:
+        if self.db.has_rows():
             self.store_data(result)
+        else:
+            self.clear_attributes()
 
         return None
 
@@ -102,6 +114,10 @@ class Model(ABC):
         query += where
 
         self.db.ejecutarConsulta(query, params)
+
+    def clear_attributes(self):
+        for key in self.attributes.keys():
+            self.set_attribute(key, None)
 
     def get_attribute_value(self, attribute_name) -> Any:
         return self.attributes[attribute_name].value
@@ -192,8 +208,10 @@ class Component:
         name: str,
         getter: str,
         enabled: bool = False,
+        tabla_intermedia: str = None,
     ) -> None:
         self.type = type
         self.name = name
         self.getter = getter
         self.enabled = enabled
+        self.tabla_intermedia = tabla_intermedia

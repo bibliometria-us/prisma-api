@@ -19,6 +19,8 @@ class BaseDatos:
         self.local_infile = local_infile
         self.autocommit = autocommit
         self.keep_connection_alive = keep_connection_alive
+        self.rowcount = 0
+        self.error = False
 
     def startConnection(self):
         self.connection = mysql.connector.connect(
@@ -31,6 +33,12 @@ class BaseDatos:
         )
 
         self.is_active = True
+
+    def is_succesful(self) -> bool:
+        return self.error == False
+
+    def has_rows(self) -> bool:
+        return self.is_succesful() and self.rowcount > 0
 
     def closeConnection(self):
         self.connection.close()
@@ -45,13 +53,17 @@ class BaseDatos:
             cursor.execute(consulta, params=params)
             column_names = cursor.column_names
             result = [column_names] + list(cursor.fetchall())
+            self.rowcount = cursor.rowcount
         except OperationalError as e:
             if self.keep_connection_alive:
                 self.startConnection()
                 self.ejecutarConsulta(consulta, params)
         except Exception as e:
+            self.error = True
             cursor.close()
             return str(e.args)
+
+        self.error == False
 
         if self.autocommit:
             cursor.close()

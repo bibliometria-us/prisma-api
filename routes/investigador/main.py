@@ -1,7 +1,9 @@
 from flask import request, jsonify, Response
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
+from routes.investigador.colectivos.carga import cargar_colectivos_investigadores
 from security.api_key import comprobar_api_key
+from security.check_users import es_admin
 from utils.timing import func_timer as timer
 import utils.format as format
 import utils.pages as pages
@@ -522,3 +524,26 @@ class ProgramasDoctoradoInvestigador(Resource):
             object_name="programa_doctorado",
             xml_root_name=None,
         )
+
+
+@investigador_namespace.route("/colectivos/carga")
+class ColectivosInvestigador(Resource):
+    @investigador_namespace.doc(doc=False)
+    def post(self):
+        if not es_admin():
+            return {"message": "No autorizado"}, 401
+        if "files[]" not in request.files:
+            return {"error": "No se han encontrado archivos en la petición"}, 400
+
+        files = request.files.getlist("files[]")
+
+        file = files[0]
+
+        data = format.flask_csv_to_matix(file)
+
+        try:
+            cargar_colectivos_investigadores(data)
+        except Exception as e:
+            return {"message": "error"}, 500
+
+        return {"message": "Carga finalizada correctamente"}, 200

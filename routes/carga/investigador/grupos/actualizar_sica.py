@@ -36,6 +36,7 @@ def actualizar_tabla_sica(file_path: str):
     params = [file_path]
     result = db.ejecutarConsulta(query, params)
     db.closeConnection()
+    os.remove(file_path)
     return result
 
 
@@ -61,8 +62,8 @@ def actualizar_grupos_sica():
     LEFT JOIN (
         SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MAX(ROL) as ROL, MAX(FECHA_FIN) as FECHA_FIN FROM sica2.t_investigadores_grupo igp
         WHERE STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y') = (SELECT MAX(STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y')) FROM sica2.t_investigadores_grupo ig2 			
-                                                WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL)
-        AND (FECHA_FIN IS NULL OR FECHA_FIN = "" OR STR_TO_DATE(FECHA_FIN, '%d/%m/%Y') > now())
+                                                WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL AND (ig2.FECHA_FIN IS NULL OR ig2.FECHA_FIN = "" OR STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') > now())
+        )
             
         GROUP BY ID_PERSONAL
         ) ig ON ig.ID_PERSONAL = inv_s.ID_PERSONAL
