@@ -3,11 +3,12 @@ Description=Servicio de Celery para Prisma
 After=network.target
 
 [Service]
-User=operador
+User=root
+Type=forking
 WorkingDirectory=/var/www/prisma-api
 Environment="PATH=/var/www/prisma-api/env/bin"
-ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery -A app.celery worker --loglevel=error --concurrency=1 -Q cargas -Q wosjournals --pool solo'
-Restart=always
+ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery multi start 2 -A app.celery --loglevel=error --concurrency=1 -Q:1 cargas -Q:2 wosjournals'
+ExecStop=/bin/bash -c '/var/www/prisma-api/env/bin/celery multi stop 2 -A app.celery --loglevel=error --concurrency=1 -Q:1 cargas -Q:2 wosjournals'
 
 
 [Install]
