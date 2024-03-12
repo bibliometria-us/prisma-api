@@ -13,11 +13,12 @@ def cargar_colectivos_investigadores(data: List[List[str]]):
     pd = table_to_pandas(data)
     for index, row in pd.iterrows():
         id_investigador: str = row["ID de PRISMA"]
+        dni: str = row["DNI"]
         rol: str = row["ROL"]
         nombre_colectivo: str = row["Nombre colectivo"]
         tipo: str = row["Tipo"]
 
-        if not id_investigador:
+        if not (id_investigador or dni):
             continue
 
         rol_dict = {
@@ -46,14 +47,21 @@ def cargar_colectivos_investigadores(data: List[List[str]]):
 
         tipo = tipo_dict[tipo.strip()]
 
-        try:
-            id_investigador = int(id_investigador)
-        except Exception:
-            continue
-
         investigador = Investigador()
-        investigador.set_attribute("idInvestigador", int(id_investigador))
-        investigador.get()
+
+        try:
+            if id_investigador:
+                id_investigador = int(id_investigador)
+                investigador.set_attribute("idInvestigador", int(id_investigador))
+                investigador.get()
+
+            if not investigador.get_attribute_value("idInvestigador"):
+                dni = dni.strip()
+                investigador.set_attribute("docuIden", dni)
+                conditions_investigador = [Condition(query=f"docuIden = '{dni}'")]
+                investigador.get(conditions=conditions_investigador)
+        except Exception as e:
+            pass
 
         conditions_colectivo = [
             Condition(query=f"nombre = '{nombre_colectivo}'"),
