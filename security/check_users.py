@@ -19,7 +19,7 @@ def tiene_rol(rol, api_key=None):
             return False
 
     query = """SELECT EXISTS 
-    (SELECT 1 FROM permisos WHERE usuario = %(usuario)s AND rol = '%(rol)s')"""
+    (SELECT 1 FROM permisos WHERE usuario = %(usuario)s AND rol = %(rol)s)"""
 
     params = {"usuario": usuario, "rol": rol}
     result = db.ejecutarConsulta(query, params)[1][0]

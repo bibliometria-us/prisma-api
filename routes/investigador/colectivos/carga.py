@@ -1,4 +1,5 @@
 from typing import List
+from db.conexion import BaseDatos
 from models.colectivo.centro_mixto import CentroMixto
 from models.colectivo.colectivo import Colectivo
 from models.colectivo.instituto import Instituto
@@ -9,8 +10,20 @@ from models.investigador import Investigador
 from utils.format import table_to_pandas
 
 
+def limpiar_miembros_colectivos():
+    db = BaseDatos()
+    db.ejecutarConsulta(
+        consulta="""
+        TRUNCATE TABLE i_miembro_instituto;
+        TRUNCATE TABLE i_miembro_centro_mixto;
+        TRUNCATE TABLE i_miembro_unidad_excelencia;
+        """
+    )
+
+
 def cargar_colectivos_investigadores(data: List[List[str]]):
     pd = table_to_pandas(data)
+    limpiar_miembros_colectivos()
     for index, row in pd.iterrows():
         id_investigador: str = row["ID de PRISMA"]
         dni: str = row["DNI"]
