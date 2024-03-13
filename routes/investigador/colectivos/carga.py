@@ -30,8 +30,12 @@ def cargar_colectivos_investigadores(data: List[List[str]]):
         rol: str = row["ROL"]
         nombre_colectivo: str = row["Nombre colectivo"]
         tipo: str = row["Tipo"]
+        activo: str = row["Activo"]
 
         if not (id_investigador or dni):
+            continue
+
+        if activo == "No":
             continue
 
         rol_dict = {
