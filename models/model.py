@@ -42,12 +42,17 @@ class Model(ABC):
         table_name = f"{self.metadata.db_name}.{self.metadata.table_name}"
 
         query = f"""SELECT {columns} FROM {table_name} {self.metadata.alias}"""
-        params = []
+        params = {}
 
         if not conditions:
             primary_key = self.get_primary_key()
-            conditions = [Condition(query=f"{primary_key.column_name} = %s")]
-            params.append(primary_key.value)
+            conditions = [
+                Condition(
+                    query=f"{primary_key.column_name} = %({primary_key.column_name})s"
+                )
+            ]
+            params[primary_key.column_name] = primary_key.value
+
         # TODO: Implementar lógica de condiciones
         if not all:
             where = f" WHERE {f' {logical_operator} '.join((condition.generate_query() for condition in conditions))}"
@@ -60,7 +65,7 @@ class Model(ABC):
         else:
             self.clear_attributes()
 
-        return None
+        return result
 
     def create(self, attribute_filter=[]) -> None:
         self._add(attribute_filter=attribute_filter, insert_type="INSERT")

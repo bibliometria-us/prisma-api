@@ -118,11 +118,15 @@ class Investigador(Model):
 
         return self.unidad_excelencia
 
-    def update_unidad_excelencia(self, unidad_excelencia, rol) -> None:
+    def update_unidad_excelencia(
+        self, unidad_excelencia, rol, actualizado=True
+    ) -> None:
         self.unidad_excelencia.set_attribute("idUdExcelencia", unidad_excelencia)
         self.unidad_excelencia.get()
         self.unidad_excelencia.update_colectivo_from_investigador(
-            idInvestigador=self.get_primary_key().value, rol=rol
+            idInvestigador=self.get_primary_key().value,
+            rol=rol,
+            actualizado=actualizado,
         )
 
     def delete_unidad_excelencia(self) -> None:
@@ -138,11 +142,13 @@ class Investigador(Model):
 
         return self.centro_mixto
 
-    def update_centro_mixto(self, centro_mixto, rol) -> None:
+    def update_centro_mixto(self, centro_mixto, rol, actualizado=True) -> None:
         self.centro_mixto.set_attribute("idCentroMixto", centro_mixto)
         self.centro_mixto.get()
         self.centro_mixto.update_colectivo_from_investigador(
-            idInvestigador=self.get_primary_key().value, rol=rol
+            idInvestigador=self.get_primary_key().value,
+            rol=rol,
+            actualizado=actualizado,
         )
 
     def delete_centro_mixto(self) -> None:
@@ -151,18 +157,20 @@ class Investigador(Model):
         )
         self.centro_mixto = CentroMixto()
 
-    # CENTROS MIXTOS
+    # INSTITUTOS
 
     def get_instituto(self) -> None:
         self.instituto.get_colectivo_from_investigador(self.get_primary_key().value)
 
         return self.instituto
 
-    def update_instituto(self, instituto, rol) -> None:
+    def update_instituto(self, instituto, rol, actualizado=True) -> None:
         self.instituto.set_attribute("idInstituto", instituto)
         self.instituto.get()
         self.instituto.update_colectivo_from_investigador(
-            idInvestigador=self.get_primary_key().value, rol=rol
+            idInvestigador=self.get_primary_key().value,
+            rol=rol,
+            actualizado=actualizado,
         )
 
     def delete_instituto(self) -> None:

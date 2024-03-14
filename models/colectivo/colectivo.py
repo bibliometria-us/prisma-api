@@ -53,14 +53,17 @@ class Colectivo(Model):
             self.set_attribute(self.metadata.primary_key, result[1][0])
             self.get()
 
-    def update_colectivo_from_investigador(self, idInvestigador: int, rol):
-        query = f"""REPLACE INTO {self.metadata.db_name}.{self.tabla_relacion_investigador} ({self.metadata.primary_key}, idInvestigador, rol)
-                    VALUES (%(idColectivo)s, %(idInvestigador)s, %(rol)s)"""
+    def update_colectivo_from_investigador(
+        self, idInvestigador: int, rol, actualizado=True
+    ):
+        query = f"""REPLACE INTO {self.metadata.db_name}.{self.tabla_relacion_investigador} ({self.metadata.primary_key}, idInvestigador, rol, actualizado)
+                    VALUES (%(idColectivo)s, %(idInvestigador)s, %(rol)s, %(actualizado)s)"""
 
         params = {
             "idColectivo": self.get_primary_key().value,
             "idInvestigador": idInvestigador,
             "rol": rol,
+            "actualizado": actualizado,
         }
 
         self.db.ejecutarConsulta(query, params)

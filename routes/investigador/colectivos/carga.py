@@ -10,20 +10,31 @@ from models.investigador import Investigador
 from utils.format import table_to_pandas
 
 
+def comenzar_actualizacion():
+    db = BaseDatos()
+    db.ejecutarConsulta(
+        consulta="""
+        UPDATE  i_miembro_instituto SET actualizado = FALSE;
+        UPDATE  i_miembro_centro_mixto SET actualizado = FALSE;
+        UPDATE i_miembro_unidad_excelencia SET actualizado = FALSE;
+        """
+    )
+
+
 def limpiar_miembros_colectivos():
     db = BaseDatos()
     db.ejecutarConsulta(
         consulta="""
-        TRUNCATE TABLE i_miembro_instituto;
-        TRUNCATE TABLE i_miembro_centro_mixto;
-        TRUNCATE TABLE i_miembro_unidad_excelencia;
+        DELETE i_miembro_instituto WHERE actualizado = 0;
+        DELETE i_miembro_centro_mixto WHERE actualizado = 0;
+        DELETE i_miembro_unidad_excelencia WHERE actualizado = 0;
         """
     )
 
 
 def cargar_colectivos_investigadores(data: List[List[str]]):
     pd = table_to_pandas(data)
-    limpiar_miembros_colectivos()
+    comenzar_actualizacion()
     for index, row in pd.iterrows():
         id_investigador: str = row["ID de PRISMA"]
         dni: str = row["DNI"]
@@ -97,3 +108,5 @@ def cargar_colectivos_investigadores(data: List[List[str]]):
         colectivo.update_colectivo_from_investigador(
             investigador.get_primary_key().value, rol
         )
+
+    limpiar_miembros_colectivos()
