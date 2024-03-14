@@ -70,20 +70,6 @@ celery.conf.update(app.config)
 celery.set_default()
 
 
-@app.before_request
-def auth_check():
-    args = request.args
-    requires_mandatory_auth = request.endpoint in mandatory_auth_endpoints
-    try:
-        if requires_mandatory_auth:
-            if not session.get("samlUserdata"):
-                return redirect(url_for("api.login", redirect_url=request.url))
-            if not session.get("samlUserdata"):
-                raise Exception
-    except:
-        return {"message": "No autorizado"}, 401
-
-
 @app.after_request
 def after_request(response):
     route = request.path
