@@ -60,7 +60,7 @@ def actualizar_grupos_sica():
     LEFT JOIN sica2.t_investigadores inv_s ON inv_s.NUMERO_DOCUMENTO = inv.docuIden
  
     LEFT JOIN (
-        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MAX(ROL) as ROL, MAX(FECHA_FIN) as FECHA_FIN FROM sica2.t_investigadores_grupo igp
+        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MIN(ROL) as ROL, MAX(FECHA_FIN) as FECHA_FIN FROM sica2.t_investigadores_grupo igp
         WHERE STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y') = (SELECT MAX(STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y')) FROM sica2.t_investigadores_grupo ig2 			
                                                 WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL AND (ig2.FECHA_FIN IS NULL OR ig2.FECHA_FIN = "" OR STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') > now())
         )
