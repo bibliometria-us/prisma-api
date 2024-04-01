@@ -15,3 +15,7 @@ def get_current_date(format=False, format_str="%d-%m-%Y"):
 
 def str_to_date(date, format="%d-%m-%Y"):
     return datetime.datetime.strptime(date, format)
+
+
+def date_to_str(date, format="%d-%m-%Y"):
+    return date.strftime(format)

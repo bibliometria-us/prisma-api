@@ -1,11 +1,11 @@
 from security.check_users import es_admin, pertenece_a_conjunto
 
 
-def comprobar_permisos(fuentes):
-    if es_admin():
+def comprobar_permisos(fuentes, api_key):
+    if es_admin(api_key=api_key):
         return True
     for tipo_fuente, valor in fuentes.items():
         if tipo_fuente == "investigadores" and valor is not None:
             raise Exception
         if valor:
-            assert pertenece_a_conjunto(tipo_fuente, valor)
+            assert pertenece_a_conjunto(tipo_fuente, valor, api_key=api_key)

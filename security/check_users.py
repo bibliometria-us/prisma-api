@@ -3,20 +3,25 @@ from db.conexion import BaseDatos
 from flask import session
 
 
+def get_user_from_api_key(api_key: str) -> str:
+    db = BaseDatos("api")
+    query = "SELECT uvus FROM api_key a WHERE a.api_key = %(api_key)s"
+    params = {"api_key": api_key}
+    query_result = db.ejecutarConsulta(query, params)
+
+    if len(query_result) > 1:
+        return query_result[1][0]
+    else:
+        return None
+
+
 def tiene_rol(rol, api_key=None):
     db = BaseDatos("api")
 
     if not api_key:
         usuario = session["samlUserdata"]["mail"][0].split("@")[0]
     else:
-        query_usuario = "SELECT uvus FROM api_key a WHERE a.api_key = %(api_key)s"
-        params_usuario = {"api_key": api_key}
-        result_query_usuario = db.ejecutarConsulta(query_usuario, params_usuario)
-
-        if len(result_query_usuario) > 1:
-            usuario = result_query_usuario[1][0]
-        else:
-            return False
+        usuario = get_user_from_api_key(api_key)
 
     query = """SELECT EXISTS 
     (SELECT 1 FROM permisos WHERE usuario = %(usuario)s AND rol = %(rol)s)"""
@@ -31,7 +36,7 @@ def es_admin(api_key=None):
     return tiene_rol("admin", api_key=api_key)
 
 
-def pertenece_a_conjunto(tipo, dato):
+def pertenece_a_conjunto(tipo, dato, api_key=None):
     tipo_to_func = {
         "departamento": pertenece_a_departamento,
         "grupo": pertenece_a_grupo,
@@ -43,9 +48,14 @@ def pertenece_a_conjunto(tipo, dato):
     return func(dato)
 
 
-def pertenece_a_departamento(departamento):
+def pertenece_a_departamento(departamento, api_key=None):
     db = BaseDatos()
-    emails = session["samlUserdata"]["mail"]
+
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
 
     query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
                     i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
@@ -58,7 +68,7 @@ def pertenece_a_departamento(departamento):
     return result != 0
 
 
-def pertenece_a_grupo(grupo):
+def pertenece_a_grupo(grupo, api_key=None):
     db = BaseDatos()
     emails = session["samlUserdata"]["mail"]
 
@@ -73,7 +83,7 @@ def pertenece_a_grupo(grupo):
     return result != 0
 
 
-def pertenece_a_instituto(instituto):
+def pertenece_a_instituto(instituto, api_key=None):
     db = BaseDatos()
     emails = session["samlUserdata"]["mail"]
 
@@ -88,7 +98,7 @@ def pertenece_a_instituto(instituto):
     return result != 0
 
 
-def pertenece_a_centro(centro):
+def pertenece_a_centro(centro, api_key=None):
     db = BaseDatos()
     emails = session["samlUserdata"]["mail"]
 

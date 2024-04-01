@@ -7,8 +7,8 @@ User=root
 Type=forking
 WorkingDirectory=/var/www/prisma-api
 Environment="PATH=/var/www/prisma-api/env/bin"
-ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery multi start 2 -A app.celery --loglevel=error --concurrency=1 -Q:1 cargas -Q:2 wosjournals'
-ExecStop=/bin/bash -c '/var/www/prisma-api/env/bin/celery multi stop 2 -A app.celery --loglevel=error --concurrency=1 -Q:1 cargas -Q:2 wosjournals'
+ExecStart=/bin/bash -c '/var/www/prisma-api/env/bin/celery multi start 3 -A app.celery --loglevel=error --concurrency=1 -Q:1 cargas -Q:2 wosjournals -Q:3 informes'
+ExecStop=/bin/bash -c '/var/www/prisma-api/env/bin/celery multi stop 3 -A app.celery --loglevel=error --concurrency=1 -Q:1 cargas -Q:2 wosjournals -Q:3 informes'
 
 
 [Install]

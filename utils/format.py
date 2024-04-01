@@ -3,7 +3,9 @@ import io
 import json
 import xml.etree.ElementTree as ET
 
+import datetime
 import numpy as np
+from utils.date import date_to_str
 from utils.timing import func_timer as timer
 import openpyxl
 from openpyxl.styles import Font, Alignment
@@ -47,6 +49,10 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
             # Separamos el nombre de la clave por _ y nos quedamos con el primer elemento
             suffix = d_data.split("_")[0]
             value = data_dict[d_data]
+            if isinstance(value, (datetime.datetime)) or isinstance(
+                value, (datetime.date)
+            ):
+                value = date_to_str(date=value)
             # Si el sufijo está en el diccionario nested, significa que va a pertenecer a un diccionario anidado al principal
             if suffix in nested:
                 group_name = nested[suffix]

@@ -53,10 +53,10 @@ def generar_pdf(resumen, filename):
         )
 
         # Título del header
-        if list(resumen["titulo"].keys())[0] != "investigadores":
+        if len(resumen["titulo"]) == 1:
             tipo_fuente = list(resumen["titulo"].keys())[0]
             nombre_fuente = resumen["titulo"][tipo_fuente]
-            titulo = f"Informe de {tipo_fuente} ({resumen['año_inicio']}-{resumen['año_fin']}): {nombre_fuente}"
+            titulo = f"Informe de {tipo_fuente.replace('_',' ')} ({resumen['año_inicio']}-{resumen['año_fin']}): {nombre_fuente}"
         else:
             titulo = "Informe personalizado"
         fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -103,12 +103,20 @@ def generar_pdf(resumen, filename):
         alignment=1,  # 0=left, 1=center, 2=right
     )
 
+    estilo_titulos_simple = estilo_titulos = ParagraphStyle(
+        name="EstiloTitulos",
+        fontName="Helvetica",
+        fontSize=14,
+        alignment=1,  # 0=left, 1=center, 2=right
+    )
+
     estilo_subtitulos = ParagraphStyle(
         name="EstiloSubtitulos",
         fontName="Helvetica-Bold",
         fontSize=12,
         alignment=0,  # 0=left, 1=center, 2=right
     )
+
     # Estilo base de tablas
     table_style = TableStyle(
         [
@@ -168,13 +176,18 @@ def generar_pdf(resumen, filename):
     for propiedad in propiedades_leyenda:
         table_style_matriz_leyenda.add(*propiedad)
 
-    # Si es un informe personalizado, listar los nombres de investigadores
-    if resumen["titulo"].get("investigadores"):
-        lista_investigadores = Paragraph(
-            f"Investigadores incluidos en el informe: {'; '.join(resumen['titulo']['investigadores'])}",
-            estilo_subtitulos,
-        )
-        elements.append(KeepTogether(lista_investigadores))
+    if len(resumen["titulo"]) > 1:
+        listas_fuente = []
+        for tipo_fuente, valores in resumen["titulo"].items():
+            lista_fuente = Paragraph(
+                f"{tipo_fuente.capitalize()}: {valores}",
+                estilo_titulos_simple,
+            )
+            listas_fuente.append(lista_fuente)
+            listas_fuente.append(whitespace)
+
+        elements.append(KeepTogether(listas_fuente))
+
     # MIEMBROS
 
     titulo_miembros = Paragraph("Datos de miembros", estilo_titulos)

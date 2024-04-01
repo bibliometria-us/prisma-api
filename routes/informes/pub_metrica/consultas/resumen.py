@@ -52,7 +52,7 @@ def nombres_fuentes(fuentes):
                 **{
                     "columna": "nombre",
                     "tabla": "i_departamento",
-                    "condicion": f"idDepartamento = '{valor_fuente}'",
+                    "condicion": f"""idDepartamento IN ({','.join(f'"{fuente}"' for fuente in valor_fuente)})""",
                 }
             )
 
@@ -61,7 +61,7 @@ def nombres_fuentes(fuentes):
                 **{
                     "columna": "nombre",
                     "tabla": "i_grupo",
-                    "condicion": f"idGrupo = '{valor_fuente}'",
+                    "condicion": f"""idGrupo IN ({','.join(f'"{fuente}"' for fuente in valor_fuente)})""",
                 }
             )
 
@@ -70,16 +70,34 @@ def nombres_fuentes(fuentes):
                 **{
                     "columna": "nombre",
                     "tabla": "i_instituto",
-                    "condicion": f"idInstituto = '{valor_fuente}'",
+                    "condicion": f"""idInstituto IN ({','.join(valor_fuente)})""",
                 }
             )
 
-        if tipo_fuente == "investigadores":
+        if tipo_fuente == "centro_mixto":
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_centro_mixto",
+                    "condicion": f"""idCentroMixto IN ({','.join(valor_fuente)})""",
+                }
+            )
+
+        if tipo_fuente == "unidad_excelencia":
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_unidad_excelencia",
+                    "condicion": f"""idUdExcelencia IN ({','.join(valor_fuente)})""",
+                }
+            )
+
+        if tipo_fuente == "investigador":
             _query = query.format(
                 **{
                     "columna": "CONCAT(apellidos, ', ', nombre)",
                     "tabla": "i_investigador",
-                    "condicion": f"idInvestigador IN ({(',').join(valor_fuente)})",
+                    "condicion": f"""idInvestigador IN ({','.join(valor_fuente)})""",
                 }
             )
 
@@ -88,16 +106,30 @@ def nombres_fuentes(fuentes):
                 **{
                     "columna": "nombre",
                     "tabla": "i_centro",
-                    "condicion": f"idCentro = '{valor_fuente}'",
+                    "condicion": f"""idCentro IN ({','.join(f'"{fuente}"' for fuente in valor_fuente)})""",
                 }
             )
 
+        if tipo_fuente == "area":
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_area",
+                    "condicion": f"""idArea IN ({','.join(f'"{fuente}"' for fuente in valor_fuente)})""",
+                }
+            )
+
+        if tipo_fuente == "doctorado":
+            _query = query.format(
+                **{
+                    "columna": "nombre",
+                    "tabla": "i_doctorado",
+                    "condicion": f"""idDoctorado IN ({','.join(f'"{fuente}"' for fuente in valor_fuente)})""",
+                }
+            )
         datos = db.ejecutarConsulta(_query)
 
-        if tipo_fuente != "investigadores":
-            result[tipo_fuente] = datos[1][0]
-        else:
-            result[tipo_fuente] = list([dato[0] for dato in datos[1:]])
+        result[tipo_fuente] = "; ".join(list(dato[0] for dato in datos[1:]))
 
     return result
 

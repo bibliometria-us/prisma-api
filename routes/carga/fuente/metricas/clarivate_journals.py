@@ -1,5 +1,5 @@
 from time import sleep
-from celery import shared_task, current_app, group, chord
+from celery import shared_task, current_app, group
 from db.conexion import BaseDatos
 from integration.apis.clarivate.journals.exceptions import ExcepcionJournalWoS
 from integration.apis.clarivate.journals.journals_api import JournalsAPI

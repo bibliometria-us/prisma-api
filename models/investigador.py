@@ -23,7 +23,7 @@ class Investigador(Model):
             Attribute(column_name="idInvestigador"),
             Attribute(column_name="nombre"),
             Attribute(column_name="apellidos"),
-            Attribute(column_name="docuIden"),
+            Attribute(column_name="docuIden", visible=False),
             Attribute(column_name="email"),
             Attribute(column_name="idCategoria"),
             Attribute(column_name="idArea"),

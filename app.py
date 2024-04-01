@@ -29,6 +29,7 @@ from flask import (
     make_response,
     Blueprint,
 )
+from flask_cors import CORS
 from flask_restx import Api
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
@@ -39,6 +40,12 @@ from celery import Celery
 prisma_base_url = "https://prisma.us.es"
 
 app = Flask(__name__)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=True,
+    expose_headers=["Content-Disposition", "ETag", "Date", "EMAIL"],
+)
 
 app.config["SECRET_KEY"] = "onelogindemopytoolkit"
 app.config["SAML_PATH"] = os.path.join(

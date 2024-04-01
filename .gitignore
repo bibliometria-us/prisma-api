@@ -293,3 +293,4 @@ config/_dummy.py
 integration/apis/clarivate/journals/config.py
 *.log
 .metadata.json
+integration/email/config.py

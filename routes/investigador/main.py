@@ -1,6 +1,7 @@
 from flask import request, jsonify, Response
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
+from models.investigador import Investigador
 from routes.investigador.colectivos.carga import cargar_colectivos_investigadores
 from security.api_key import comprobar_api_key
 from security.check_users import es_admin
@@ -121,7 +122,7 @@ def get_investigador_from_id(columns, left_joins, inactivos, id):
 
 
 @investigador_namespace.route("/")
-class Investigador(Resource):
+class InvestigadorRoute(Resource):
     @investigador_namespace.doc(
         responses=global_responses,
         produces=["application/json", "application/xml", "text/csv"],
@@ -151,7 +152,9 @@ class Investigador(Resource):
         comprobar_api_key(api_key=api_key, namespace=investigador_namespace)
 
         try:
-            data = get_investigador_from_id(columns, left_joins, inactivos, id)
+            investigador = Investigador()
+            investigador.set_attribute("idInvestigador", id)
+            data = investigador.get()
         except:
             investigador_namespace.abort(500, "Error del servidor")
 
@@ -163,7 +166,7 @@ class Investigador(Resource):
             accept_type=accept_type,
             nested=nested,
             namespace=investigador_namespace,
-            dict_selectable_column="prisma",
+            dict_selectable_column="idInvestigador",
             object_name="investigador",
             xml_root_name="",
         )
@@ -270,72 +273,9 @@ class Investigadores(Resource):
         # Comprobar api_key
         comprobar_api_key(api_key=api_key, namespace=investigador_namespace)
 
-        conditions = []
-        params = []
-
-        # Comprobar qué parámetros de búsqueda están activos y generar filtros para la consulta
-        if nombre:
-            conditions.append(
-                "i.nombre COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')"
-            )
-            params.append(nombre)
-        if apellidos:
-            conditions.append(
-                "i.apellidos COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')"
-            )
-            params.append(apellidos)
-        if email:
-            conditions.append(
-                "i.email COLLATE utf8mb4_general_ci LIKE CONCAT('%', %s, '%')"
-            )
-            params.append(email)
-        if departamento:
-            conditions.append("i.idDepartamento = %s")
-            params.append(departamento)
-        if grupo:
-            conditions.append("i.idGrupo = %s")
-            params.append(grupo)
-        if area:
-            conditions.append("i.idArea = %s")
-            params.append(area)
-        if instituto:
-            conditions.append(
-                "i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_instituto WHERE idInstituto = %s)"
-            )
-            params.append(instituto)
-        if centro:
-            conditions.append("i.idCentro = %s")
-            params.append(centro)
-        if doctorado:
-            conditions.append(
-                "i.idInvestigador IN (SELECT idInvestigador FROM i_profesor_doctorado WHERE idDoctorado = %s)"
-            )
-            params.append(doctorado)
-
-        # Concatenar las queries de campos de búsqueda
-        conditions_str = ""
-
-        if conditions:
-            conditions_str = f" WHERE {' AND '.join(conditions)}"
-
-        amount = int(
-            get_investigadores(
-                count_prefix, left_joins, inactivos, conditions_str, params
-            )[1][0]
-        )
-
-        longitud_pagina, offset = pages.get_page_offset(pagina, longitud_pagina, amount)
-
         try:
-            data = get_investigadores(
-                columns,
-                left_joins,
-                inactivos,
-                conditions_str,
-                params,
-                longitud_pagina,
-                offset,
-            )
+            investigador = Investigador()
+            data = investigador.get(all=True)
         except:
             investigador_namespace.abort(500, "Error del servidor")
 
@@ -345,7 +285,7 @@ class Investigadores(Resource):
             accept_type=accept_type,
             nested=nested,
             namespace=investigador_namespace,
-            dict_selectable_column="prisma",
+            dict_selectable_column="idInvestigador",
             object_name="investigador",
             xml_root_name="investigadores",
         )

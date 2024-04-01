@@ -1,7 +1,9 @@
+from logger.async_request import AsyncRequest
 from routes.informes.pub_metrica.exception.exception import (
     InformeSinInvestigadores,
     InformeSinPublicaciones,
 )
+
 from routes.informes.pub_metrica.pdf import generar_pdf
 from routes.informes.utils import calcular_autoria_preferente, format_query
 from routes.informes.pub_metrica.consultas.fuentes import (
@@ -27,6 +29,9 @@ from utils.format import (
 )
 
 from utils.timing import func_timer as timer
+from integration.email import email
+from flask import session
+from celery import shared_task
 
 # Genera el informe PubMetrica
 
@@ -65,6 +70,39 @@ def generar_informe(fuentes, año_inicio, año_fin, tipo, filename):
         generar_pdf(resumen, filename + ".pdf")
 
     return None
+
+
+@shared_task(
+    queue="informes",
+    name="informe_pub_metrica",
+    ignore_result=True,
+    acks_late=True,
+)
+def generar_informe_email(
+    fuentes, año_inicio, año_fin, tipo, filename, destinatarios, request_id
+):
+
+    async_request = AsyncRequest(id=request_id)
+
+    try:
+        generar_informe(fuentes, año_inicio, año_fin, tipo, filename)
+        texto = ""
+        asunto = "Informe de publicaciones"
+
+        filename_format = {
+            "pdf": ".pdf",
+            "excel": ".xlsx",
+        }
+        email.enviar_correo(
+            destinatarios=destinatarios,
+            texto_plano=texto,
+            texto_html="",
+            asunto=asunto,
+            adjuntos=[filename + filename_format[tipo]],
+        )
+        async_request.close(message="Informe entregado")
+    except Exception as e:
+        async_request.error(message=str(e))
 
 
 # @timer

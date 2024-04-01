@@ -1,0 +1,6 @@
+correo = {
+    "usuario": "",
+    "clave": "",
+    "puerto": "587",
+    "servidor": "mail.us.es",
+}

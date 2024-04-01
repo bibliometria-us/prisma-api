@@ -1,12 +1,18 @@
 from flask_restx import Namespace, Resource
 from flask import jsonify, request, session, redirect, url_for, send_file, Response
 import config.global_config as gconfig
-from routes.informes.pub_metrica.pub_metrica import generar_informe
+from logger.async_request import AsyncRequest
+from routes.informes.pub_metrica.pub_metrica import (
+    generar_informe,
+    generar_informe_email,
+)
 from datetime import datetime
 import os
 
 from routes.informes.pub_metrica.security import comprobar_permisos
 from security.check_users import es_admin, pertenece_a_departamento
+
+from celery import current_app
 
 informe_namespace = Namespace("informe", description="Consultas para obtener informes")
 
@@ -41,9 +47,29 @@ class InformePubMetrica(Resource):
                 "description": "ID del instituto del que obtener el informe",
                 "type": "string",
             },
+            "centro_mixto": {
+                "name": "centro_mixto",
+                "description": "ID del centro mixto del que obtener el informe",
+                "type": "string",
+            },
+            "unidad_excelencia": {
+                "name": "unidad_excelencia",
+                "description": "ID de la unidad de excelencia de la que obtener el informe",
+                "type": "string",
+            },
             "centro": {
                 "name": "centro",
                 "description": "ID del centro del que obtener el informe",
+                "type": "string",
+            },
+            "doctorado": {
+                "name": "doctorado",
+                "description": "ID del programa de doctorado del que obtener el informe",
+                "type": "string",
+            },
+            "area": {
+                "name": "centro",
+                "description": "ID del área de conocimiento de la que obtener el informe",
                 "type": "string",
             },
             "investigadores": {
@@ -64,34 +90,46 @@ class InformePubMetrica(Resource):
         },
     )
     def get(self):
-        args = request.args
+
+        args = {}
+
+        for key, value in request.args.to_dict().items():
+            if value != "":
+                args[key] = value
+
+        headers = request.headers
 
         tipo = args.get("salida", None)
+        api_key = args.get("api_key", None)
         # Almacenar fuentes directamente en su diccionario
         fuentes = {
             "departamento": args.get("departamento", None),
             "grupo": args.get("grupo", None),
             "instituto": args.get("instituto", None),
+            "centro_mixto": args.get("centro_mixto", None),
+            "unidad_excelencia": args.get("unidad_excelencia", None),
             "investigadores": args.get("investigadores", None),
+            "investigador": args.get("investigador"),
             "centro": args.get("centro", None),
+            "area": args.get("area", None),
+            "doctorado": args.get("doctorado", None),
         }
 
         try:
-            comprobar_permisos(fuentes)
+            comprobar_permisos(fuentes, api_key=api_key)
         except:
             return {"message": "No autorizado"}, 401
 
-        # Convertir lista de investigadores a lista de enteros
-        if fuentes["investigadores"]:
-            fuentes["investigadores"] = list(
-                str(int(investigador))
-                for investigador in fuentes["investigadores"].split(",")
-            )
-
+        # Convertir contenido de fuentes en listas
+        fuentes = {
+            tipo_fuente: list(str(valor).split(","))
+            for tipo_fuente, valor in fuentes.items()
+            if valor is not None
+        }
         año_inicio = int(args.get("inicio", datetime.now().year))
         año_fin = int(args.get("fin", datetime.now().year))
 
-        fuentes = {key: value for key, value in fuentes.items() if value is not None}
+        send_email = headers.get("EMAIL", False)
 
         timestamp = datetime.now().strftime("%d%m%Y_%H%M")
         tipo_salida_to_format = {
@@ -99,25 +137,60 @@ class InformePubMetrica(Resource):
             "excel": "xlsx",
         }
 
-        if len(fuentes) > 1 or fuentes.get("investigadores"):
+        if len(fuentes) > 1 or fuentes.get("investigador"):
             base_filename = f"informe_personalizado_{timestamp}"
         else:
-            base_filename = f"informe_{list(fuentes.keys())[0]}_{list(fuentes.values())[0]}_{timestamp}"
+            base_filename = f"informe_{list(fuentes.keys())[0]}_{','.join(list(fuentes.values())[0])}_{timestamp}"
         download_filename = f"{base_filename}.{tipo_salida_to_format[tipo]}"
         internal_filename = f"temp/{download_filename}"
 
-        try:
-            generar_informe(fuentes, año_inicio, año_fin, tipo, f"temp/{base_filename}")
-        except Exception as e:
-            return {"error": e.message}, 400
+        if not send_email:
+            try:
+                generar_informe(
+                    fuentes, año_inicio, año_fin, tipo, f"temp/{base_filename}"
+                )
+            except Exception as e:
+                return {"error": e.message}, 400
 
-        response = send_file(
-            internal_filename, as_attachment=True, download_name=download_filename
-        )
+            response = send_file(
+                internal_filename, as_attachment=True, download_name=download_filename
+            )
 
-        os.remove(internal_filename)
+            os.remove(internal_filename)
 
-        return response
+            return response
+
+        else:
+            try:
+
+                params = {
+                    "año_inicio": año_inicio,
+                    "año_fin": año_fin,
+                    "fuentes": fuentes,
+                    "tipo": tipo,
+                }
+
+                destinatarios = session["samlUserdata"]["mail"]
+                async_request = AsyncRequest(
+                    request_type="pub_metrica",
+                    email=destinatarios[-1],
+                    params=str(params),
+                )
+
+                current_app.tasks["informe_pub_metrica"].apply_async(
+                    [
+                        fuentes,
+                        año_inicio,
+                        año_fin,
+                        tipo,
+                        f"temp/{base_filename}",
+                        destinatarios,
+                        async_request.id,
+                    ]
+                )
+                return {"message": "Informe solicitado correctamente"}, 200
+            except Exception as e:
+                return {"error": e.message}, 400
 
 
 @informe_namespace.route(
