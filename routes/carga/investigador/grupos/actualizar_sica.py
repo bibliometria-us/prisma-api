@@ -70,6 +70,7 @@ def actualizar_grupos_sica():
  
     LEFT JOIN sica2.t_grupos g ON g.ID_GRUPO = ig.ID_GRUPO
     LEFT JOIN sica2.t_instituciones i ON i.ID_ENTIDAD = g.ID_ENTIDAD
+    WHERE inv.idCategoria != "honor"
     GROUP BY inv.idInvestigador;
     """
 
