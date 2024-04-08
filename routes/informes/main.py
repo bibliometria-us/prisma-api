@@ -106,8 +106,10 @@ class InformePubMetrica(Resource):
             "departamento": args.get("departamento", None),
             "grupo": args.get("grupo", None),
             "instituto": args.get("instituto", None),
-            "centro_mixto": args.get("centro_mixto", None),
-            "unidad_excelencia": args.get("unidad_excelencia", None),
+            "centro_mixto": args.get("centro_mixto", None)
+            or args.get("centromixto", None),
+            "unidad_excelencia": args.get("unidad_excelencia", None)
+            or args.get("unidadexcelencia", None),
             "investigadores": args.get("investigadores", None),
             "investigador": args.get("investigador"),
             "centro": args.get("centro", None),
