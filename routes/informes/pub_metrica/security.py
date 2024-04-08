@@ -8,4 +8,6 @@ def comprobar_permisos(fuentes, api_key):
         if tipo_fuente == "investigadores" and valor is not None:
             raise Exception
         if valor:
+            if len(valor.split(",")) > 1:
+                raise Exception
             assert pertenece_a_conjunto(tipo_fuente, valor, api_key=api_key)

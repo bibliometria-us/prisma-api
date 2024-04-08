@@ -42,10 +42,31 @@ def pertenece_a_conjunto(tipo, dato, api_key=None):
         "grupo": pertenece_a_grupo,
         "instituto": pertenece_a_instituto,
         "centro": pertenece_a_centro,
+        "investigador": es_investigador,
     }
 
-    func = tipo_to_func.get(tipo)
+    func = tipo_to_func.get(tipo, api_key)
     return func(dato)
+
+
+def es_investigador(investigador, api_key=None):
+    db = BaseDatos()
+
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
+
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
+                    AND i.idInvestigador = %s)"""
+
+    params = [investigador]
+
+    result = db.ejecutarConsulta(query, params)[1][0]
+
+    return result != 0
 
 
 def pertenece_a_departamento(departamento, api_key=None):
