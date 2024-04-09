@@ -36,6 +36,10 @@ def es_admin(api_key=None):
     return tiene_rol("admin", api_key=api_key)
 
 
+def es_editor(api_key=None):
+    return tiene_rol("editor", api_key=api_key)
+
+
 def pertenece_a_conjunto(tipo, dato, api_key=None):
     tipo_to_func = {
         "departamento": pertenece_a_departamento,
