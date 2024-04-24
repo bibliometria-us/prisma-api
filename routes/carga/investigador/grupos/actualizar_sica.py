@@ -54,23 +54,40 @@ def actualizar_grupos_sica():
             MIN(i.ENTIDAD) as institucion,
             MIN(g.ESTADO) as estado,
             inv.idInvestigador as idInvestigador,
-            MIN(ig.ROL) as rol,
+            CASE WHEN inv.idCategoria != "honor" THEN MIN(ig.rol) ELSE "Miembro" END as rol,
             ig.FECHA_FIN
     FROM prisma.i_investigador inv
     LEFT JOIN sica2.t_investigadores inv_s ON inv_s.NUMERO_DOCUMENTO = inv.docuIden
  
     LEFT JOIN (
-        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO, MIN(ROL) as ROL, MAX(FECHA_FIN) as FECHA_FIN FROM sica2.t_investigadores_grupo igp
-        WHERE STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y') = (SELECT MAX(STR_TO_DATE(FECHA_INICIO, '%d/%m/%Y')) FROM sica2.t_investigadores_grupo ig2 			
-                                                WHERE ig2.ID_PERSONAL = igp.ID_PERSONAL AND (ig2.FECHA_FIN IS NULL OR ig2.FECHA_FIN = "" OR STR_TO_DATE(ig2.FECHA_FIN, '%d/%m/%Y') > now())
-        )
+        SELECT ID_PERSONAL, MAX(ID_GRUPO) as ID_GRUPO,
+        (SELECT ROL FROM sica2.t_investigadores_grupo igprol
+        WHERE igprol.ID_PERSONAL = igp.ID_PERSONAL
+                AND igprol.ID_GRUPO = igp.ID_GRUPO
+                AND (FECHA_FIN IS NULL OR FECHA_FIN = "" OR STR_TO_DATE(FECHA_FIN, '%d/%m/%Y') > now())
+                AND ID_GRUPO = (SELECT ID_GRUPO FROM sica2.t_investigadores_grupo 
+                        WHERE ID_INVESTIGADOR_GRUPO = 
+                        (SELECT MAX(ID_INVESTIGADOR_GRUPO) FROM sica2.t_investigadores_grupo igid
+                            WHERE igid.ID_PERSONAL = igp.ID_PERSONAL)
+                        )
+        ORDER BY CASE WHEN ROL = "Investigador principal" THEN 0
+                    ELSE 1 END
+        LIMIT 1        
+            ) 
+        as ROL,
+        MAX(FECHA_FIN) as FECHA_FIN FROM sica2.t_investigadores_grupo igp
+        
+        
+        WHERE FECHA_FIN IS NULL OR FECHA_FIN = "" OR STR_TO_DATE(FECHA_FIN, '%d/%m/%Y') > now()
+        
             
-        GROUP BY ID_PERSONAL
+        GROUP BY ID_PERSONAL, ID_GRUPO
+
+       
         ) ig ON ig.ID_PERSONAL = inv_s.ID_PERSONAL
  
     LEFT JOIN sica2.t_grupos g ON g.ID_GRUPO = ig.ID_GRUPO
     LEFT JOIN sica2.t_instituciones i ON i.ID_ENTIDAD = g.ID_ENTIDAD
-    WHERE inv.idCategoria != "honor"
     GROUP BY inv.idInvestigador;
     """
 
@@ -112,7 +129,7 @@ def actualizar_grupos_sica():
             current_app.tasks["cargar_palabra_clave"].s(palabra_clave.to_dict())
         )
 
-    group(tasks_palabras_clave).apply_async()
+    # group(tasks_palabras_clave).apply_async()
 
     query_lista_lineas_investigacion = """
     SELECT gp.idGrupo as idGrupo,
@@ -144,7 +161,7 @@ def actualizar_grupos_sica():
             )
         )
 
-    group(tasks_lineas_investigacion).apply_async()
+    # group(tasks_lineas_investigacion).apply_async()
     current_app.tasks["finalizar_carga_sica"].apply_async()
 
     db.closeConnection()
