@@ -65,11 +65,6 @@ def actualizar_grupos_sica():
         WHERE igprol.ID_PERSONAL = igp.ID_PERSONAL
                 AND igprol.ID_GRUPO = igp.ID_GRUPO
                 AND (FECHA_FIN IS NULL OR FECHA_FIN = "" OR STR_TO_DATE(FECHA_FIN, '%d/%m/%Y') > now())
-                AND ID_GRUPO = (SELECT ID_GRUPO FROM sica2.t_investigadores_grupo 
-                        WHERE ID_INVESTIGADOR_GRUPO = 
-                        (SELECT MAX(ID_INVESTIGADOR_GRUPO) FROM sica2.t_investigadores_grupo igid
-                            WHERE igid.ID_PERSONAL = igp.ID_PERSONAL)
-                        )
         ORDER BY CASE WHEN ROL = "Investigador principal" THEN 0
                     ELSE 1 END
         LIMIT 1        
