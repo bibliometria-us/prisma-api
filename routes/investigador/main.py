@@ -1,10 +1,21 @@
 from flask import request, jsonify, Response
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
+from models.colectivo.colectivo import Colectivo
+from models.colectivo.exceptions.exceptions import (
+    LimitePalabrasClave,
+    LineaInvestigacionDuplicada,
+    PalabraClaveDuplicada,
+)
 from models.investigador import Investigador
 from routes.investigador.colectivos.carga import cargar_colectivos_investigadores
 from security.api_key import comprobar_api_key
-from security.check_users import es_admin
+from security.check_users import (
+    es_admin,
+    es_editor,
+    es_investigador,
+    pertenece_a_conjunto,
+)
 from utils.timing import func_timer as timer
 import utils.format as format
 import utils.pages as pages
@@ -170,6 +181,182 @@ class InvestigadorRoute(Resource):
             object_name="investigador",
             xml_root_name="",
         )
+
+    def post(self):
+        args = request.args
+
+        id_investigador = int(args.get("id"))
+
+        if not (
+            pertenece_a_conjunto("investigador", id_investigador)
+            | es_admin()
+            | es_editor()
+        ):
+            return {"message": "No autorizado"}, 401
+
+        investigador = Investigador()
+        investigador.get_primary_key().value = id_investigador
+
+        column_args = {
+            column: args.get(column, None)
+            for column in investigador.get_editable_columns()
+            if args.get(column, None)
+        }
+
+        try:
+            investigador.get()
+            investigador.update_attributes(column_args)
+            return {
+                "message": "success",
+            }, 200
+
+        except Exception as e:
+            return {"message": "error"}, 500
+
+
+@investigador_namespace.route("/palabraclave", doc=False)
+class PalabraClaveColectivo(Resource):
+    def __init__(self, api=None, *args, **kwargs):
+        super().__init__(api, *args, **kwargs)
+
+    def post(self):
+
+        args = request.args
+
+        id_palabra_clave = int(args.get("id_palabra_clave", None) or 0)
+        nombre_palabra_clave = args.get("nombre_palabra_clave", None)
+        id_investigador = int(args.get("id"))
+
+        if not (
+            pertenece_a_conjunto("investigador", id_investigador)
+            | es_admin()
+            | es_editor()
+        ):
+            return {"message": "No autorizado"}, 401
+
+        try:
+            investigador = Investigador()
+
+            investigador.get_primary_key().value = id_investigador
+            palabra_clave = investigador.add_palabra_clave(
+                id_palabra_clave=id_palabra_clave,
+                nombre_palabra_clave=nombre_palabra_clave,
+            )
+
+            return {
+                "message": "success",
+                "id_palabra_clave": palabra_clave.get_primary_key().value,
+            }, 200
+        except LimitePalabrasClave as e:
+            return {
+                "error": "limite",
+                "message": e.message,
+                "max": e.max_palabras_clave,
+            }, 403
+        except PalabraClaveDuplicada as e:
+            return {
+                "error": "duplicada",
+                "message": e.message,
+            }, 403
+        except Exception:
+            return {"message": "Error inesperado"}, 500
+
+    def delete(self):
+
+        args = request.args
+
+        id_palabra_clave = int(args.get("id_palabra_clave", None) or 0)
+        id_investigador = args.get("id")
+
+        if not (
+            pertenece_a_conjunto("investigador", id_investigador)
+            | es_admin()
+            | es_editor()
+        ):
+            return {"message": "No autorizado"}, 401
+
+        try:
+            investigador = Investigador()
+
+            investigador.get_primary_key().value = id_investigador
+            investigador.remove_palabra_clave(id_palabra_clave=id_palabra_clave)
+
+            if investigador.db.rowcount != 1:
+                raise Exception
+        except Exception:
+            return {"message": "error"}, 500
+
+        return {"message": "success"}, 200
+
+
+@investigador_namespace.route("/lineainvestigacion", doc=False)
+class LineaInvestigacionColectivo(Resource):
+    def __init__(self, api=None, *args, **kwargs):
+        super().__init__(api, *args, **kwargs)
+
+    def post(self):
+
+        args = request.args
+
+        id_linea_investigacion = int(args.get("id_linea_investigacion", None) or 0)
+        nombre_linea_investigacion = args.get("nombre_linea_investigacion", None)
+        id_investigador = int(args.get("id"))
+
+        if not (
+            pertenece_a_conjunto("investigador", id_investigador)
+            | es_admin()
+            | es_editor()
+        ):
+            return {"message": "No autorizado"}, 401
+
+        try:
+            investigador = Investigador()
+
+            investigador.get_primary_key().value = id_investigador
+            linea_investigacion = investigador.add_linea_investigacion(
+                id_linea_investigacion=id_linea_investigacion,
+                nombre_linea_investigacion=nombre_linea_investigacion,
+            )
+
+            return {
+                "message": "success",
+                "id_linea_investigacion": linea_investigacion.get_primary_key().value,
+            }, 200
+        except LineaInvestigacionDuplicada as e:
+            return {
+                "error": "duplicada",
+                "message": e.message,
+            }, 403
+        except Exception:
+            return {"message": "Error inesperado"}, 500
+
+    def delete(self):
+
+        args = request.args
+
+        id_linea_investigacion = int(args.get("id_linea_investigacion", None) or 0)
+        id_investigador = args.get("id")
+
+        if not (
+            pertenece_a_conjunto("investigador", id_investigador)
+            | es_admin()
+            | es_editor()
+        ):
+            return {"message": "No autorizado"}, 401
+
+        try:
+            investigador = Investigador()
+            investigador.get_primary_key().value = id_investigador
+            investigador.remove_linea_investigacion(
+                id_linea_investigacion=id_linea_investigacion
+            )
+
+            if investigador.db.rowcount != 1:
+                raise Exception
+        except Exception:
+            return {"message": "error"}, 500
+
+        return {"message": "success"}, 200
 
 
 def get_investigadores(

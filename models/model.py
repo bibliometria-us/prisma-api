@@ -35,15 +35,22 @@ class Model(ABC):
         all: bool = False,
         logical_operator: str = "AND",
     ) -> None:
+
+        # Construir la sentencia SELECT con las columnas de la tabla asociada al objeto
         columns = ", ".join(
             f"{self.metadata.alias}.{attribute.column_name} as {attribute.display_name}"
-            for attribute in self.get_visible_attributes()
+            for attribute in self.attributes.values()
         )
         table_name = f"{self.metadata.db_name}.{self.metadata.table_name}"
+
+        # Añadir JOINS para las relaciones 1..1
 
         query = f"""SELECT {columns} FROM {table_name} {self.metadata.alias}"""
         params = {}
 
+        # CONDICIONES
+
+        # Si no hay condiciones establecidas, se hace la búsqueda por primary key
         if not conditions:
             primary_key = self.get_primary_key()
             conditions = [
@@ -99,7 +106,28 @@ class Model(ABC):
 
         result = self.db.ejecutarConsulta(query, params)
 
+        # Si se ha generado una nueva ID por auto_increment, se añade a la primary key
+        if self.db.last_id:
+            self.get_primary_key().value = self.db.last_id
         return None
+
+    def update_attribute(self, attribute: str, value: Any) -> None:
+        assert attribute in self.attributes.keys()
+
+        query = f"""UPDATE {self.metadata.db_name}.{self.metadata.table_name} 
+                SET {attribute} = %(value)s
+                WHERE {self.get_primary_key().column_name} = %(primary_key)s"""
+
+        params = {
+            "value": value,
+            "primary_key": self.get_primary_key().value,
+        }
+
+        self.db.ejecutarConsulta(query, params)
+
+    def update_attributes(self, attributes: dict[str, Any]) -> None:
+        for attribute, value in attributes.items():
+            self.update_attribute(attribute, value)
 
     def delete(self, conditions=None) -> None:
         table_name = f"{self.metadata.db_name}.{self.metadata.table_name}"
@@ -168,16 +196,22 @@ class Model(ABC):
             raise AttributeError(
                 f"'{type(self).__name__}' object has no attribute '{component.name}'"
             )
-
         self.components[component.name] = component
 
-        if component.enabled:
+    def enable_component(self, component_name: str) -> None:
+        component = self.components.get(component_name)
+        component.enabled = True
 
+    def get_component(self, component_id: str) -> None:
+        component = self.components.get(component_id)
+
+        getter_name = component.getter
+
+        if getter_name:
             getter = getattr(self, component.getter)
 
             if callable(getter):
-
-                setattr(self, component.name, getter())
+                value = getter()
 
             else:
 
@@ -185,11 +219,22 @@ class Model(ABC):
                     f"'{type(self).__name__}' object has no callable method '{getter}'"
                 )
 
-    def get_component(self, component_name: str) -> None:
-        component = self.components.get(component_name)
-        component.enabled = True
+            setattr(self, component.name, value)
+            component.value = value
 
-        self.load_component(component)
+        else:
+            value = self.get_component_dynamic(component_id)
+
+    def get_component_dynamic(self, component_id: str) -> "Model":
+
+        pass
+
+    def get_editable_columns(self) -> list[str]:
+        return (
+            key
+            for key in self.attributes.keys()
+            if key != self.get_primary_key().column_name
+        )
 
 
 class Metadata:
@@ -211,12 +256,17 @@ class Component:
         self,
         type: Type,
         name: str,
-        getter: str,
+        cardinality: str,
+        getter: str = None,
+        target_table: str = None,
+        intermediate_table: str = None,
         enabled: bool = False,
-        tabla_intermedia: str = None,
     ) -> None:
         self.type = type
         self.name = name
         self.getter = getter
+        self.target_table = target_table
+        self.intermediate_table = intermediate_table
+        self.cardinality = cardinality
         self.enabled = enabled
-        self.tabla_intermedia = tabla_intermedia
+        self.value: Model = self.type()

@@ -1,7 +1,25 @@
 from typing import List
 from models.attribute import Attribute
+from models.colectivo.exceptions.exceptions import (
+    LimitePalabrasClave,
+    LineaInvestigacionDuplicada,
+    PalabraClaveDuplicada,
+)
+from models.linea_investigacion import (
+    LineaInvestigacion,
+    get_lineas_investigacion as _get_lineas_investigacion,
+    add_linea_investigacion as _add_linea_investigacion,
+    remove_linea_investigacion as _remove_linea_investigacion,
+)
 from models.model import Model, Component
 from models.institucion import Institucion
+from models.palabra_clave import (
+    PalabraClave,
+    get_palabras_clave as _get_palabras_clave,
+    add_palabra_clave as _add_palabra_clave,
+    remove_palabra_clave as _remove_palabra_clave,
+)
+from utils.format import table_to_pandas
 
 
 class Colectivo(Model):
@@ -22,16 +40,19 @@ class Colectivo(Model):
             Attribute(column_name="nombre"),
             Attribute(column_name="acronimo"),
             Attribute(column_name="ambito"),
+            Attribute(column_name="resumen"),
         ]
         components = [
             Component(
-                List[Institucion],
-                "instituciones",
-                "get_instituciones",
+                type=Institucion,
+                name="instituciones",
+                getter="get_instituciones",
+                target_table="institucion",
+                intermediate_table="i_institucion_colectivo",
+                cardinality="many",
                 enabled=True,
-            ),
+            )
         ]
-
         super().__init__(
             db_name,
             table_name,
@@ -40,6 +61,26 @@ class Colectivo(Model):
             attributes=attributes,
             components=components,
         )
+        self.max_palabras_clave = 10
+        self.max_resumen = 5000
+
+    def recortar_resumen(self):
+        ### Recortar el contenido del resumen para que nos supere el máximo
+
+        resumen: str = self.attributes.get("resumen").value
+
+        resumen = resumen.strip()
+
+        # Contar la cantidad de veces que aparecen \n y añadirlas al máximo multiplicado por 4
+        cantidad_saltos_linea = resumen.count("\n")
+        max_resumen = self.max_resumen + cantidad_saltos_linea
+        resultado_resumen = resumen[0:max_resumen]
+        self.attributes.get("resumen").value = resultado_resumen
+
+    def _add(self, attribute_filter=[], insert_type="") -> None:
+        self.recortar_resumen()
+
+        return super()._add(attribute_filter, insert_type)
 
     def get_colectivo_from_investigador(self, idInvestigador: int) -> None:
         query = f"""SELECT {self.metadata.primary_key} FROM {self.metadata.db_name}.{self.tabla_relacion_investigador}
@@ -124,3 +165,37 @@ class Colectivo(Model):
         }
 
         self.db.ejecutarConsulta(query, params)
+
+    def get_palabras_clave(self):
+        return _get_palabras_clave(self)
+
+    def add_palabra_clave(self, id_palabra_clave=None, nombre_palabra_clave=None):
+        return _add_palabra_clave(
+            self,
+            id_palabra_clave=id_palabra_clave,
+            nombre_palabra_clave=nombre_palabra_clave,
+        )
+
+    def remove_palabra_clave(self, id_palabra_clave):
+        _remove_palabra_clave(
+            self,
+            id_palabra_clave=id_palabra_clave,
+        )
+
+    def get_lineas_investigacion(self):
+        return _get_lineas_investigacion(self)
+
+    def add_linea_investigacion(
+        self, id_linea_investigacion=None, nombre_linea_investigacion=None
+    ):
+        return _add_linea_investigacion(
+            self,
+            id_linea_investigacion=id_linea_investigacion,
+            nombre_linea_investigacion=nombre_linea_investigacion,
+        )
+
+    def remove_linea_investigacion(self, id_linea_investigacion):
+        _remove_linea_investigacion(
+            self,
+            id_linea_investigacion=id_linea_investigacion,
+        )

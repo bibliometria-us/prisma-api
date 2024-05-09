@@ -21,6 +21,7 @@ class BaseDatos:
         self.keep_connection_alive = keep_connection_alive
         self.rowcount = 0
         self.error = False
+        self.last_id = None
 
     def startConnection(self):
         self.connection = mysql.connector.connect(
@@ -54,12 +55,14 @@ class BaseDatos:
             column_names = cursor.column_names
             result = [column_names] + list(cursor.fetchall())
             self.rowcount = cursor.rowcount
+            self.last_id = cursor.lastrowid
         except OperationalError as e:
             if self.keep_connection_alive:
                 self.startConnection()
                 self.ejecutarConsulta(consulta, params)
         except Exception as e:
             self.error = True
+            self.rowcount = 0
             cursor.close()
             return str(e.args)
 

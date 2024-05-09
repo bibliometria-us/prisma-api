@@ -1,5 +1,5 @@
 from models.condition import Condition
-from models.grupo import Grupo
+from models.colectivo.grupo import Grupo
 from models.investigador import Investigador
 from models.linea_investigacion import LineaInvestigacion
 from models.palabra_clave import PalabraClave

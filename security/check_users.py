@@ -40,20 +40,26 @@ def es_editor(api_key=None):
     return tiene_rol("editor", api_key=api_key)
 
 
-def pertenece_a_conjunto(tipo, dato, api_key=None):
+def pertenece_a_conjunto(tipo, dato, privileged=False, api_key=None):
     tipo_to_func = {
         "departamento": pertenece_a_departamento,
         "grupo": pertenece_a_grupo,
         "instituto": pertenece_a_instituto,
         "centro": pertenece_a_centro,
         "investigador": es_investigador,
+        "centromixto": pertenece_a_centro_mixto,
+        "unidadexcelencia": pertenece_a_unidad_excelencia,
     }
 
-    func = tipo_to_func.get(tipo, api_key)
-    return func(dato)
+    func = tipo_to_func.get(tipo)
+    return func(
+        dato,
+        privileged=privileged,
+        api_key=api_key,
+    )
 
 
-def es_investigador(investigador, api_key=None):
+def es_investigador(investigador, privileged=False, api_key=None):
     db = BaseDatos()
 
     if not api_key:
@@ -73,7 +79,7 @@ def es_investigador(investigador, api_key=None):
     return result != 0
 
 
-def pertenece_a_departamento(departamento, api_key=None):
+def pertenece_a_departamento(departamento, privileged=False, api_key=None):
     db = BaseDatos()
 
     if not api_key:
@@ -93,28 +99,47 @@ def pertenece_a_departamento(departamento, api_key=None):
     return result != 0
 
 
-def pertenece_a_grupo(grupo, api_key=None):
+def pertenece_a_grupo(grupo, privileged=False, api_key=None):
     db = BaseDatos()
-    emails = session["samlUserdata"]["mail"]
 
-    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
-                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
-                    AND i.idGrupo = %s)"""
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
 
-    params = [grupo]
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i 
+                    LEFT JOIN i_grupo_investigador gi ON gi.idInvestigador = i.idInvestigador
+                    WHERE i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
+                    AND gi.idGrupo = %(grupo)s
+                    {"AND gi.rol = 'Investigador principal'" if privileged else ""}
+                    )"""
+
+    params = {
+        "grupo": grupo,
+    }
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
     return result != 0
 
 
-def pertenece_a_instituto(instituto, api_key=None):
+def pertenece_a_instituto(instituto, privileged=False, api_key=None):
     db = BaseDatos()
     emails = session["samlUserdata"]["mail"]
 
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
+
     query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
                     i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
-                    AND i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_instituto WHERE idInstituto = %s))"""
+                    AND i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_instituto 
+                    WHERE idInstituto = %s
+                    {"AND rol = 'Responsable'" if privileged else ""}
+                    ))"""
 
     params = [instituto]
 
@@ -123,7 +148,7 @@ def pertenece_a_instituto(instituto, api_key=None):
     return result != 0
 
 
-def pertenece_a_centro(centro, api_key=None):
+def pertenece_a_centro(centro, privileged=False, api_key=None):
     db = BaseDatos()
     emails = session["samlUserdata"]["mail"]
 
@@ -132,6 +157,54 @@ def pertenece_a_centro(centro, api_key=None):
                     AND i.idCentro = %s)"""
 
     params = [centro]
+
+    result = db.ejecutarConsulta(query, params)[1][0]
+
+    return result != 0
+
+
+def pertenece_a_centro_mixto(centro_mixto, privileged=False, api_key=None):
+    db = BaseDatos()
+    emails = session["samlUserdata"]["mail"]
+
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
+
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
+                    AND i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_centro_mixto 
+                    WHERE idCentroMixto = %s
+                    {"AND rol = 'Responsable'" if privileged else ""}
+                    ))"""
+
+    params = [centro_mixto]
+
+    result = db.ejecutarConsulta(query, params)[1][0]
+
+    return result != 0
+
+
+def pertenece_a_unidad_excelencia(unidad_excelencia, privileged=False, api_key=None):
+    db = BaseDatos()
+    emails = session["samlUserdata"]["mail"]
+
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
+
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
+                    AND i.idInvestigador IN (SELECT idInvestigador FROM i_miembro_unidad_excelencia 
+                    WHERE idUdExcelencia = %s
+                    {"AND rol = 'Responsable'" if privileged else ""}
+                    ))"""
+
+    params = [unidad_excelencia]
 
     result = db.ejecutarConsulta(query, params)[1][0]
 

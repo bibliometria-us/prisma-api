@@ -1,9 +1,22 @@
+from typing import List
 from models.attribute import Attribute
-from models.grupo import Grupo
+from models.colectivo.grupo import Grupo
+from models.linea_investigacion import (
+    LineaInvestigacion,
+    get_lineas_investigacion as _get_lineas_investigacion,
+    add_linea_investigacion as _add_linea_investigacion,
+    remove_linea_investigacion as _remove_linea_investigacion,
+)
 from models.model import Component, Model
 from models.colectivo.unidad_excelencia import UnidadExcelencia
 from models.colectivo.centro_mixto import CentroMixto
 from models.colectivo.instituto import Instituto
+from models.palabra_clave import (
+    PalabraClave,
+    get_palabras_clave as _get_palabras_clave,
+    add_palabra_clave as _add_palabra_clave,
+    remove_palabra_clave as _remove_palabra_clave,
+)
 
 
 class Investigador(Model):
@@ -18,6 +31,8 @@ class Investigador(Model):
         unidad_excelencia=UnidadExcelencia(),
         centro_mixto=CentroMixto(),
         instituto=Instituto(),
+        palabras_clave: List[PalabraClave] = [],
+        lineas_investigacion: List[LineaInvestigacion] = [],
     ):
         attributes = [
             Attribute(column_name="idInvestigador"),
@@ -35,30 +50,59 @@ class Investigador(Model):
             Attribute(column_name="fechaNacimiento"),
             Attribute(column_name="fechaNombramiento"),
             Attribute(column_name="perfilPublico"),
+            Attribute(column_name="resumen"),
         ]
         components = [
             Component(
-                Grupo,
-                "grupo",
-                "get_grupo",
+                type=Grupo,
+                name="grupo",
+                # getter="get_grupo",
+                target_table="i_grupo",
+                intermediate_table="i_grupo_investigador",
+                cardinality="single",
+                enabled=False,
+            ),
+            Component(
+                type=UnidadExcelencia,
+                name="unidad_excelencia",
+                getter="get_unidad_excelencia",
+                target_table="i_unidad_excelencia",
+                intermediate_table="i_miembro_unidad_excelencia",
+                cardinality="single",
+                enabled=False,
+            ),
+            Component(
+                type=CentroMixto,
+                name="centro_mixto",
+                getter="get_centro_mixto",
+                target_table="i_centro_mixto",
+                intermediate_table="i_miembro_centro_mixto",
+                cardinality="single",
+                enabled=False,
+            ),
+            Component(
+                type=Instituto,
+                name="instituto",
+                getter="get_instituto",
+                target_table="i_instituto",
+                intermediate_table="i_miembro_instituto",
+                cardinality="single",
+                enabled=False,
+            ),
+            Component(
+                type=PalabraClave,
+                name="palabras_clave",
+                target_table="i_palabra_clave",
+                intermediate_table="i_investigador_palabra_clave",
+                cardinality="many",
                 enabled=True,
             ),
             Component(
-                UnidadExcelencia,
-                "unidad_excelencia",
-                "get_unidad_excelencia",
-                enabled=True,
-            ),
-            Component(
-                CentroMixto,
-                "centro_mixto",
-                "get_centro_mixto",
-                enabled=True,
-            ),
-            Component(
-                Instituto,
-                "instituto",
-                "get_instituto",
+                type=LineaInvestigacion,
+                name="lineas_investigacion",
+                target_table="i_linea_investigacion",
+                intermediate_table="i_investigador_linea_investigacion",
+                cardinality="many",
                 enabled=True,
             ),
         ]
@@ -66,6 +110,9 @@ class Investigador(Model):
         self.unidad_excelencia = unidad_excelencia
         self.centro_mixto = centro_mixto
         self.instituto = instituto
+        self.palabras_clave = palabras_clave
+        self.lineas_investigacion = lineas_investigacion
+        self.max_palabras_clave = 10
 
         super().__init__(
             db_name,
@@ -176,3 +223,37 @@ class Investigador(Model):
     def delete_instituto(self) -> None:
         self.instituto.delete_colectivo_from_investigador(self.get_primary_key().value)
         self.instituto = Instituto()
+
+    def get_palabras_clave(self):
+        return _get_palabras_clave(self)
+
+    def add_palabra_clave(self, id_palabra_clave=None, nombre_palabra_clave=None):
+        return _add_palabra_clave(
+            self,
+            id_palabra_clave=id_palabra_clave,
+            nombre_palabra_clave=nombre_palabra_clave,
+        )
+
+    def remove_palabra_clave(self, id_palabra_clave):
+        _remove_palabra_clave(
+            self,
+            id_palabra_clave=id_palabra_clave,
+        )
+
+    def get_lineas_investigacion(self):
+        return _get_lineas_investigacion(self)
+
+    def add_linea_investigacion(
+        self, id_linea_investigacion=None, nombre_linea_investigacion=None
+    ):
+        return _add_linea_investigacion(
+            self,
+            id_linea_investigacion=id_linea_investigacion,
+            nombre_linea_investigacion=nombre_linea_investigacion,
+        )
+
+    def remove_linea_investigacion(self, id_linea_investigacion):
+        _remove_linea_investigacion(
+            self,
+            id_linea_investigacion=id_linea_investigacion,
+        )
