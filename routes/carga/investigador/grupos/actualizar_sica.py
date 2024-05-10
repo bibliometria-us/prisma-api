@@ -53,6 +53,7 @@ def actualizar_grupos_sica():
             MIN(g.CODIGO) as codigo,
             MIN(i.ENTIDAD) as institucion,
             MIN(g.ESTADO) as estado,
+            MIN(g.FECHA_INICIO) as fecha_creacion,
             inv.idInvestigador as idInvestigador,
             CASE WHEN inv.idCategoria != "honor" THEN MIN(ig.rol) ELSE "Miembro" END as rol,
             ig.FECHA_FIN
@@ -177,6 +178,7 @@ def cargar_grupo_sica(datos_grupo: dict):
             "codigo": datos_grupo.get("codigo"),
             "institucion": datos_grupo.get("institucion"),
             "estado": datos_grupo.get("estado"),
+            "fecha_creacion": datos_grupo.get("fecha_creacion"),
         }
     )
     grupo.update()
