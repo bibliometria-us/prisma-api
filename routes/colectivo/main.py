@@ -53,7 +53,7 @@ class CargaGrupos(Resource):
         return {"message": "Carga finalizada correctamente"}, 200
 
 
-@colectivo_namespace.route("/", doc=False)
+@colectivo_namespace.route("", doc=False)
 class ColectivoResource(Resource):
 
     def post(self):

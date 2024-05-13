@@ -132,7 +132,7 @@ def get_investigador_from_id(columns, left_joins, inactivos, id):
     return result
 
 
-@investigador_namespace.route("/")
+@investigador_namespace.route("")
 class InvestigadorRoute(Resource):
     @investigador_namespace.doc(
         responses=global_responses,
