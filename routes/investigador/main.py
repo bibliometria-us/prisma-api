@@ -21,6 +21,7 @@ import utils.format as format
 import utils.pages as pages
 import utils.response as response
 import config.global_config as gconfig
+import urllib.parse
 
 investigador_namespace = Namespace("investigador", description="Investigadores")
 
@@ -184,8 +185,9 @@ class InvestigadorRoute(Resource):
 
     def post(self):
         args = request.args
+        headers = request.headers
 
-        id_investigador = int(args.get("id"))
+        id_investigador = int(args.get("id") or headers.get("id"))
 
         if not (
             pertenece_a_conjunto("investigador", id_investigador)
@@ -197,15 +199,21 @@ class InvestigadorRoute(Resource):
         investigador = Investigador()
         investigador.get_primary_key().value = id_investigador
 
-        column_args = {
-            column: args.get(column, None)
+        column_headers = {
+            column: headers.get(column, None)
             for column in investigador.get_editable_columns()
-            if args.get(column, None)
+            if headers.get(column, None)
         }
+
+        column_headers["resumen"] = (
+            urllib.parse.unquote(column_headers["resumen"])
+            if column_headers.get("resumen")
+            else None
+        )
 
         try:
             investigador.get()
-            investigador.update_attributes(column_args)
+            investigador.update_attributes(column_headers)
             return {
                 "message": "success",
             }, 200

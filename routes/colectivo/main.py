@@ -18,6 +18,7 @@ from celery import current_app
 import csv
 
 from utils.format import flask_csv_to_matix, table_to_pandas
+import urllib.parse
 
 colectivo_namespace = Namespace("colectivo", doc=False)
 
@@ -58,9 +59,10 @@ class ColectivoResource(Resource):
 
     def post(self):
         args = request.args
+        headers = request.headers
 
-        tipo_colectivo = args.get("tipo_colectivo")
-        id_colectivo = args.get("id_colectivo")
+        tipo_colectivo = args.get("tipo_colectivo") or headers.get("tipo_colectivo")
+        id_colectivo = args.get("id_colectivo") or headers.get("id_colectivo")
 
         if not (
             es_admin()
@@ -72,17 +74,23 @@ class ColectivoResource(Resource):
         colectivo: Colectivo = tipo_colectivo_to_type[tipo_colectivo]()
 
         # Obtiene todos los parámetros mapeando los nombres de las columnas y buscando atributos con ese nombre en la petición
-        column_args = {
-            column: args.get(column, None)
+        column_headers = {
+            column: headers.get(column, None)
             for column in colectivo.get_editable_columns()
-            if args.get(column, None)
+            if headers.get(column, None)
         }
+
+        column_headers["resumen"] = (
+            urllib.parse.unquote(column_headers["resumen"])
+            if column_headers.get("resumen")
+            else None
+        )
 
         colectivo.get_primary_key().value = id_colectivo
 
         try:
             colectivo.get()
-            colectivo.update_attributes(column_args)
+            colectivo.update_attributes(column_headers)
             return {
                 "message": "success",
             }, 200
