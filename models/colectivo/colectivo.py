@@ -41,7 +41,7 @@ class Colectivo(Model):
             Attribute(column_name="acronimo"),
             Attribute(column_name="ambito"),
             Attribute(column_name="resumen"),
-            Attribute(column_name="fecha_inicio"),
+            Attribute(column_name="fecha_creacion"),
         ]
         components = [
             Component(
