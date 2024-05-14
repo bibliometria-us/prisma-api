@@ -18,7 +18,6 @@ from celery import current_app
 import csv
 
 from utils.format import flask_csv_to_matix, table_to_pandas
-import urllib.parse
 
 colectivo_namespace = Namespace("colectivo", doc=False)
 
@@ -79,12 +78,6 @@ class ColectivoResource(Resource):
             for column in colectivo.get_editable_columns()
             if headers.get(column, None)
         }
-
-        column_headers["resumen"] = (
-            urllib.parse.unquote(column_headers["resumen"])
-            if column_headers.get("resumen")
-            else None
-        )
 
         colectivo.get_primary_key().value = id_colectivo
 

@@ -114,12 +114,14 @@ class Model(ABC):
     def update_attribute(self, attribute: str, value: Any) -> None:
         assert attribute in self.attributes.keys()
 
+        self.set_attribute(key=attribute, value=value)
+
         query = f"""UPDATE {self.metadata.db_name}.{self.metadata.table_name} 
                 SET {attribute} = %(value)s
                 WHERE {self.get_primary_key().column_name} = %(primary_key)s"""
 
         params = {
-            "value": value,
+            "value": self.get_attribute_value(attribute),
             "primary_key": self.get_primary_key().value,
         }
 
@@ -157,7 +159,7 @@ class Model(ABC):
 
     def set_attribute(self, key: str, value: Any) -> None:
         if key in self.attributes:
-            self.attributes.get(key).value = value
+            self.attributes.get(key).set_value(value)
         else:
             raise AttributeError(
                 f"'{type(self).__name__}' object has no attribute '{key}'"

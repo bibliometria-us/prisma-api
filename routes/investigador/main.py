@@ -21,7 +21,6 @@ import utils.format as format
 import utils.pages as pages
 import utils.response as response
 import config.global_config as gconfig
-import urllib.parse
 
 investigador_namespace = Namespace("investigador", description="Investigadores")
 
@@ -204,12 +203,6 @@ class InvestigadorRoute(Resource):
             for column in investigador.get_editable_columns()
             if headers.get(column, None)
         }
-
-        column_headers["resumen"] = (
-            urllib.parse.unquote(column_headers["resumen"])
-            if column_headers.get("resumen")
-            else None
-        )
 
         try:
             investigador.get()

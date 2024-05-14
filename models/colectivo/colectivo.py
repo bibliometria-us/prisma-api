@@ -19,6 +19,7 @@ from models.palabra_clave import (
     add_palabra_clave as _add_palabra_clave,
     remove_palabra_clave as _remove_palabra_clave,
 )
+from utils.decode import http_arg_decode
 from utils.format import table_to_pandas
 
 
@@ -40,7 +41,7 @@ class Colectivo(Model):
             Attribute(column_name="nombre"),
             Attribute(column_name="acronimo"),
             Attribute(column_name="ambito"),
-            Attribute(column_name="resumen"),
+            Attribute(column_name="resumen", pre_processors=[http_arg_decode]),
             Attribute(column_name="fecha_creacion"),
         ]
         components = [

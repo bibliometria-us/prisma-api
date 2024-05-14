@@ -17,6 +17,7 @@ from models.palabra_clave import (
     add_palabra_clave as _add_palabra_clave,
     remove_palabra_clave as _remove_palabra_clave,
 )
+from utils.decode import http_arg_decode
 
 
 class Investigador(Model):
@@ -50,7 +51,7 @@ class Investigador(Model):
             Attribute(column_name="fechaNacimiento"),
             Attribute(column_name="fechaNombramiento"),
             Attribute(column_name="perfilPublico"),
-            Attribute(column_name="resumen"),
+            Attribute(column_name="resumen", pre_processors=[http_arg_decode]),
         ]
         components = [
             Component(
