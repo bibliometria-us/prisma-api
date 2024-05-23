@@ -66,7 +66,7 @@ class ColectivoResource(Resource):
         if not (
             es_admin()
             | es_editor()
-            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=True)
+            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=False)
         ):
             return {"message": "No autorizado"}, 401
 
@@ -109,7 +109,7 @@ class PalabraClaveColectivo(Resource):
         if not (
             es_admin()
             | es_editor()
-            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=True)
+            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=False)
         ):
             return {"message": "No autorizado"}, 401
 
@@ -151,7 +151,7 @@ class PalabraClaveColectivo(Resource):
         if not (
             es_admin()
             | es_editor()
-            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=True)
+            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=False)
         ):
             return {"message": "No autorizado"}, 401
 
@@ -186,7 +186,7 @@ class LineaInvestigacionColectivo(Resource):
         if not (
             es_admin()
             | es_editor()
-            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=True)
+            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=False)
         ):
             return {"message": "No autorizado"}, 401
 
@@ -222,7 +222,7 @@ class LineaInvestigacionColectivo(Resource):
         if not (
             es_admin()
             | es_editor()
-            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=True)
+            | pertenece_a_conjunto(tipo_colectivo, id_colectivo, privileged=False)
         ):
             return {"message": "No autorizado"}, 401
 
