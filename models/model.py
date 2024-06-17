@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, Type
+from typing import Any, Callable, Type
 
 from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.condition import Condition
+from utils.format import table_to_pandas
 
 
 class Model(ABC):
@@ -15,6 +16,8 @@ class Model(ABC):
         primary_key: str,
         attributes: list[Attribute],
         components: list["Component"] = list(),
+        enabled_components: list[str] = list(),
+        values: list["Model"] = list(),
     ) -> None:
         self.db = BaseDatos(database=None)
         self.metadata = Metadata(
@@ -27,12 +30,17 @@ class Model(ABC):
         self.attributes = self.index_attributes()
         self.component_list = components
         self.components: dict[str, Component] = {}
+        self.enabled_components = enabled_components
         self.load_components()
+        self.set_enabled_components()
+        self.values = values
 
     def get(
         self,
         conditions: list[Condition] = None,
         all: bool = False,
+        multiple: bool = False,
+        multiple_components: list = [],
         logical_operator: str = "AND",
     ) -> None:
 
@@ -65,10 +73,13 @@ class Model(ABC):
             where = f" WHERE {f' {logical_operator} '.join((condition.generate_query() for condition in conditions))}"
             query += where
 
-        result = self.db.ejecutarConsulta(query, params)
+        query_result = self.db.ejecutarConsulta(query, params)
+
+        result = None
 
         if self.db.has_rows():
-            self.store_data(result)
+            result = self.store_data(query_result, multiple, multiple_components)
+            self.get_enabled_components()
         else:
             self.clear_attributes()
 
@@ -169,12 +180,28 @@ class Model(ABC):
         for key, value in values.items():
             self.set_attribute(key, value)
 
-    def store_data(self, update) -> None:
-        # TODO: Utilizar esta función para registrar cambios para logs
-        for index in range(0, len(update[0])):
-            key = update[0][index]
-            value = update[1][index]
-            self.set_attribute(key, value)
+    def store_data(
+        self, update, multiple: bool, multiple_components: list[str]
+    ) -> None:
+        df = table_to_pandas(update)
+
+        if not multiple:
+            for index, row in df.head(1).iterrows():
+                for key, value in row.items():
+                    self.set_attribute(key, value)
+            return self
+
+        else:
+            result = []
+            for index, row in df.iterrows():
+                item = self.__class__()
+                for key, value in row.items():
+                    item.set_attribute(key, value)
+
+                # item.get_enabled_components()
+                result.append(item)
+            self.values = result
+            return result
 
     def get_primary_key(self) -> Attribute:
         return self.attributes.get(self.metadata.primary_key)
@@ -194,15 +221,27 @@ class Model(ABC):
             self.load_component(component)
 
     def load_component(self, component: "Component") -> None:
-        if not hasattr(self, component.name):
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{component.name}'"
-            )
+
         self.components[component.name] = component
 
     def enable_component(self, component_name: str) -> None:
         component = self.components.get(component_name)
         component.enabled = True
+
+    def get_enabled_components(self) -> None:
+        for component_id, component in self.components.items():
+            if component.enabled:
+                self.get_component(component_id)
+
+    def set_enabled_components(self) -> None:
+        if not self.enabled_components:
+            return None
+
+        for name, component in self.components.items():
+            if name in self.enabled_components:
+                component.enable()
+            else:
+                component.disable()
 
     def get_component(self, component_id: str) -> None:
         component = self.components.get(component_id)
@@ -210,26 +249,49 @@ class Model(ABC):
         getter_name = component.getter
 
         if getter_name:
-            getter = getattr(self, component.getter)
-
-            if callable(getter):
-                value = getter()
-
-            else:
-
-                raise AttributeError(
-                    f"'{type(self).__name__}' object has no callable method '{getter}'"
-                )
-
-            setattr(self, component.name, value)
-            component.value = value
+            self.get_component_by_getter(component)
 
         else:
-            value = self.get_component_dynamic(component_id)
+            self.get_component_dynamically(component)
 
-    def get_component_dynamic(self, component_id: str) -> "Model":
+    def get_component_by_getter(self, component: "Component") -> "Model":
+        getter = getattr(self, component.getter)
 
-        pass
+        if callable(getter):
+            value = getter()
+
+        else:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no callable method '{getter}'"
+            )
+
+        component.value = value
+
+        return component.value
+
+    def get_component_dynamically(self, component: "Component") -> "Model":
+        foreign_key = component.foreign_key
+        foreign_target_column = component.foreign_target_column
+        intermediate_table = component.intermediate_table
+        component_value = component.value
+
+        if not foreign_target_column:
+            conditions = None
+        else:
+            conditions = [
+                Condition(
+                    query=f"{foreign_target_column} = {self.get_attribute_value(foreign_key)}"
+                )
+            ]
+
+        if foreign_key:
+            component_value.get_primary_key().value = self.get_attribute_value(
+                foreign_key
+            )
+            component.value = component_value.get(
+                conditions=conditions,
+                multiple=(component.cardinality == "many"),
+            )
 
     def get_editable_columns(self) -> list[str]:
         return (
@@ -256,11 +318,13 @@ class Metadata:
 class Component:
     def __init__(
         self,
-        type: Type,
+        type: Type[Model],
         name: str,
         cardinality: str,
         getter: str = None,
         target_table: str = None,
+        foreign_key: str = None,
+        foreign_target_column: str = None,
         intermediate_table: str = None,
         enabled: bool = False,
     ) -> None:
@@ -268,7 +332,15 @@ class Component:
         self.name = name
         self.getter = getter
         self.target_table = target_table
+        self.foreign_key = foreign_key
+        self.foreign_target_column = foreign_target_column
         self.intermediate_table = intermediate_table
         self.cardinality = cardinality
         self.enabled = enabled
         self.value: Model = self.type()
+
+    def enable(self):
+        self.enabled = True
+
+    def disable(self):
+        self.enabled = False

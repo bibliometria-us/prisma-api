@@ -1,11 +1,13 @@
 import csv
 import io
 import json
+from typing import List
 import xml.etree.ElementTree as ET
 
 import datetime
 import numpy as np
 from utils.date import date_to_str
+from utils.exceptions import FileFormatError
 from utils.timing import func_timer as timer
 import openpyxl
 from openpyxl.styles import Font, Alignment
@@ -178,13 +180,29 @@ def table_to_pandas(table: list):
     return result
 
 
-def flask_csv_to_matix(file: FileStorage):
+def flask_csv_to_matix(file: FileStorage) -> List:
     result = []
 
     data = file.stream.read()
-    stream = io.StringIO(data.decode("UTF8"), newline=None)
+    stream = io.StringIO(data.decode("utf-8-sig"), newline=None)
     reader = csv.reader(stream)
     for row in reader:
         result.append(row)
 
     return result
+
+
+def flask_csv_to_df(file: FileStorage) -> pandas.DataFrame:
+    if len(file.name.split(".")) < 1 or file.name.split(".")[1] != "csv":
+        raise FileFormatError
+
+    matrix = flask_csv_to_matix(file)
+    return table_to_pandas(matrix)
+
+
+def flask_xls_to_df(file: FileStorage) -> pandas.DataFrame:
+    if len(file.name.split(".")) < 1 or file.name.split(".")[1] != "xls":
+        raise FileFormatError
+
+    xls_data = pandas.read_excel(file, engine="xlrd")
+    return xls_data

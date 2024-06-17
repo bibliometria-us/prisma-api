@@ -3,7 +3,6 @@ from api_logging.sso_data import store_sso_data
 import config.local_config as local_config
 from api_logging.log_request import log_request
 from routes import (
-    publicacion,
     fuente,
     proyecto,
     instituto,
@@ -18,6 +17,7 @@ from routes.investigador.main import investigador_namespace
 from routes.informes.main import informe_namespace
 from routes.carga.main import carga_namespace
 from routes.colectivo.main import colectivo_namespace
+from routes.publicacion.main import publicacion_namespace
 import os
 from flask import (
     Flask,
@@ -34,6 +34,7 @@ from flask_restx import Api
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import logging
+
 from security.protected_routes import mandatory_auth_endpoints
 from celery import Celery
 
@@ -58,7 +59,7 @@ api = Api(api_bp, version="1.0", title="Prisma API")
 logging.basicConfig(level=logging.DEBUG)
 
 api.add_namespace(investigador_namespace)
-api.add_namespace(publicacion.publicacion_namespace)
+api.add_namespace(publicacion_namespace)
 api.add_namespace(fuente.fuente_namespace)
 api.add_namespace(proyecto.proyecto_namespace)
 api.add_namespace(instituto.instituto_namespace)

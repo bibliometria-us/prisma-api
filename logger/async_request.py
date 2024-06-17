@@ -2,6 +2,7 @@ from db.conexion import BaseDatos
 from utils.date import get_current_date
 from utils.format import table_to_pandas
 import secrets
+import json
 
 
 class AsyncRequest:
@@ -10,7 +11,7 @@ class AsyncRequest:
         request_type: str = None,
         id: str = None,
         email: str = None,
-        params: str = None,
+        params: str = {},
     ) -> None:
         self.db = BaseDatos(database="api")
         self.request_type = request_type
@@ -36,7 +37,7 @@ class AsyncRequest:
         df = table_to_pandas(query_result).iloc[0]
 
         self.request_type = df["tipo"]
-        self.params = df["parametros"]
+        self.params = json.loads(df["parametros"])
         self.status = df["estado"]
         self.result = df["resultado"]
         self.email = df["destinatario"]
@@ -48,7 +49,7 @@ class AsyncRequest:
         params = {
             "id": self.id,
             "tipo": self.request_type,
-            "parametros": self.params,
+            "parametros": json.dumps(self.params),
             "estado": self.status,
             "resultado": self.result,
             "destinatario": self.email,

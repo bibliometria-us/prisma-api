@@ -17,7 +17,11 @@ from abc import ABC, abstractmethod
 
 class JournalsAPI(API):
     def __init__(
-        self, db: BaseDatos, año: int, fecha_carga: str, id_fuente: int
+        self,
+        db: BaseDatos,
+        año: int,
+        fecha_carga: str,
+        id_fuente: int,
     ) -> None:
         super().__init__()
         self.db = db
@@ -27,7 +31,7 @@ class JournalsAPI(API):
         self.titulo_revista = None
         self.issn = None
         self.eissn = None
-        self.add_headers({"accept": "application/json", "X-ApiKey": config.api_key})
+        self.add_headers({"accept": "application/json"})
         self.response_type = "json"
         self.jif: JIF = None
         self.jci: JCI = None
@@ -37,6 +41,10 @@ class JournalsAPI(API):
             task_name="carga_wos_journal",
         )
         self.logger.metadata.parse()
+
+    def set_api_key(self):
+        super().set_api_key()
+        self.add_headers({"X-ApiKey": config.api_key})
 
     def get_respose(self) -> dict:
         result = super().get_respose()

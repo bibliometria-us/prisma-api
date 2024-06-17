@@ -1,6 +1,11 @@
 from typing import List
 from models.attribute import Attribute
+from models.colectivo.area import Area
+from models.colectivo.categoria import Categoria
+from models.colectivo.centro import Centro
+from models.colectivo.departamento import Departamento
 from models.colectivo.grupo import Grupo
+from models.condition import Condition
 from models.linea_investigacion import (
     LineaInvestigacion,
     get_lineas_investigacion as _get_lineas_investigacion,
@@ -28,24 +33,19 @@ class Investigador(Model):
         table_name="i_investigador",
         alias="investigador",
         primary_key="idInvestigador",
-        grupo=Grupo(),
-        unidad_excelencia=UnidadExcelencia(),
-        centro_mixto=CentroMixto(),
-        instituto=Instituto(),
-        palabras_clave: List[PalabraClave] = [],
-        lineas_investigacion: List[LineaInvestigacion] = [],
+        enabled_components: list[str] = list(),
     ):
         attributes = [
             Attribute(column_name="idInvestigador"),
             Attribute(column_name="nombre"),
             Attribute(column_name="apellidos"),
-            Attribute(column_name="docuIden", visible=False),
+            Attribute(column_name="docuIden", visible=0),
             Attribute(column_name="email"),
-            Attribute(column_name="idCategoria"),
-            Attribute(column_name="idArea"),
+            Attribute(column_name="idDepartamento", visible=0),
+            Attribute(column_name="idCategoria", visible=0),
+            Attribute(column_name="idArea", visible=0),
             Attribute(column_name="fechaContratacion"),
-            Attribute(column_name="idDepartamento"),
-            Attribute(column_name="idCentro"),
+            Attribute(column_name="idCentro", visible=0),
             Attribute(column_name="nacionalidad"),
             Attribute(column_name="sexo"),
             Attribute(column_name="fechaNacimiento"),
@@ -55,13 +55,40 @@ class Investigador(Model):
         ]
         components = [
             Component(
+                type=Centro,
+                name="centro",
+                target_table="i_centro",
+                foreign_key="idCentro",
+                cardinality="single",
+            ),
+            Component(
+                type=Departamento,
+                name="departamento",
+                target_table="i_departamento",
+                foreign_key="idDepartamento",
+                cardinality="single",
+            ),
+            Component(
+                type=Categoria,
+                name="categoria",
+                target_table="i_categoria",
+                foreign_key="idCategoria",
+                cardinality="single",
+            ),
+            Component(
+                type=Area,
+                name="area",
+                target_table="i_area",
+                foreign_key="idArea",
+                cardinality="single",
+            ),
+            Component(
                 type=Grupo,
                 name="grupo",
                 # getter="get_grupo",
                 target_table="i_grupo",
                 intermediate_table="i_grupo_investigador",
                 cardinality="single",
-                enabled=False,
             ),
             Component(
                 type=UnidadExcelencia,
@@ -70,7 +97,6 @@ class Investigador(Model):
                 target_table="i_unidad_excelencia",
                 intermediate_table="i_miembro_unidad_excelencia",
                 cardinality="single",
-                enabled=False,
             ),
             Component(
                 type=CentroMixto,
@@ -79,7 +105,6 @@ class Investigador(Model):
                 target_table="i_centro_mixto",
                 intermediate_table="i_miembro_centro_mixto",
                 cardinality="single",
-                enabled=False,
             ),
             Component(
                 type=Instituto,
@@ -88,7 +113,6 @@ class Investigador(Model):
                 target_table="i_instituto",
                 intermediate_table="i_miembro_instituto",
                 cardinality="single",
-                enabled=False,
             ),
             Component(
                 type=PalabraClave,
@@ -96,7 +120,6 @@ class Investigador(Model):
                 target_table="i_palabra_clave",
                 intermediate_table="i_investigador_palabra_clave",
                 cardinality="many",
-                enabled=True,
             ),
             Component(
                 type=LineaInvestigacion,
@@ -104,15 +127,16 @@ class Investigador(Model):
                 target_table="i_linea_investigacion",
                 intermediate_table="i_investigador_linea_investigacion",
                 cardinality="many",
-                enabled=True,
+            ),
+            Component(
+                type=IdentificadorInvestigador,
+                name="identificador_investigador",
+                target_table="i_identificador_investigador",
+                foreign_key="idInvestigador",
+                foreign_target_column="idInvestigador",
+                cardinality="many",
             ),
         ]
-        self.grupo = grupo
-        self.unidad_excelencia = unidad_excelencia
-        self.centro_mixto = centro_mixto
-        self.instituto = instituto
-        self.palabras_clave = palabras_clave
-        self.lineas_investigacion = lineas_investigacion
         self.max_palabras_clave = 10
 
         super().__init__(
@@ -122,6 +146,7 @@ class Investigador(Model):
             primary_key,
             attributes=attributes,
             components=components,
+            enabled_components=enabled_components,
         )
 
     # GRUPOS
@@ -258,3 +283,35 @@ class Investigador(Model):
             self,
             id_linea_investigacion=id_linea_investigacion,
         )
+
+
+class IdentificadorInvestigador(Model):
+
+    def __init__(
+        self,
+        db_name="prisma",
+        table_name="i_identificador_investigador",
+        alias="identificador_investigador",
+        primary_key="idIdentificador",
+    ):
+        attributes = [
+            Attribute(column_name="idIdentificador", visible=0),
+            Attribute(column_name="idInvestigador", visible=0),
+            Attribute(column_name="tipo"),
+            Attribute(column_name="valor"),
+        ]
+        super().__init__(
+            db_name,
+            table_name,
+            alias,
+            primary_key,
+            attributes=attributes,
+        )
+
+    def get(
+        self,
+        conditions: List[Condition] = None,
+        all: bool = False,
+        logical_operator: str = "AND",
+    ) -> None:
+        return super().get(conditions, all, logical_operator)

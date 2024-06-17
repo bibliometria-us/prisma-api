@@ -1,13 +1,23 @@
-from flask import request
+import os
+from celery import current_app
+from flask import request, session
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
+from logger.async_request import AsyncRequest
+from routes.publicacion.citas_perdidas.citas_perdidas import buscar_citas_perdidas
 from security.api_key import comprobar_api_key
+from security.check_users import es_admin, es_editor, tiene_rol
+from utils.exceptions import FileFormatError
+from utils.format import (
+    flask_csv_to_df,
+    flask_xls_to_df,
+)
 from utils.timing import func_timer as timer
 import utils.pages as pages
 import utils.response as response
 import utils.date as date_utils
 import config.global_config as gconfig
-
+import pandas as pd
 
 publicacion_namespace = Namespace("publicacion", description="Publicaciones")
 
@@ -95,6 +105,57 @@ def get_publicacion_from_id(columns: list[str], left_joins: list[str], id: int):
     result = db.ejecutarConsulta(query, params)
 
     return result
+
+
+@publicacion_namespace.route("/citas-perdidas")
+class CitasPerdidas(Resource):
+    def post(self):
+
+        if not (es_admin() | tiene_rol("citas_perdidas")):
+            return {"message": "No autorizado"}, 401
+
+        id_publicacion = request.headers.get("id_publicacion", None)
+        citas_scopus = request.headers.get("citas_scopus", None)
+        citas_wos = request.headers.get("citas_wos", None)
+
+        date = date_utils.get_current_date(format=True, format_str="%Y%m%d-%H%M%S-%f")
+        email = session["samlUserdata"]["mail"][-1]
+
+        try:
+
+            ficheros_wos = request.files.getlist("ficheros_wos[]")
+            ficheros_scopus = request.files.getlist("ficheros_scopus[]")
+
+            async_request = AsyncRequest(request_type="citas_perdidas", email=email)
+
+            base_dir = f"temp/citas_perdidas/{async_request.id}/"
+            scopus_dir = base_dir + "scopus/"
+            wos_dir = base_dir + "wos/"
+
+            os.makedirs(scopus_dir, exist_ok=True)
+            os.makedirs(wos_dir, exist_ok=True)
+
+            for index, fichero_scopus in enumerate(ficheros_scopus):
+                fichero_scopus.save(scopus_dir + str(index) + ".csv")
+
+            for index, fichero_wos in enumerate(ficheros_wos):
+                fichero_wos.save(wos_dir + str(index) + ".xls")
+
+            params = {
+                "id_publicacion": id_publicacion,
+                "citas_scopus": citas_scopus,
+                "citas_wos": citas_wos,
+            }
+
+            async_request.params = params
+            async_request.save()
+
+            current_app.tasks["citas_perdidas"].apply_async([async_request.id])
+
+        except FileFormatError:
+            return {"message": "Error en los formatos de los ficheros adjuntados"}, 400
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
 
 
 @publicacion_namespace.route("/")
