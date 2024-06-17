@@ -46,8 +46,14 @@ def cargar_citas_perdidas(request_id: str):
             adjuntos=[base_dir + "citas_perdidas.xlsx"],
             asunto="Informe de citas perdidas",
             destinatarios=destinatarios,
-            texto_plano=f"Informe de citas perdidas de la publicación https://prisma.us.es/publicacion/{request.params['id_publicacion']}",
-            texto_html="",
+            texto_plano="",
+            texto_html=f"""
+            <p>Informe de citas perdidas de la publicación 
+                <a href='https://prisma.us.es/publicacion/{request.params['id_publicacion']}' target='_blank'>
+                {request.params['id_publicacion']}
+                </a>
+            </p>
+            """,
         )
 
         request.close(message="Informe entregado")
@@ -57,23 +63,36 @@ def cargar_citas_perdidas(request_id: str):
             adjuntos=[],
             asunto="Error: Informe de citas perdidas",
             destinatarios=destinatarios,
-            texto_plano=f"""Error en el informe de citas perdidas de la publicación https://prisma.us.es/publicacion/{request.params['id_publicacion']} """,
-            texto_html="",
+            texto_plano="",
+            texto_html=f"""
+            <p>Error en el informe de citas perdidas de la publicación 
+                <a href='https://prisma.us.es/publicacion/{request.params['id_publicacion']}' target='_blank'>
+                {request.params['id_publicacion']}
+                </a>
+            </p>
+            """,
         )
 
         request.params["error"] = "API Limit"
-        request.save()
+        request.result = "Error"
+        request.error(message="API Limit")
     except Exception as e:
         enviar_correo(
             adjuntos=[],
             asunto="Error: Informe de citas perdidas",
             destinatarios=destinatarios,
-            texto_plano=f"""Error en el informe de citas perdidas de la publicación https://prisma.us.es/publicacion/{request.params['id_publicacion']} """,
-            texto_html="",
+            texto_plano="",
+            texto_html=f"""
+            <p>Error en el informe de citas perdidas de la publicación 
+                <a href='https://prisma.us.es/publicacion/{request.params['id_publicacion']}' target='_blank'>
+                {request.params['id_publicacion']}
+                </a>
+            </p>
+            """,
         )
 
         request.params["error"] = str(e)
-        request.save()
+        request.error(message="Error desconocido")
     finally:
         shutil.rmtree(base_dir)
 
