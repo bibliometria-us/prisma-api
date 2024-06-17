@@ -119,7 +119,7 @@ class CitasPerdidas(Resource):
         citas_wos = request.headers.get("citas_wos", None)
 
         date = date_utils.get_current_date(format=True, format_str="%Y%m%d-%H%M%S-%f")
-        email = session["samlUserdata"]["mail"][-1]
+        email = ",".join(session["samlUserdata"]["mail"])
 
         try:
 

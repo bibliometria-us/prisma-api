@@ -18,7 +18,7 @@ from utils.date import get_current_date
 )
 def cargar_citas_perdidas(request_id: str):
     request = AsyncRequest(id=request_id)
-
+    destinatarios = request.email.split(",")
     base_dir = f"temp/citas_perdidas/{request.id}/"
     scopus_dir = f"{base_dir}scopus/"
     wos_dir = f"{base_dir}wos/"
@@ -45,7 +45,7 @@ def cargar_citas_perdidas(request_id: str):
         enviar_correo(
             adjuntos=[base_dir + "citas_perdidas.xlsx"],
             asunto="Informe de citas perdidas",
-            destinatarios=[request.email],
+            destinatarios=destinatarios,
             texto_plano=f"Informe de citas perdidas de la publicación https://prisma.us.es/publicacion/{request.params['id_publicacion']}",
             texto_html="",
         )
@@ -56,7 +56,7 @@ def cargar_citas_perdidas(request_id: str):
         enviar_correo(
             adjuntos=[],
             asunto="Error: Informe de citas perdidas",
-            destinatarios=[request.email],
+            destinatarios=destinatarios,
             texto_plano=f"""Error en el informe de citas perdidas de la publicación https://prisma.us.es/publicacion/{request.params['id_publicacion']} """,
             texto_html="",
         )
@@ -67,9 +67,7 @@ def cargar_citas_perdidas(request_id: str):
         enviar_correo(
             adjuntos=[],
             asunto="Error: Informe de citas perdidas",
-            destinatarios=[
-                request.email,
-            ],
+            destinatarios=destinatarios,
             texto_plano=f"""Error en el informe de citas perdidas de la publicación https://prisma.us.es/publicacion/{request.params['id_publicacion']} """,
             texto_html="",
         )
