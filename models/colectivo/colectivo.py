@@ -71,7 +71,10 @@ class Colectivo(Model):
 
         resumen: str = self.attributes.get("resumen").value
 
-        resumen = resumen.strip() if resumen else None
+        if not resumen:
+            return None
+
+        resumen = resumen.strip()
 
         # Contar la cantidad de veces que aparecen \n y añadirlas al máximo multiplicado por 4
         cantidad_saltos_linea = resumen.count("\n")
