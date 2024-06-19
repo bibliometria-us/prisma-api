@@ -52,8 +52,11 @@ class WosAPI(API):
 
         self.json["firstRecord"] = self.json["count"] * page + 1
 
-        records = self.response["Data"]["Records"]["records"]["REC"]
         self.records_found = self.response["QueryResult"]["RecordsFound"]
+        if self.records_found == 0:
+            return None
+
+        records = self.response["Data"]["Records"]["records"]["REC"]
 
         self.records += records
 
