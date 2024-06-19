@@ -25,12 +25,12 @@ def cargar_citas_perdidas(request_id: str):
 
     try:
 
-        scopus_dataframes = []
+        scopus_dataframes = [pd.DataFrame()]
         for filename in os.listdir(scopus_dir):
             df = pd.read_csv(scopus_dir + filename)
             scopus_dataframes.append(df)
 
-        wos_dataframes = []
+        wos_dataframes = [pd.DataFrame()]
         for filename in os.listdir(wos_dir):
             df = pd.read_excel(wos_dir + filename, engine="xlrd")
             wos_dataframes.append(df)
@@ -160,7 +160,7 @@ class BaseDatosCitasPerdidas(ABC):
     def comparar(self, target_db: "BaseDatosCitasPerdidas"):
         self.comparados.append(target_db.nombre)
         columna_comparacion = "Cita indexada en " + target_db.nombre
-        self.df.loc[:, columna_comparacion] = None
+        self.df[columna_comparacion] = pd.Series(dtype="object")
         for index, row in self.df.iterrows():
             doi = row["DOI"]
 
@@ -185,7 +185,7 @@ class BaseDatosCitasPerdidas(ABC):
 
         columna_documento_indexado_en = "Documento indexado en " + target_db.nombre
         columna_url_documento_indexado = "URL en " + target_db.nombre
-        self.df.loc[:, columna_documento_indexado_en] = None
+        self.df[columna_documento_indexado_en] = pd.Series(dtype="object")
 
         # Etiquetar las citas que no están indexadas pero que la publicación sí ha sido encontrada
         self.df = pd.merge(
@@ -231,10 +231,13 @@ class BaseDatosCitasPerdidasWoS(BaseDatosCitasPerdidas):
         return self.url_template.format(id=id)
 
     def buscar_dois_en_api(self, dois: List[Dict]) -> pd.DataFrame:
+        record_data = pd.DataFrame(columns=["DOI", "URL"])
+
+        if not dois:
+            return record_data
+
         self.api.search_by_DOI_list(dois)
         records: List[Dict] = self.api.records
-
-        record_data = pd.DataFrame(columns=["DOI", "URL"])
 
         for record in records:
             try:
@@ -280,11 +283,14 @@ class BaseDatosCitasPerdidasScopus(BaseDatosCitasPerdidas):
         return self.url_template.format(id=eid)
 
     def buscar_dois_en_api(self, dois: List[str]) -> pd.DataFrame:
+        data_list = pd.DataFrame(columns=["DOI", "URL"])
+
+        if not dois:
+            return data_list
+
         self.api.search_by_DOI_list(dois)
 
         api_results: List[dict] = self.api.results
-
-        data_list = pd.DataFrame(columns=["DOI", "URL"])
 
         for result in api_results:
             data = {}
