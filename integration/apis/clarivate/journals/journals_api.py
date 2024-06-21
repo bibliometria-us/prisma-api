@@ -22,8 +22,9 @@ class JournalsAPI(API):
         año: int,
         fecha_carga: str,
         id_fuente: int,
+        api_keys=config.api_key,
     ) -> None:
-        super().__init__()
+        super().__init__(api_keys=api_keys)
         self.db = db
         self.id_fuente = id_fuente
         self.año = año
@@ -44,7 +45,7 @@ class JournalsAPI(API):
 
     def set_api_key(self):
         super().set_api_key()
-        self.add_headers({"X-ApiKey": config.api_key})
+        self.add_headers({"X-ApiKey": self.api_keys[self.api_key_index]})
 
     def get_respose(self) -> dict:
         result = super().get_respose()

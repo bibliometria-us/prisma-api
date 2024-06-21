@@ -54,6 +54,7 @@ def obtener_lista_de_fuentes(fuentes: str) -> list:
     name="actualizar_metrica_wos_journals",
     ignore_result=True,
     acks_late=True,
+    rate_limit="5/s",
 )
 def carga_unitaria(año, id_fuente, fecha):
     db = BaseDatos()
