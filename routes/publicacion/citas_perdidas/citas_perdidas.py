@@ -124,7 +124,9 @@ class CitasPerdidas:
         ) as writer:
             # Iterate over all sheets in the dictionary and write each sheet to the new file
             for sheet_name, bd in self.bds.items():
-                bd.df.to_excel(writer, sheet_name=sheet_name, index=False)
+                bd.df[bd.columnas_excel].to_excel(
+                    writer, sheet_name=sheet_name, index=False
+                )
 
 
 class BaseDatosCitasPerdidas(ABC):
@@ -133,6 +135,7 @@ class BaseDatosCitasPerdidas(ABC):
         self.df_fuente = df_fuente
         self.df = pd.DataFrame()
         self.comparados: list[str] = []
+        self.columnas_excel = ["DOI", "Título", "ID", "Año"]
         self.cargar_df()
 
     @abstractmethod
@@ -161,6 +164,8 @@ class BaseDatosCitasPerdidas(ABC):
         self.comparados.append(target_db.nombre)
         columna_comparacion = "Cita indexada en " + target_db.nombre
         self.df[columna_comparacion] = pd.Series(dtype="object")
+        self.columnas_excel.append(columna_comparacion)
+
         for index, row in self.df.iterrows():
             doi = row["DOI"]
 
@@ -186,6 +191,8 @@ class BaseDatosCitasPerdidas(ABC):
         columna_documento_indexado_en = "Documento indexado en " + target_db.nombre
         columna_url_documento_indexado = "URL en " + target_db.nombre
         self.df[columna_documento_indexado_en] = pd.Series(dtype="object")
+        self.columnas_excel.append(columna_documento_indexado_en)
+        self.columnas_excel.append(columna_url_documento_indexado)
 
         # Etiquetar las citas que no están indexadas pero que la publicación sí ha sido encontrada
         self.df = pd.merge(
