@@ -117,6 +117,8 @@ class CitasPerdidas(Resource):
         id_publicacion = request.headers.get("id_publicacion", None)
         citas_scopus = request.headers.get("citas_scopus", None)
         citas_wos = request.headers.get("citas_wos", None)
+        id_scopus = request.headers.get("id_scopus", None)
+        id_wos = request.headers.get("id_wos", None)
 
         date = date_utils.get_current_date(format=True, format_str="%Y%m%d-%H%M%S-%f")
         email = ",".join(session["samlUserdata"]["mail"])
@@ -145,6 +147,8 @@ class CitasPerdidas(Resource):
                 "id_publicacion": id_publicacion,
                 "citas_scopus": citas_scopus,
                 "citas_wos": citas_wos,
+                "id_scopus": id_scopus,
+                "id_wos": id_wos,
             }
 
             async_request.params = params
