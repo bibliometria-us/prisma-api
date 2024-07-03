@@ -1,7 +1,7 @@
 from flask_restx import Namespace, Resource
 from flask import request, jsonify
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
-from security.check_users import es_admin
+from security.check_users import es_admin, es_editor
 from celery import current_app
 from routes.carga.investigador.grupos.actualizar_sica import (
     actualizar_tabla_sica,
@@ -40,14 +40,17 @@ class CargaWosJournals(Resource):
 
         args = request.args
         api_key = args.get("api_key")
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
 
         current_year = datetime.now().year
 
         fuentes = args.get("fuentes", "todas")
         inicio = int(args.get("inicio", current_year - 1))
         fin = int(args.get("fin", current_year - 1))
+
+        if not es_admin(api_key=api_key) or (
+            es_editor(api_key=api_key) and fuentes != "todas"
+        ):
+            return {"message": "No autorizado"}, 401
 
         result = iniciar_carga(fuentes, inicio, fin)
 
