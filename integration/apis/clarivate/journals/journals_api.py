@@ -85,7 +85,9 @@ class JournalsAPI(API):
         return encontrado
 
     def buscar_id_wos_api(self) -> None:
-        self.uri_template = "https://api.clarivate.com/apis/wos-journals/v1/journals?q={query}&page=1&limit=1"
+        self.uri_template = (
+            "https://api.clarivate.com/apis/wos-journals/v1/journals?q={query}&page=1"
+        )
 
         query_issns = """SELECT GROUP_CONCAT(valor SEPARATOR ",") as issns FROM `p_identificador_fuente`
                         WHERE tipo IN ("issn","eissn") AND idFuente = %s
@@ -116,8 +118,8 @@ class JournalsAPI(API):
             raise exception
 
         hits = self.response.get("hits")
-        self.id_wos = str(hits[0].get("id"))
-        self.titulo_revista = str(hits[0].get("name"))
+        self.id_wos = str(hits[-1].get("id"))
+        self.titulo_revista = str(hits[-1].get("name"))
 
         return None
 
