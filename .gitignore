@@ -294,3 +294,5 @@ integration/apis/clarivate/journals/config.py
 *.log
 .metadata.json
 integration/email/config.py
+integration/apis/zenodo/config.py
+*config.py
