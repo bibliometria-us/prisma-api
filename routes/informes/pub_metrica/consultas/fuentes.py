@@ -46,10 +46,13 @@ es_int = {
 
 
 def consulta_investigadores(fuentes):
-    query = "SELECT i.idInvestigador FROM i_investigador_activo i "
+    query = """SELECT i.idInvestigador FROM i_investigador_activo i """
 
     _conditions = []
-    _joins = []
+    _joins = [
+        "LEFT JOIN i_categoria cat ON cat.idCategoria = i.idCategoria",
+        "LEFT JOIN i_investigador_excluido ie ON ie.idInvestigador = i.idInvestigador",
+    ]
 
     condition_template = "{column} IN ({value})"
 
@@ -69,7 +72,10 @@ def consulta_investigadores(fuentes):
         _conditions.append(condition)
 
     query += f"{' '.join(_joins)}"
-    query += f" WHERE i.idCategoria != 'honor' AND ({' OR '.join(_conditions)})"
+    query += f""" WHERE cat.idCategoria != 'honor' 
+                AND (cat.tipo_pp != 'exc' OR ie.excluido = 0)
+                AND (ie.excluido IS NULL OR ie.excluido != 1)
+                AND ({' OR '.join(_conditions)})"""
 
     db = BaseDatos()
     result = db.ejecutarConsulta(query, [])
