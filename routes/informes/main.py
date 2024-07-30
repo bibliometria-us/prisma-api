@@ -139,7 +139,7 @@ class InformePubMetrica(Resource):
             "excel": "xlsx",
         }
 
-        if len(fuentes) > 1:
+        if len(fuentes) > 1 or len(list(fuentes.values())[0]) > 1:
             base_filename = f"informe_personalizado_{timestamp}"
         else:
             base_filename = f"informe_{list(fuentes.keys())[0]}_{','.join(list(fuentes.values())[0])}_{timestamp}"
