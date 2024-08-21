@@ -10,7 +10,7 @@ class ZenodoAPI(API):
         uri_data: dict = {},
         route: str = "records",
         args: dict = {},
-        headers: dict = {},
+        headers: dict = {"Accept": "application/vnd.inveniordm.v1+json"},
         json: dict = {},
         response_type: str = "json",
     ):

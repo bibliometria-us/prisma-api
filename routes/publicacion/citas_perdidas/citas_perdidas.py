@@ -316,7 +316,7 @@ class BaseDatosCitasPerdidas(ABC):
         # Etiquetar las citas que no están indexadas pero que la publicación sí ha sido encontrada
         self.df = pd.merge(
             self.df,
-            busqueda_dois_indexados,
+            busqueda_dois_indexados[pd.notnull(busqueda_dois_indexados["DOI"])],
             on=["DOI"],
             how="left",
             suffixes=("", f" en {target_db.nombre}"),
