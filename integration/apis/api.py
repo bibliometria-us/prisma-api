@@ -1,0 +1,100 @@
+from time import sleep
+import requests
+import abc
+
+from integration.apis.exceptions import APIRateLimit
+
+
+class API:
+    def __init__(
+        self,
+        api_keys: list[str] = None,
+        uri_template: str = None,
+        uri_data: dict = {},
+        route: str = "",
+        args: dict = {},
+        headers: dict = {},
+        json: dict = {},
+        response_type: str = None,
+    ):
+        self.api_keys = api_keys
+        self.uri_template = uri_template
+        self.uri_data = uri_data
+        self.route = route
+        self.args = args
+        self.headers = headers
+        self.json = json
+        self.uri = None
+        self.response_type = response_type
+        self.format_uri()
+        self.response = None
+        self.api_key_index = 0
+        self.retries = 3
+        self.set_api_key()
+
+    @abc.abstractmethod
+    def set_api_key(self):
+        try:
+            self.api_key = self.api_keys[self.api_key_index]
+        except Exception:
+            raise APIRateLimit()
+
+    def roll_api_key(self):
+        self.api_key_index += 1
+        if self.api_key_index >= len(self.api_keys) - 1:
+            if self.retries > 0:
+                retries = retries - 1
+                self.api_key_index = 0
+        self.set_api_key()
+
+    def format_uri(self) -> None:
+        if self.uri_template:
+            self.uri = self.uri_template.format(**self.uri_data)
+        if self.route:
+            self.uri = self.uri + self.route
+
+    def get_respose(self, request_method="GET") -> dict:
+        response_type_to_function = {"json": self.get_json_response}
+
+        function = response_type_to_function.get(self.response_type)
+
+        request_method_map = {"GET": requests.get, "POST": requests.post}
+
+        request_function = request_method_map[request_method]
+
+        response = request_function(
+            self.uri, headers=self.headers, params=self.args, json=self.json
+        )
+
+        if response.status_code == 200:
+            pass
+        if response.status_code in [401, 429]:
+            self.roll_api_key()
+            sleep(1)
+            self.get_respose(request_method=request_method)
+            return None
+
+        result = function(response)
+
+        return result
+
+    def get_json_response(self, response) -> dict:
+
+        result = response.json()
+        self.response = result
+        return result
+
+    def set_uri_template(self, uri_template) -> None:
+        self.uri_template = uri_template
+
+    def add_uri_data(self, items) -> None:
+        self.uri_data.update(items)
+
+    def add_headers(self, items: dict) -> None:
+        self.headers.update(items)
+
+    def add_args(self, args: dict) -> None:
+        self.args.update(args)
+
+    def add_json_data(self, json: dict) -> None:
+        self.json.update(json)
