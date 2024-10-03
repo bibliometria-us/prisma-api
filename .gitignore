@@ -307,3 +307,6 @@ integration/apis/clarivate/journals/config.py
 integration/email/config.py
 integration/apis/zenodo/config.py
 *config.py
+routes/carga/investigador/doctorado/fuentes/LINEAS_INVESTIGACION.csv
+routes/carga/investigador/doctorado/fuentes/PROGRAMAS.csv
+routes/carga/investigador/doctorado/fuentes/TUTORES.csv
