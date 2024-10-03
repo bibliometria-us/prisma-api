@@ -1,3 +1,14 @@
+# Ignorando
+accesoSSO.php
+configuracion.php
+*.BASE.*
+*.BACKUP.*
+*.LOCAL.*
+*.REMOTE.*
+rankings_old
+.project
+*.orig
+*_old*
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,flask
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode,flask
 
