@@ -3,16 +3,21 @@ deny from all
 
 allow from 150.214.182
 # idus / idus pruebas
-allow from 150.214.187.27
-allow from 193.147.175.253
-allow from 193.147.175.254
+#allow from 150.214.187.27
+#allow from 193.147.175.253
+#allow from 193.147.175.254
 allow from 192.168.21.21
 allow from 192.168.21.42
+allow from 192.168.21.16
+allow from 192.168.100.10
+allow from 172.31
 
 RewriteEngine On
 
 RewriteRule "^investigadores$" "investigadores.php"
 RewriteRule "^investigador$" "investigador.php"
+RewriteRule "^authors$" "authors.php"
+RewriteRule "^author$" "author.php"
 
 ErrorDocument 403 https://bibliometria.us.es/prisma/restringido.php
 

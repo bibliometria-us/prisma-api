@@ -32,10 +32,13 @@ class BaseDatos {
 	 */
 	public function obtenerInvestigador($id) {
 	    $id = $this->conexion->real_escape_string($id);
-	    $sql = "SELECT idInvestigador as idInves, i.nombre, apellidos, email, i.idDepartamento, d.nombre AS departamento, i.idGrupo, g.nombre AS grupo, i.idArea, a.nombre AS area,
-			    i.idCentro, b.nombre AS centro, i.idCategoria, CASE WHEN i.sexo = 0 THEN c.femenino ELSE c.nombre END AS categoria, perfilPublico FROM i_investigador i INNER JOIN i_departamento d ON i.idDepartamento = d.idDepartamento INNER JOIN
-                i_grupo g ON i.idGrupo = g.idGrupo INNER JOIN i_area a ON i.idArea = a.idArea INNER JOIN i_centro b ON i.idCentro = b.idCentro
-				INNER JOIN i_categoria c ON i.idCategoria = c.idCategoria WHERE i.idInvestigador = $id";
+	    $sql = "SELECT i.idInvestigador as idInves, i.nombre, apellidos, email, i.idDepartamento, d.nombre AS departamento, gi.idGrupo, g.nombre AS grupo, i.idArea, a.nombre AS area,
+			    i.idCentro, b.nombre AS centro, i.idCategoria, CASE WHEN i.sexo = 0 THEN c.femenino ELSE c.nombre END AS categoria, perfilPublico FROM i_investigador i INNER JOIN i_departamento d ON i.idDepartamento = d.idDepartamento 
+				LEFT JOIN i_grupo_investigador gi ON gi.idInvestigador = i.idInvestigador
+				LEFT JOIN i_grupo g ON gi.idGrupo = g.idGrupo 
+				LEFT JOIN i_area a ON i.idArea = a.idArea 
+				LEFT JOIN i_centro b ON i.idCentro = b.idCentro
+				LEFT JOIN i_categoria c ON i.idCategoria = c.idCategoria WHERE i.idInvestigador = $id and i.idInvestigador not in (SELECT idInvestigador FROM i_fecha_cese WHERE idMotivo != 'EXCL')";
 	    $consulta = $this->conexion->query($sql);
 	    //echo $sql;
 	    if ($consulta === false || $consulta->num_rows == 0)
@@ -57,7 +60,7 @@ class BaseDatos {
 	
 	public function obtenerIdentificadoresInves($investigador) {
 	    $investigador = $this->conexion->real_escape_string($investigador);
-	    $sql = "SELECT tipo, GROUP_CONCAT(valor SEPARATOR ';') as valor FROM `i_identificador_investigador` where idInvestigador = $investigador AND eliminado = 0 GROUP BY tipo";
+	    $sql = "SELECT tipo, GROUP_CONCAT(valor SEPARATOR ';') as valor FROM `i_identificador_investigador` where idInvestigador = $investigador AND eliminado = 0 AND idInvestigador not in (SELECT idInvestigador FROM i_fecha_cese WHERE idMotivo != 'EXCL') GROUP BY tipo";
 	    $resultado = $this->conexion->query($sql);
 	    if ($resultado === False || $resultado->num_rows <= 0) {
 	        return [];
@@ -70,7 +73,35 @@ class BaseDatos {
 	    }
 	}
 	
+		
 	public function obtenerIdentificadoresInvestigadores() {
+	    $sql = "SELECT concat(i.apellidos, ', ', i.nombre) as nombre, c.* 
+				FROM i_investigador i 
+				LEFT JOIN (
+					SELECT ii.idInvestigador prisma, 
+						   GROUP_CONCAT(if(ii.tipo = 'scopus', ii.valor, NULL)) scopus, 
+						   GROUP_CONCAT(if(ii.tipo = 'orcid', ii.valor, NULL)) orcid, 
+						   GROUP_CONCAT(if(ii.tipo = 'researcherid', ii.valor, NULL)) researcherid, 
+						   GROUP_CONCAT(if(ii.tipo = 'idus', ii.valor, NULL)) idus, 
+						   GROUP_CONCAT(if(ii.tipo = 'sisius', ii.valor, NULL)) sisius, 
+						   GROUP_CONCAT(if(ii.tipo = 'scholar', ii.valor, NULL)) scholar, 
+						   GROUP_CONCAT(if(ii.tipo = 'dialnet', ii.valor, NULL)) dialnet 
+					FROM i_identificador_investigador ii 
+					GROUP BY ii.idInvestigador
+				) c ON c.prisma = i.idInvestigador 
+				WHERE i.idInvestigador NOT IN (
+					SELECT idInvestigador 
+					FROM i_fecha_cese 
+					WHERE idMotivo != 'EXCL'
+				)
+				AND c.idus IS NOT NULL;";
+	    //echo $sql;
+	    $consulta = $this->conexion->query($sql);
+	    return $consulta->fetch_all(MYSQLI_ASSOC);
+	}
+
+	
+/* 	public function obtenerIdentificadoresInvestigadores() {
 	    $sql = "SELECT concat(i.apellidos, ', ', i.nombre) as nombre, c.* FROM i_investigador i 
                 LEFT JOIN (SELECT ii.idInvestigador prisma, GROUP_CONCAT(if(ii.tipo = 'scopus', ii.valor, NULL)) scopus, 
                             GROUP_CONCAT(if(ii.tipo = 'orcid', ii.valor, NULL)) orcid, 
@@ -80,10 +111,11 @@ class BaseDatos {
                             GROUP_CONCAT(if(ii.tipo = 'scholar', ii.valor, NULL)) scholar, 
                             GROUP_CONCAT(if(ii.tipo = 'dialnet', ii.valor, NULL)) dialnet 
                             FROM i_identificador_investigador ii group by ii.idInvestigador) c 
-                ON c.prisma = i.idInvestigador";
+                ON c.prisma = i.idInvestigador WHERE i.idInvestigador not in (SELECT idInvestigador FROM i_fecha_cese WHERE idMotivo != 'EXCL')";
 	    //echo $sql;
 	    $consulta = $this->conexion->query($sql);
 	    return $consulta->fetch_all(MYSQLI_ASSOC);
-	}
+	} */ 
+
 }
 ?>
