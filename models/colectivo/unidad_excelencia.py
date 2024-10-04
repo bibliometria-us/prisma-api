@@ -1,4 +1,5 @@
 from typing import List
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.linea_investigacion import LineaInvestigacion
 from models.model import Component
@@ -18,13 +19,21 @@ class UnidadExcelencia(Colectivo):
         instituciones: List[Institucion] = [],
         palabras_clave: List[PalabraClave] = [],
         lineas_investigacion: List[LineaInvestigacion] = [],
+        db: BaseDatos = None,
     ):
 
         super().__init__(
-            table_name, alias, primary_key, tabla_intermedia, db_name, instituciones
+            table_name,
+            alias,
+            primary_key,
+            tabla_intermedia,
+            db_name,
+            instituciones,
+            db=db or BaseDatos(),
         )
         self.components["palabras_clave"] = Component(
             type=PalabraClave,
+            db_name="prisma",
             name="palabras_clave",
             getter="get_palabras_clave",
             target_table="i_palabra_clave",
@@ -35,6 +44,7 @@ class UnidadExcelencia(Colectivo):
 
         self.components["lineas_investigacion"] = Component(
             type=LineaInvestigacion,
+            db_name="prisma",
             name="lineas_investigacion",
             getter="get_lineas_investigacion",
             target_table="i_palabra_clave",

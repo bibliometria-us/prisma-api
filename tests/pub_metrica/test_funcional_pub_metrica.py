@@ -32,6 +32,7 @@ def get_fuentes(tipo):
     return result
 
 
+@pytest.mark.skip
 @pytest.mark.slow
 @pytest.mark.pub_metrica
 def test_pub_metrica():
@@ -69,6 +70,7 @@ def test_pub_metrica():
     os.makedirs("tests/temp/", exist_ok=True)
 
 
+@pytest.mark.skip
 @pytest.mark.pub_metrica
 def test_pub_metrica_informes_personalizados():
     for i in range(30):

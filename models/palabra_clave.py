@@ -1,3 +1,4 @@
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.colectivo.exceptions.exceptions import (
     LimitePalabrasClave,
@@ -15,6 +16,7 @@ class PalabraClave(Model):
         table_name="i_palabra_clave",
         alias="palabra_clave",
         primary_key="idPalabraClave",
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idPalabraClave"),
@@ -26,6 +28,7 @@ class PalabraClave(Model):
             alias,
             primary_key,
             attributes=attributes,
+            db=db or BaseDatos(),
         )
 
 

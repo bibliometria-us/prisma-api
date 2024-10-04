@@ -1,3 +1,4 @@
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.colectivo.rama import Rama
 from models.model import Component, Model
@@ -11,20 +12,22 @@ class Area(Model):
         table_name="i_area",
         alias="area",
         primary_key="idArea",
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idArea"),
             Attribute(column_name="nombre"),
-            Attribute(column_name="idRama", visible=0),
         ]
         components = [
             Component(
                 type=Rama,
+                db_name="prisma",
                 name="rama",
                 target_table="i_rama",
                 foreign_key="idRama",
                 cardinality="single",
                 enabled=True,
+                nullable=False,
             ),
         ]
         super().__init__(
@@ -34,4 +37,5 @@ class Area(Model):
             primary_key,
             attributes=attributes,
             components=components,
+            db=db or BaseDatos(),
         )

@@ -12,6 +12,7 @@ class BaseDatos:
         local_infile=False,
         keep_connection_alive=False,
         autocommit=True,
+        test=False,
     ) -> None:
         self.is_active = False
         self.connection = None
@@ -22,12 +23,13 @@ class BaseDatos:
         self.rowcount = 0
         self.error = False
         self.last_id = None
+        self.test = test
 
     def startConnection(self):
         self.connection = mysql.connector.connect(
-            host=claves.db_host,
-            user=claves.db_user,
-            password=claves.db_password,
+            host=claves.db_host if not self.test else claves.test_db_host,
+            user=claves.db_user if not self.test else claves.test_db_user,
+            password=claves.db_password if not self.test else claves.test_db_password,
             database=self.database,
             autocommit=True,
             allow_local_infile=self.local_infile,
@@ -39,14 +41,14 @@ class BaseDatos:
         return self.error == False
 
     def has_rows(self) -> bool:
-        return self.is_succesful() and self.rowcount > 0
+        return self.rowcount > 0
 
     def closeConnection(self):
         self.connection.close()
         self.is_active = False
 
     def ejecutarConsulta(self, consulta: str, params: str = []):
-        if not self.is_active or not self.autocommit:
+        if not self.is_active:
             self.startConnection()
 
         try:

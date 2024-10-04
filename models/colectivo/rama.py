@@ -1,3 +1,4 @@
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.model import Component, Model
 
@@ -10,6 +11,7 @@ class Rama(Model):
         table_name="i_rama",
         alias="rama",
         primary_key="idRama",
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idRama"),
@@ -21,4 +23,5 @@ class Rama(Model):
             alias,
             primary_key,
             attributes=attributes,
+            db=db or BaseDatos(),
         )

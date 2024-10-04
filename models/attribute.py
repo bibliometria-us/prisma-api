@@ -19,7 +19,8 @@ class Attribute:
         self.pre_processors = pre_processors
 
     def run_preprocessor(self, pre_processor: Callable) -> None:
-        self.value = pre_processor(self.value)
+        if self.value != None:
+            self.value = pre_processor(self.value)
 
     def run_preprocessors(self) -> None:
         if self.pre_processors:
