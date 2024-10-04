@@ -72,7 +72,7 @@ class Model(ABC):
                 join_list.append(join)
 
                 column_list += list(
-                    f"{name}.{attribute.column_name} as {name}_{attribute.column_name}"
+                    f"{name}.{attribute.column_name} as {name}___{attribute.column_name}"
                     for attribute in component.value.attributes.values()
                 )
 
@@ -232,11 +232,11 @@ class Model(ABC):
         if not multiple:
             for index, row in df.head(1).iterrows():
                 for key, value in row.items():
-                    if len(key.split("_")) == 1:
+                    if len(key.split("___")) == 1:
                         self.set_attribute(key, value)
                     else:
-                        component_name = key.split("_")[0]
-                        component_attribute = key.split("_")[1]
+                        component_name = key.split("___")[0]
+                        component_attribute = key.split("___")[1]
                         self.components.get(component_name).value.set_attribute(
                             component_attribute, value
                         )
@@ -458,7 +458,7 @@ class Model(ABC):
             component_dict = {
                 name: component.value.to_dict(get_components=False)
                 for name, component in self.components.items()
-                if component.value.get_primary_key().value
+                if component.value and component.value.get_primary_key().value
             }
         else:
             component_dict = {}

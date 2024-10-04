@@ -18,9 +18,6 @@ class Grupo(Colectivo):
         primary_key="idGrupo",
         tabla_intermedia="i_grupo_investigador",
         db_name="prisma",
-        instituciones: List[Institucion] = [],
-        palabras_clave: List[PalabraClave] = [],
-        lineas_investigacion: List[LineaInvestigacion] = [],
         db: BaseDatos = None,
     ):
 
@@ -30,7 +27,6 @@ class Grupo(Colectivo):
             primary_key,
             tabla_intermedia,
             db_name,
-            instituciones,
             db=db or BaseDatos(),
         )
         self.attributes["rama"] = Attribute(column_name="rama")
@@ -46,7 +42,6 @@ class Grupo(Colectivo):
             target_table="i_palabra_clave",
             intermediate_table="i_grupo_palabra_clave",
             cardinality="many",
-            enabled=True,
         )
 
         self.components["lineas_investigacion"] = Component(
@@ -56,8 +51,4 @@ class Grupo(Colectivo):
             target_table="i_linea_investigacion",
             intermediate_table="i_grupo_linea_investigacion",
             cardinality="many",
-            enabled=True,
         )
-
-        self.palabras_clave = palabras_clave
-        self.lineas_investigacion = lineas_investigacion

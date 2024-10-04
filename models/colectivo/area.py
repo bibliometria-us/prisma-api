@@ -25,8 +25,8 @@ class Area(Model):
                 name="rama",
                 target_table="i_rama",
                 foreign_key="idRama",
+                foreign_target_column="idRama",
                 cardinality="single",
-                enabled=True,
                 nullable=False,
             ),
         ]
