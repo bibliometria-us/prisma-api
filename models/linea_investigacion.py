@@ -1,3 +1,4 @@
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.colectivo.exceptions.exceptions import LineaInvestigacionDuplicada
 from models.model import Model
@@ -12,6 +13,7 @@ class LineaInvestigacion(Model):
         table_name="i_linea_investigacion",
         alias="linea_investigacion",
         primary_key="idLineaInvestigacion",
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idLineaInvestigacion"),
@@ -23,6 +25,7 @@ class LineaInvestigacion(Model):
             alias,
             primary_key,
             attributes=attributes,
+            db=db or BaseDatos(),
         )
 
 

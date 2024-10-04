@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Type
+from typing import Any, Callable, List, Type
+
+from pandas import DataFrame
 
 from db.conexion import BaseDatos
 from models.attribute import Attribute
@@ -17,9 +19,10 @@ class Model(ABC):
         attributes: list[Attribute],
         components: list["Component"] = list(),
         enabled_components: list[str] = list(),
-        values: list["Model"] = list(),
+        values: list["Model"] = None,
+        db: BaseDatos = None,
     ) -> None:
-        self.db = BaseDatos(database=None)
+        self.db = db or BaseDatos(database=None)
         self.metadata = Metadata(
             db_name,
             table_name,
@@ -33,7 +36,7 @@ class Model(ABC):
         self.enabled_components = enabled_components
         self.load_components()
         self.set_enabled_components()
-        self.values = values
+        self.values = values or []
 
     def get(
         self,
@@ -45,15 +48,40 @@ class Model(ABC):
     ) -> None:
 
         # Construir la sentencia SELECT con las columnas de la tabla asociada al objeto
-        columns = ", ".join(
+        column_list = list(
             f"{self.metadata.alias}.{attribute.column_name} as {attribute.display_name}"
             for attribute in self.attributes.values()
         )
+
         table_name = f"{self.metadata.db_name}.{self.metadata.table_name}"
 
-        # Añadir JOINS para las relaciones 1..1
+        # Añadir JOINS  y columnas para las relaciones 1..1
 
-        query = f"""SELECT {columns} FROM {table_name} {self.metadata.alias}"""
+        join_list = list()
+
+        for name, component in self.components.items():
+
+            if not component.cardinality == "single":
+                continue
+
+            if not component.intermediate_table:
+                join = f"""
+                LEFT JOIN {component.db_name}.{component.target_table} {name}
+                    ON {name}.{component.foreign_target_column} = {self.metadata.alias}.{component.foreign_key}
+                """
+                join_list.append(join)
+
+                column_list += list(
+                    f"{name}.{attribute.column_name} as {name}_{attribute.column_name}"
+                    for attribute in component.value.attributes.values()
+                )
+
+        # Preparar consulta
+
+        columns = ", ".join(column_list)
+        joins = " ".join(join_list)
+        query = f"""SELECT {columns} FROM {table_name} {self.metadata.alias}
+                {joins}"""
         params = {}
 
         # CONDICIONES
@@ -111,6 +139,22 @@ class Model(ABC):
         )
 
         params = {key: value.value for key, value in self.attributes.items()}
+
+        # Componentes obligatorios 1..1
+
+        mandatory_foreign_components = {
+            component.foreign_key: component.value.get_attribute_value(
+                component.foreign_key
+            )
+            for component in self.components.values()
+            if component.is_single_mandatory()
+        }
+
+        columns += list(name for name in mandatory_foreign_components.keys())
+
+        param_ids += list(f"%({name})s" for name in mandatory_foreign_components.keys())
+
+        params.update(mandatory_foreign_components)
 
         query = f"""{insert_type} INTO {table_name} ({','.join(columns)}) 
                     VALUES ({','.join(param_ids)})"""
@@ -188,7 +232,15 @@ class Model(ABC):
         if not multiple:
             for index, row in df.head(1).iterrows():
                 for key, value in row.items():
-                    self.set_attribute(key, value)
+                    if len(key.split("_")) == 1:
+                        self.set_attribute(key, value)
+                    else:
+                        component_name = key.split("_")[0]
+                        component_attribute = key.split("_")[1]
+                        self.components.get(component_name).value.set_attribute(
+                            component_attribute, value
+                        )
+
             return self
 
         else:
@@ -254,6 +306,47 @@ class Model(ABC):
         else:
             self.get_component_dynamically(component)
 
+    def set_component(self, component_id: str, value: dict) -> None:
+        component = self.components.get(component_id)
+
+        component.value.set_attributes(value)
+
+    def set_components(self, dict: dict) -> None:
+        for component_id, value in dict.items():
+            self.set_component(component_id=component_id, value=value)
+
+    def update_component(self, component_id: str) -> None:
+        component = self.components.get(component_id)
+        assert component.cardinality == "single"
+
+        if not component.intermediate_table:
+            
+
+        else:
+            query = f"""UPDATE {component.intermediate_table_db_name}.{component.intermediate_table}
+                    SET {component.intermediate_table_component_key} = %(value)s
+                    WHERE {self.get_primary_key().column_name} = {self.get_primary_key().value}
+                    """
+            params = {
+                "value": component.value.get_attribute_value(
+                    component.foreign_target_column
+                )
+            }
+
+        self.db.ejecutarConsulta(query, params)
+
+    def _update_component(self, component: 'Component'):
+        
+        query = f"""UPDATE {self.metadata.db_name}.{self.metadata.table_name}
+                    SET {component.foreign_key} = %(value)s
+                    WHERE {self.get_primary_key().column_name} = {self.get_primary_key().value}
+                    """
+        params = {
+            "value": component.value.get_attribute_value(
+                component.foreign_target_column
+            )
+        }
+
     def get_component_by_getter(self, component: "Component") -> "Model":
         getter = getattr(self, component.getter)
 
@@ -270,28 +363,56 @@ class Model(ABC):
         return component.value
 
     def get_component_dynamically(self, component: "Component") -> "Model":
-        foreign_key = component.foreign_key
-        foreign_target_column = component.foreign_target_column
-        intermediate_table = component.intermediate_table
-        component_value = component.value
 
-        if not foreign_target_column:
-            conditions = None
+        select = component.value.get_select_columns_mapping(prefix=component.name)
+        primary_key = self.get_primary_key()
+
+        if not component.intermediate_table:
+            sql = f"""SELECT {select} FROM {component.db_name}.{component.target_table} AS {component.name}
+                        LEFT JOIN  {self.metadata.db_name}.{self.metadata.table_name} AS {self.metadata.alias} 
+                        ON {self.metadata.alias}.{component.foreign_key} = {component.name}.{component.foreign_key}
+                        WHERE {self.metadata.alias}.{primary_key.column_name} = {primary_key.value}
+                    """
+
         else:
-            conditions = [
-                Condition(
-                    query=f"{foreign_target_column} = {self.get_attribute_value(foreign_key)}"
-                )
-            ]
+            sql = f"""SELECT {select} FROM {component.db_name}.{component.target_table} AS {component.name}
+                        LEFT JOIN {component.intermediate_table_db_name}.{component.intermediate_table} AS {component.intermediate_table_alias}
+                        ON {component.intermediate_table_alias}.{component.intermediate_table_component_key} 
+                            = {component.name}.{component.foreign_key}
+                        LEFT JOIN {self.metadata.db_name}.{self.metadata.table_name} AS {self.metadata.alias} 
+                        ON {self.metadata.alias}.{primary_key.column_name} 
+                            = {component.intermediate_table_alias}.{component.intermediate_table_key}
+            
+                        WHERE {self.metadata.alias}.{primary_key.column_name} = {primary_key.value}
+                    """
 
-        if foreign_key:
-            component_value.get_primary_key().value = self.get_attribute_value(
-                foreign_key
-            )
-            component.value = component_value.get(
-                conditions=conditions,
-                multiple=(component.cardinality == "many"),
-            )
+        result = self.db.ejecutarConsulta(sql)
+
+        df = table_to_pandas(result)
+        component.value.load_from_dataframe(
+            df=df,
+            cardinality=component.cardinality,
+        )
+
+        pass
+
+    def update_single_component(self, component_id: str, value: Any) -> None:
+        component = self.components.get(component_id)
+
+        if component.cardinality != "single":
+            raise Exception
+
+        if component.intermediate_table == None:
+            sql = f"""
+                UPDATE {self.metadata.db_name}.{self.metadata.table_name}
+                SET {component.foreign_key} = {value}
+                WHERE {self.get_primary_key().column_name} = {self.get_primary_key().value}
+                """
+
+        else:
+            pass
+
+        self.db.ejecutarConsulta(sql)
 
     def get_editable_columns(self) -> list[str]:
         return (
@@ -299,6 +420,50 @@ class Model(ABC):
             for key in self.attributes.keys()
             if key != self.get_primary_key().column_name
         )
+
+    # Devuelve la lista de columnas y alias para introducirse dentro de un SELECT, en base a los atributos del objeto
+    def get_select_columns_mapping(self, prefix: str) -> str:
+        return ", ".join(
+            f"{prefix}.{attribute.column_name} as {attribute.display_name}"
+            for attribute in self.attributes.values()
+        )
+
+    def load_from_dataframe(self, df: DataFrame, cardinality: str):
+        if cardinality == "single":
+            pd_dict = df.iloc[0].to_dict()
+            self.set_attributes(pd_dict)
+        if cardinality == "many":
+            model_attributes_list = df.to_dict(orient="records")
+            for model_attributes in model_attributes_list:
+                model = self.__class__()
+                model.set_attributes(model_attributes)
+                self.values.append(model)
+
+    # Devuelve si es un resultado individual o múltiple
+    def is_multiple(self):
+        return len(self.values) > 0
+
+    def to_dict(self, get_components=True):
+        if not self.is_multiple():
+            attribute_dict = {
+                name: attribute.value for name, attribute in self.attributes.items()
+            }
+        else:
+            attribute_dict = {
+                index: attribute.to_dict()
+                for index, attribute in enumerate((value for value in self.values))
+            }
+
+        if get_components:
+            component_dict = {
+                name: component.value.to_dict(get_components=False)
+                for name, component in self.components.items()
+                if component.value.get_primary_key().value
+            }
+        else:
+            component_dict = {}
+
+        return {**attribute_dict, **component_dict}
 
 
 class Metadata:
@@ -319,6 +484,7 @@ class Component:
     def __init__(
         self,
         type: Type[Model],
+        db_name: str,
         name: str,
         cardinality: str,
         getter: str = None,
@@ -326,21 +492,39 @@ class Component:
         foreign_key: str = None,
         foreign_target_column: str = None,
         intermediate_table: str = None,
+        intermediate_table_db_name: str = None,
+        intermediate_table_alias: str = None,
+        intermediate_table_key: str = None,
+        intermediate_table_component_key: str = None,
         enabled: bool = False,
+        nullable: bool = True,
     ) -> None:
         self.type = type
+        self.db_name = db_name
         self.name = name
         self.getter = getter
         self.target_table = target_table
         self.foreign_key = foreign_key
         self.foreign_target_column = foreign_target_column
         self.intermediate_table = intermediate_table
+        self.intermediate_table_db_name = intermediate_table_db_name
+        self.intermediate_table_alias = intermediate_table_alias
+        self.intermediate_table_key = intermediate_table_key
+        self.intermediate_table_component_key = intermediate_table_component_key
         self.cardinality = cardinality
         self.enabled = enabled
         self.value: Model = self.type()
+        self.nullable = nullable
 
     def enable(self):
         self.enabled = True
 
     def disable(self):
         self.enabled = False
+
+    def is_single_mandatory(self):
+        return (
+            not self.nullable
+            and self.cardinality == "single"
+            and not self.intermediate_table
+        )

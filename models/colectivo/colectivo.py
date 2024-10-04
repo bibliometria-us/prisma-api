@@ -1,4 +1,5 @@
 from typing import List
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.colectivo.exceptions.exceptions import (
     LimitePalabrasClave,
@@ -33,6 +34,7 @@ class Colectivo(Model):
         tabla_relacion_investigador,
         db_name="prisma",
         instituciones=Institucion(),
+        db: BaseDatos = None,
     ):
         self.instituciones = instituciones
         self.tabla_relacion_investigador = tabla_relacion_investigador
@@ -47,6 +49,7 @@ class Colectivo(Model):
         components = [
             Component(
                 type=Institucion,
+                db_name="prisma",
                 name="instituciones",
                 getter="get_instituciones",
                 target_table="institucion",
@@ -62,6 +65,7 @@ class Colectivo(Model):
             primary_key,
             attributes=attributes,
             components=components,
+            db=db or BaseDatos(),
         )
         self.max_palabras_clave = 10
         self.max_resumen = 5000

@@ -1,4 +1,5 @@
 from typing import List
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.colectivo.area import Area
 from models.colectivo.categoria import Categoria
@@ -6,6 +7,7 @@ from models.colectivo.centro import Centro
 from models.colectivo.departamento import Departamento
 from models.colectivo.grupo import Grupo
 from models.condition import Condition
+from models.doctorado.linea_investigacion_doctorado import LineaInvestigacionDoctorado
 from models.linea_investigacion import (
     LineaInvestigacion,
     get_lineas_investigacion as _get_lineas_investigacion,
@@ -23,6 +25,7 @@ from models.palabra_clave import (
     remove_palabra_clave as _remove_palabra_clave,
 )
 from utils.decode import http_arg_decode
+from utils.format import table_to_pandas
 
 
 class Investigador(Model):
@@ -34,6 +37,7 @@ class Investigador(Model):
         alias="investigador",
         primary_key="idInvestigador",
         enabled_components: list[str] = list(),
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idInvestigador"),
@@ -41,11 +45,7 @@ class Investigador(Model):
             Attribute(column_name="apellidos"),
             Attribute(column_name="docuIden", visible=0),
             Attribute(column_name="email"),
-            Attribute(column_name="idDepartamento", visible=0),
-            Attribute(column_name="idCategoria", visible=0),
-            Attribute(column_name="idArea", visible=0),
             Attribute(column_name="fechaContratacion"),
-            Attribute(column_name="idCentro", visible=0),
             Attribute(column_name="nacionalidad"),
             Attribute(column_name="sexo"),
             Attribute(column_name="fechaNacimiento"),
@@ -56,42 +56,61 @@ class Investigador(Model):
         components = [
             Component(
                 type=Centro,
+                db_name="prisma",
                 name="centro",
                 target_table="i_centro",
                 foreign_key="idCentro",
+                foreign_target_column="idCentro",
                 cardinality="single",
+                nullable=False,
             ),
             Component(
                 type=Departamento,
+                db_name="prisma",
                 name="departamento",
                 target_table="i_departamento",
                 foreign_key="idDepartamento",
+                foreign_target_column="idDepartamento",
                 cardinality="single",
+                nullable=False,
             ),
             Component(
                 type=Categoria,
+                db_name="prisma",
                 name="categoria",
                 target_table="i_categoria",
                 foreign_key="idCategoria",
+                foreign_target_column="idCategoria",
                 cardinality="single",
+                nullable=False,
             ),
             Component(
                 type=Area,
+                db_name="prisma",
                 name="area",
                 target_table="i_area",
                 foreign_key="idArea",
+                foreign_target_column="idArea",
                 cardinality="single",
+                nullable=False,
             ),
             Component(
                 type=Grupo,
+                db_name="prisma",
                 name="grupo",
-                # getter="get_grupo",
                 target_table="i_grupo",
+                foreign_key="idGrupo",
                 intermediate_table="i_grupo_investigador",
+                intermediate_table_alias="grupo_investigador",
+                intermediate_table_db_name="prisma",
+                intermediate_table_key="idInvestigador",
+                intermediate_table_component_key="idGrupo",
                 cardinality="single",
+                nullable=False,
             ),
             Component(
                 type=UnidadExcelencia,
+                db_name="prisma",
                 name="unidad_excelencia",
                 getter="get_unidad_excelencia",
                 target_table="i_unidad_excelencia",
@@ -100,6 +119,7 @@ class Investigador(Model):
             ),
             Component(
                 type=CentroMixto,
+                db_name="prisma",
                 name="centro_mixto",
                 getter="get_centro_mixto",
                 target_table="i_centro_mixto",
@@ -108,6 +128,7 @@ class Investigador(Model):
             ),
             Component(
                 type=Instituto,
+                db_name="prisma",
                 name="instituto",
                 getter="get_instituto",
                 target_table="i_instituto",
@@ -116,13 +137,20 @@ class Investigador(Model):
             ),
             Component(
                 type=PalabraClave,
+                db_name="prisma",
                 name="palabras_clave",
                 target_table="i_palabra_clave",
+                foreign_key="idPalabraClave",
                 intermediate_table="i_investigador_palabra_clave",
+                intermediate_table_db_name="prisma",
+                intermediate_table_alias="investigador_palabra_clave",
+                intermediate_table_component_key="idPalabraClave",
+                intermediate_table_key="idInvestigador",
                 cardinality="many",
             ),
             Component(
                 type=LineaInvestigacion,
+                db_name="prisma",
                 name="lineas_investigacion",
                 target_table="i_linea_investigacion",
                 intermediate_table="i_investigador_linea_investigacion",
@@ -130,11 +158,24 @@ class Investigador(Model):
             ),
             Component(
                 type=IdentificadorInvestigador,
+                db_name="prisma",
                 name="identificador_investigador",
                 target_table="i_identificador_investigador",
                 foreign_key="idInvestigador",
                 foreign_target_column="idInvestigador",
                 cardinality="many",
+            ),
+            Component(
+                type=LineaInvestigacionDoctorado,
+                db_name="prisma",
+                name="lineas_investigacion_doctorado",
+                target_table="i_linea_investigacion_doctorado",
+                foreign_key="idInvestigador",
+                intermediate_table="i_investigador_linea_investigacion_doctorado",
+                intermediate_table_key="idLineaInvestigacion",
+                intermediate_table_component_key="idLineaInvestigacion",
+                cardinality="many",
+                # getter="get_lineas_investigacion_doctorado",
             ),
         ]
         self.max_palabras_clave = 10
@@ -147,6 +188,7 @@ class Investigador(Model):
             attributes=attributes,
             components=components,
             enabled_components=enabled_components,
+            db=db or BaseDatos(),
         )
 
     # GRUPOS
@@ -283,6 +325,42 @@ class Investigador(Model):
             self,
             id_linea_investigacion=id_linea_investigacion,
         )
+
+    def get_lineas_investigacion_doctorado(self):
+
+        lineas_investigacion_component = self.components[
+            "lineas_investigacion_doctorado"
+        ]
+
+        tabla_intermedia = lineas_investigacion_component.intermediate_table
+        nombre_id = self.metadata.primary_key
+        valor_id = self.get_primary_key().value
+
+        query = f"""SELECT pc.* FROM prisma.i_linea_investigacion_doctorado pc
+                LEFT JOIN prisma.{tabla_intermedia} ti ON ti.idLineaInvestigacion = pc.idLineaInvestigacion
+                WHERE ti.{nombre_id} = %(valor_id)s
+                """
+
+        params = {
+            "valor_id": valor_id,
+        }
+
+        query_result = self.db.ejecutarConsulta(query, params)
+
+        pd = table_to_pandas(query_result)
+
+        self.lineas_investigacion = []
+        for index, row in pd.iterrows():
+            linea_investigacion = LineaInvestigacionDoctorado()
+            linea_investigacion.set_attributes(
+                {
+                    "idLineaInvestigacion": row["idLineaInvestigacion"],
+                    "nombre": row["nombre"],
+                }
+            )
+            self.components["lineas_investigacion_doctorado"].values.append(
+                linea_investigacion
+            )
 
 
 class IdentificadorInvestigador(Model):

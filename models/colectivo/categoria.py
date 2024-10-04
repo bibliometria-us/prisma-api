@@ -1,3 +1,4 @@
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.model import Model
 
@@ -10,6 +11,7 @@ class Categoria(Model):
         table_name="i_categoria",
         alias="categoria",
         primary_key="idCategoria",
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idCategoria"),
@@ -22,4 +24,5 @@ class Categoria(Model):
             alias,
             primary_key,
             attributes=attributes,
+            db=db or BaseDatos(),
         )

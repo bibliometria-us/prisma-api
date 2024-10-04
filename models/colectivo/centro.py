@@ -1,3 +1,4 @@
+from db.conexion import BaseDatos
 from models.attribute import Attribute
 from models.model import Model
 
@@ -10,6 +11,7 @@ class Centro(Model):
         table_name="i_centro",
         alias="centro",
         primary_key="idCentro",
+        db: BaseDatos = None,
     ):
         attributes = [
             Attribute(column_name="idCentro"),
@@ -21,4 +23,5 @@ class Centro(Model):
             alias,
             primary_key,
             attributes=attributes,
+            db=db or BaseDatos(),
         )
