@@ -320,7 +320,7 @@ class Model(ABC):
         assert component.cardinality == "single"
 
         if not component.intermediate_table:
-            
+            pass
 
         else:
             query = f"""UPDATE {component.intermediate_table_db_name}.{component.intermediate_table}
@@ -335,8 +335,8 @@ class Model(ABC):
 
         self.db.ejecutarConsulta(query, params)
 
-    def _update_component(self, component: 'Component'):
-        
+    def _update_component(self, component: "Component"):
+
         query = f"""UPDATE {self.metadata.db_name}.{self.metadata.table_name}
                     SET {component.foreign_key} = %(value)s
                     WHERE {self.get_primary_key().column_name} = {self.get_primary_key().value}
