@@ -311,3 +311,5 @@ routes/carga/investigador/doctorado/fuentes/LINEAS_INVESTIGACION.csv
 routes/carga/investigador/doctorado/fuentes/PROGRAMAS.csv
 routes/carga/investigador/doctorado/fuentes/TUTORES.csv
 *.code-workspace
+celery_config.py
+celery_config.py
