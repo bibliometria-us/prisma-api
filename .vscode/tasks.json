@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Run Python in Container",
+        "type": "shell",
+        "command": "podman exec -it prisma_api python ${relativeFile}",
+        "group": {
+          "kind": "build",
+          "isDefault": true,
+        },
+        "problemMatcher": [],
+        "detail": "Runs the current file inside the Podman container"
+      }
+    ]
+  }

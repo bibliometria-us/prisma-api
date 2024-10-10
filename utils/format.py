@@ -206,3 +206,7 @@ def flask_xls_to_df(file: FileStorage) -> pandas.DataFrame:
 
     xls_data = pandas.read_excel(file, engine="xlrd")
     return xls_data
+
+
+def enumerated_dict(iterable) -> dict:
+    return {index: item for index, item in enumerate(iterable)}

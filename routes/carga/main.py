@@ -1,6 +1,8 @@
 from flask_restx import Namespace, Resource
-from flask import request, jsonify
+from flask import Response, make_response, request, jsonify
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
+from routes.carga.publicacion.idus.parser import IdusParser
+from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
 from security.check_users import es_admin, es_editor
 from celery import current_app
 from routes.carga.investigador.grupos.actualizar_sica import (
@@ -58,17 +60,45 @@ class CargaWosJournals(Resource):
 
 
 @carga_namespace.route(
-    "/investigador/colectivos/", doc=False, endpoint="carga_colectivos"
+    "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
 )
-class CargaColectivos(Resource):
-    def post(self):
-        if not es_admin():
-            return {"message": "No autorizado"}, 401
-        if "files[]" not in request.files:
-            return {"error": "No se han encontrado archivos en la petición"}, 400
+class CargaPublicacionIdus(Resource):
+    def get(self):
+        args = request.args
 
-        files = request.files.getlist("files[]")
-        tipo = args.get("tipo", None)
-        acronimo = args.get("acronimo", None)
+        handle = args.get("handle", None)
 
-        return None
+        try:
+            parser = IdusParser(handle=handle)
+            json = parser.carga_publicacion.to_json()
+
+            return Response(json, content_type="application/json; charset=utf-8")
+
+        except Exception:
+            return {"message": "Error inesperado"}, 500
+
+
+@carga_namespace.route(
+    "/publicacion/idus/doi_xml/", doc=False, endpoint="carga_doi_xml"
+)
+class CargaPublicacionIdus(Resource):
+    def get(self):
+        args = request.args
+
+        handle = args.get("handle", None)
+
+        try:
+            xml_doi = xmlDoiIdus(handle=handle)
+            xml = xml_doi.xml
+            response = make_response(xml)
+
+            filename = xml_doi.handle.replace("/", "_")
+            response.headers["Content-Disposition"] = (
+                f"attachment; filename={filename}.xml"
+            )
+            response.headers["Content-Type"] = "application/xml"
+
+            return response
+
+        except Exception:
+            return {"message": "Error inesperado"}, 500
