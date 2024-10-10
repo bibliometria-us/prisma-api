@@ -35,7 +35,9 @@ class API:
     @abc.abstractmethod
     def set_api_key(self):
         try:
-            self.api_key = self.api_keys[self.api_key_index]
+            if self.api_keys:
+                self.api_key = self.api_keys[self.api_key_index]
+
         except Exception:
             raise APIRateLimit()
 
@@ -53,22 +55,23 @@ class API:
         if self.route:
             self.uri = self.uri + self.route
 
-    def get_respose(self, request_method="GET") -> dict:
+    def get_respose(self, request_method="GET", id="", timeout=None) -> dict:
         response_type_to_function = {"json": self.get_json_response}
 
         function = response_type_to_function.get(self.response_type)
 
-        request_method_map = {"GET": requests.get, "POST": requests.post}
-
-        request_function = request_method_map[request_method]
-
-        response = request_function(
-            self.uri, headers=self.headers, params=self.args, json=self.json
+        response = requests.request(
+            method=request_method.lower(),
+            url=self.uri + id,
+            headers=self.headers,
+            params=self.args,
+            json=self.json,
+            timeout=timeout,
         )
 
         if response.status_code == 200:
             pass
-        if response.status_code in [401, 429]:
+        if response.status_code in [401, 429] and self.api_keys:
             self.roll_api_key()
             sleep(1)
             self.get_respose(request_method=request_method)
