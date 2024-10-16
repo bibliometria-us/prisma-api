@@ -215,10 +215,6 @@ class Model(ABC):
     def set_attribute(self, key: str, value: Any) -> None:
         if key in self.attributes:
             self.attributes.get(key).set_value(value)
-        else:
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{key}'"
-            )
 
     def set_attributes(self, values: dict[str, Any]) -> None:
         for key, value in values.items():

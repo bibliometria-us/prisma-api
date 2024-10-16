@@ -39,7 +39,7 @@ def test_item_por_handle():
 def test_parser():
     for handle in handles:
         parser = IdusParser(handle=handle)
-        json = parser.carga_publicacion.to_json()
+        json = parser.datos_carga_publicacion.to_json()
         pass
 
 

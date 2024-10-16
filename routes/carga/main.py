@@ -70,7 +70,7 @@ class CargaPublicacionIdus(Resource):
 
         try:
             parser = IdusParser(handle=handle)
-            json = parser.carga_publicacion.to_json()
+            json = parser.datos_carga_publicacion.to_json()
 
             return Response(json, content_type="application/json; charset=utf-8")
 

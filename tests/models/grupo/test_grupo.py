@@ -2,7 +2,9 @@ from db.conexion import BaseDatos
 from models.colectivo.grupo import Grupo
 
 
-def test_create_get_grupo(database: BaseDatos, seed_grupos: dict):
+def test_create_get_grupo(database: BaseDatos, seed: dict):
+    database.rollback_to_savepoint("seed")
+    seed_grupos = seed.get("grupos")
     assert len(seed_grupos) > 1
     for id, datos_grupo in seed_grupos.items():
         grupo = Grupo(db=database)

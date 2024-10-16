@@ -1,22 +1,26 @@
 from integration.apis.idus.idus import IdusAPIItems
 from routes.carga.publicacion.datos_carga_publicacion import (
-    CargaAutor,
-    CargaDato,
-    CargaIdentificadorPublicacion,
-    CargaIdentificadorRevista,
-    DatosCargaPublicacion,
-    IdAutor,
+    DatosCargaAutor,
+    DatosCargaDatoPublicacion,
+    DatosCargaEditorial,
+    DatosCargaIdentificadorPublicacion,
+    DatosCargaIdentificadorFuente,
+    DatosCargaIdentificadorAutor,
 )
+from routes.carga.publicacion.parser import Parser
 
 
-class IdusParser:
+class IdusParser(Parser):
     def __init__(self, handle: str) -> None:
-        self.carga_publicacion = DatosCargaPublicacion()
+        super().__init__()
         self.handle = handle
         self.data: dict = None
         self.api_request()
         self.metadata: dict = self.data.get("metadata")
         self.carga()
+
+    def set_fuente_datos(self):
+        self.datos_carga_publicacion.set_fuente_datos("IDUS")
 
     def api_request(self):
         api = IdusAPIItems()
@@ -24,23 +28,9 @@ class IdusParser:
 
         self.data = response
 
-    def carga(self):
-        self.cargar_titulo()
-        self.cargar_titulo_alternativo()
-        self.cargar_tipo()
-        self.cargar_autores()
-        self.cargar_editores()
-        self.cargar_año_publicacion()
-        self.cargar_fecha_publicacion()
-        self.cargar_identificadores()
-        self.cargar_datos()
-        self.cargar_revista()
-
-        self.carga_publicacion.close()
-
     def cargar_titulo(self):
         titulo = self.metadata["dc.title"][0]["value"]
-        self.carga_publicacion.set_titulo(titulo)
+        self.datos_carga_publicacion.set_titulo(titulo)
 
     def cargar_titulo_alternativo(self):
         titulo = self.metadata.get("dc.title.alternative")
@@ -48,7 +38,7 @@ class IdusParser:
             return None
 
         valor = titulo[0]["value"]
-        self.carga_publicacion.set_titulo_alternativo(valor)
+        self.datos_carga_publicacion.set_titulo_alternativo(valor)
 
     def cargar_tipo(self):
         tipo = self.metadata["dc.type"][0]["value"]
@@ -63,7 +53,7 @@ class IdusParser:
         }
 
         valor = tipos.get(tipo) or "Otros"
-        self.carga_publicacion.set_tipo(valor)
+        self.datos_carga_publicacion.set_tipo(valor)
 
     def _cargar_autores(
         self,
@@ -78,16 +68,16 @@ class IdusParser:
             firma = autor["value"]
             orden = autor["place"] + 1
 
-            carga_autor = CargaAutor(orden=orden, firma=firma, tipo=tipo)
+            carga_autor = DatosCargaAutor(orden=orden, firma=firma, tipo=tipo)
 
             tipo_id = "idus"
             valor_id = autor["value"]
 
-            id_autor = IdAutor(tipo=tipo_id, valor=valor_id)
+            id_autor = DatosCargaIdentificadorAutor(tipo=tipo_id, valor=valor_id)
 
             carga_autor.add_id(id_autor)
 
-            self.carga_publicacion.add_autor(carga_autor)
+            self.datos_carga_publicacion.add_autor(carga_autor)
 
     def cargar_autores(self):
         self._cargar_autores(
@@ -111,11 +101,11 @@ class IdusParser:
         año = self.metadata["dc.date.issued"][0]["value"][0:4]
         assert len(año) == 4
 
-        self.carga_publicacion.set_año_publicacion(int(año))
+        self.datos_carga_publicacion.set_año_publicacion(año)
 
     def cargar_fecha_publicacion(self):
         fecha = self.metadata["dc.date.available"][0]["value"]
-        self.carga_publicacion.set_fecha_publicacion(fecha)
+        self.datos_carga_publicacion.set_fecha_publicacion(fecha)
 
     def cargar_doi(self):
         doi: dict = self.metadata.get("dc.identifier.doi")
@@ -123,15 +113,15 @@ class IdusParser:
             return None
 
         valor = doi[0]["value"]
-        identificador = CargaIdentificadorPublicacion(valor=valor, tipo="doi")
-        self.carga_publicacion.add_identificador(identificador)
+        identificador = DatosCargaIdentificadorPublicacion(valor=valor, tipo="doi")
+        self.datos_carga_publicacion.add_identificador(identificador)
 
     def cargar_idus(self):
         idus: str = self.handle
         assert idus.startswith("11441/")
 
-        identificador = CargaIdentificadorPublicacion(valor=idus, tipo="idus")
-        self.carga_publicacion.add_identificador(identificador)
+        identificador = DatosCargaIdentificadorPublicacion(valor=idus, tipo="idus")
+        self.datos_carga_publicacion.add_identificador(identificador)
 
     def cargar_identificadores(self):
         self.cargar_doi()
@@ -141,9 +131,9 @@ class IdusParser:
         valor = self.metadata.get(attr_name)
         if not valor:
             return None
-        dato = CargaDato(tipo=tipo, valor=valor[0]["value"])
+        dato = DatosCargaDatoPublicacion(tipo=tipo, valor=valor[0]["value"])
 
-        self.carga_publicacion.add_dato(dato)
+        self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_volumen(self):
         self._cargar_dato(tipo="volumen", attr_name="dc.publication.volumen")
@@ -158,7 +148,7 @@ class IdusParser:
         self._cargar_dato(tipo="pag_fin", attr_name="dc.publication.endPage")
 
     def cargar_datos(self):
-        if self.carga_publicacion.es_tesis():
+        if self.datos_carga_publicacion.es_tesis():
             return None
         self.cargar_volumen()
         self.cargar_numero()
@@ -171,8 +161,8 @@ class IdusParser:
             return None
 
         valor = issn[0]["value"]
-        identificador = CargaIdentificadorRevista(valor=valor, tipo="issn")
-        self.carga_publicacion.revista.add_identificador(identificador)
+        identificador = DatosCargaIdentificadorFuente(valor=valor, tipo="issn")
+        self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
     def cargar_isbn(self):
         isbn: dict = self.metadata.get("dc.identifier.isbn")
@@ -180,8 +170,8 @@ class IdusParser:
             return None
 
         valor = isbn[0]["value"]
-        identificador = CargaIdentificadorRevista(valor=valor, tipo="isbn")
-        self.carga_publicacion.revista.add_identificador(identificador)
+        identificador = DatosCargaIdentificadorFuente(valor=valor, tipo="isbn")
+        self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
     def cargar_titulo_y_tipo(self):
         titulo_revista = self.metadata.get("dc.journaltitle")
@@ -189,23 +179,25 @@ class IdusParser:
         titulo_congreso = self.metadata.get("dc.eventtitle")
 
         if titulo_revista:
-            self.carga_publicacion.revista.set_titulo(titulo_revista[0]["value"])
-            self.carga_publicacion.revista.set_tipo("Revista")
+            self.datos_carga_publicacion.fuente.set_titulo(titulo_revista[0]["value"])
+            self.datos_carga_publicacion.fuente.set_tipo("Revista")
         if titulo_libro:
-            self.carga_publicacion.revista.set_titulo(titulo_libro[0]["value"])
-            self.carga_publicacion.revista.set_tipo("Libro")
+            self.datos_carga_publicacion.fuente.set_titulo(titulo_libro[0]["value"])
+            self.datos_carga_publicacion.fuente.set_tipo("Libro")
         if titulo_congreso:
-            self.carga_publicacion.revista.set_titulo(titulo_congreso[0]["value"])
-            self.carga_publicacion.revista.set_tipo("Congreso")
+            self.datos_carga_publicacion.fuente.set_titulo(titulo_congreso[0]["value"])
+            self.datos_carga_publicacion.fuente.set_tipo("Congreso")
 
     def carga_editorial(self):
         valor = self.metadata.get("dc.publisher")
-        if valor:
-            editorial = valor[0]["value"]
-            self.carga_publicacion.revista.set_editorial(editorial)
+        if not valor:
+            return None
+        for i in range(0, len(valor)):
+            dato_editorial = DatosCargaEditorial(nombre=valor[i]["value"])
+            self.datos_carga_publicacion.fuente.add_editorial(dato_editorial)
 
-    def cargar_revista(self):
-        if self.carga_publicacion.es_tesis():
+    def cargar_fuente(self):
+        if self.datos_carga_publicacion.es_tesis():
             return None
         self.cargar_issn()
         self.cargar_isbn()

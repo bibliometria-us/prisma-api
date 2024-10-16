@@ -1,6 +1,8 @@
 import mysql.connector
 from mysql.connector.errors import OperationalError
+from pandas import DataFrame
 import db.claves as claves
+from utils.format import table_to_pandas
 from utils.timing import func_timer as timer
 
 
@@ -24,6 +26,7 @@ class BaseDatos:
         self.error = False
         self.last_id = None
         self.test = test
+        self.result = None
 
     def startConnection(self):
         self.connection = mysql.connector.connect(
@@ -45,7 +48,17 @@ class BaseDatos:
 
     def closeConnection(self):
         self.connection.close()
+        self.connection.rollback
         self.is_active = False
+
+    def rollback(self):
+        self.connection.rollback()
+
+    def set_savepoint(self, savepoint: str):
+        self.ejecutarConsulta(f"SAVEPOINT {savepoint}")
+
+    def rollback_to_savepoint(self, savepoint: str):
+        self.ejecutarConsulta(f"ROLLBACK TO SAVEPOINT {savepoint}")
 
     def ejecutarConsulta(self, consulta: str, params: str = []):
         if not self.is_active:
@@ -75,4 +88,17 @@ class BaseDatos:
         if not self.keep_connection_alive:
             self.closeConnection()
 
+        self.result = result
         return result
+
+    def get_first_cell(self):
+        if not (self.result and len(self.result)) > 1:
+            return None
+
+        return self.result[1][0]
+
+    def get_dataframe(self) -> DataFrame:
+        if not self.result:
+            return None
+
+        return table_to_pandas(self.result)

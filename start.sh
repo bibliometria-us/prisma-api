@@ -1,4 +1,5 @@
 #!/bin/bash
+pip freeze > requirements.txt
 if [ $DEBUG = 'true' ]
 then
     sleep infinity
