@@ -31,6 +31,10 @@ class API:
         self.api_key_index = 0
         self.retries = 3
         self.set_api_key()
+        self.proxies = {
+            "http": "http://proxy.int.local:3128",
+            "https": "http://proxy.int.local:3128",
+        }
 
     @abc.abstractmethod
     def set_api_key(self):
@@ -55,10 +59,17 @@ class API:
         if self.route:
             self.uri = self.uri + self.route
 
-    def get_respose(self, request_method="GET", id="", timeout=None) -> dict:
+    def get_respose(
+        self, request_method="GET", id="", timeout=None, proxies=False
+    ) -> dict:
         response_type_to_function = {"json": self.get_json_response}
 
         function = response_type_to_function.get(self.response_type)
+
+        if proxies:
+            proxies = self.proxies
+        else:
+            proxies = {}
 
         response = requests.request(
             method=request_method.lower(),
@@ -67,6 +78,7 @@ class API:
             params=self.args,
             json=self.json,
             timeout=timeout,
+            proxies=proxies,
         )
 
         if response.status_code == 200:

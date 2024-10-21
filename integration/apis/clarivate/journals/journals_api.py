@@ -48,7 +48,7 @@ class JournalsAPI(API):
         self.add_headers({"X-ApiKey": self.api_keys[self.api_key_index]})
 
     def get_respose(self) -> dict:
-        result = super().get_respose()
+        result = super().get_respose(proxies=True)
 
         if result.get("message") == "API rate limit exceeded":
             raise APIRateLimit()

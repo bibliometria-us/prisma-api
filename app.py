@@ -34,7 +34,7 @@ from flask_restx import Api
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import logging
-from urllib.parse import urlparse
+import urllib.parse as urlparse
 
 from security.protected_routes import mandatory_auth_endpoints
 from celery import Celery
@@ -131,7 +131,9 @@ def index():
     success_slo = False
     attributes = False
     paint_logout = False
-    redirect_url = urlparse(request.args.get("redirect_url") or local_config.prisma_url)
+    redirect_url = urlparse.quote(
+        request.args.get("redirect_url") or local_config.prisma_url
+    )
     if "sso" in request.args:
         return redirect(auth.login(return_to=redirect_url))
         # If AuthNRequest ID need to be stored in order to later validate it, do instead
@@ -189,7 +191,9 @@ def index():
             if "RelayState" in request.form and self_url != request.form["RelayState"]:
                 # To avoid 'Open Redirect' attacks, before execute the redirection confirm
                 # the value of the request.form['RelayState'] is a trusted URL.
-                return redirect(auth.redirect_to(request.form["RelayState"]))
+                return redirect(
+                    auth.redirect_to(urlparse.unquote(request.form["RelayState"]))
+                )
 
         elif auth.get_settings().is_debug_active():
             error_reason = auth.get_last_error_reason()

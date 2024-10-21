@@ -1,4 +1,4 @@
-base_path = "/var/www/prisma-api/logs"
+base_path = "/app/logs"
 
 metadata_template = {
     "total_tasks": 0,
