@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ $DEBUG = 'true' ]
+if [[ $DEBUG == 'true' ]];
 then
     sleep infinity
 else
