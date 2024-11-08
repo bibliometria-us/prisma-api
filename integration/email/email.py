@@ -102,8 +102,8 @@ def enviar_correo(
         )
         msg.attach(adjunto)
 
-    server = smtplib.SMTP(correo["servidor"], port=correo["puerto"], timeout=5)
     try:
+        server = smtplib.SMTP(correo["servidor"], port=correo["puerto"], timeout=5)
         server.starttls()
         server.login(correo["usuario"], correo["clave"])
         # server.login(Claves.correo['usuario'], Claves.correo['claves'])
