@@ -14,17 +14,21 @@ class ScopusSearch(API):
         headers: dict = {},
         json: dict = {},
         response_type: str = "json",
+        complete_view: bool = False,
     ):
         super().__init__(
             api_keys, uri_template, uri_data, route, args, headers, json, response_type
         )
+        self.inst_token = config.inst_token_key
         self.max_length = 25
         self.page = 0
         self.results = []
+        self.args["view"] = "STANDARD" if not complete_view else "COMPLETE"
 
     def set_api_key(self):
         super().set_api_key()
         self.headers["X-ELS-APIKey"] = self.api_key
+        self.headers["X-ELS-Insttoken"] = self.inst_token
 
     def search(self):
         self.get_respose()
