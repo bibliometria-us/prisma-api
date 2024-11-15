@@ -102,8 +102,10 @@ def enviar_correo(
         )
         msg.attach(adjunto)
 
+    started = False
     try:
-        server = smtplib.SMTP(correo["servidor"], port=correo["puerto"], timeout=5)
+        server = smtplib.SMTP(correo["servidor"], port=correo["puerto"])
+        started = True
         server.starttls()
         server.login(correo["usuario"], correo["clave"])
         # server.login(Claves.correo['usuario'], Claves.correo['claves'])
@@ -133,5 +135,6 @@ def enviar_correo(
         enviado = False
 
     finally:
-        server.quit()
-        return enviado
+        if started:
+            server.quit()
+            return enviado

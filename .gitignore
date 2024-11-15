@@ -313,3 +313,5 @@ routes/carga/investigador/doctorado/fuentes/TUTORES.csv
 *.code-workspace
 celery_config.py
 celery_config.py
+integration/apis/elsevier/config.py
+

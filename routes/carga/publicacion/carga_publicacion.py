@@ -17,6 +17,9 @@ from routes.carga.publicacion.idus.parser import IdusParser
 
 
 class CargaPublicacion:
+    """
+    Clase que representa una carga de publicación de publicación generica
+    """
     def __init__(self, db: BaseDatos = None, id_carga=None) -> None:
         self.id_carga = id_carga or datetime.now().strftime("%Y%m%d%H%M%S.%f")[:-3]
         self.datos: DatosCargaPublicacion = None
@@ -28,6 +31,9 @@ class CargaPublicacion:
         self.problemas: list[ProblemaCargaPublicacion] = []
 
     def start_database(self, db: BaseDatos):
+        """
+        Crea la conexión con la base de datos 
+        """
         if db:
             self.db = db
             assert self.db.autocommit == False
@@ -39,10 +45,16 @@ class CargaPublicacion:
             self.db.connection.start_transaction()
 
     def stop_database(self):
+        """
+        Crea la cierra y revierte cambios en la conexión con la base de datos 
+        """
         self.db.connection.rollback()
         self.db.connection.close()
 
     def close_database(self):
+        """
+        Crea la cierra y persiste cambios en la conexión con la base de datos 
+        """
         self.db.connection.commit()
         self.db.connection.close()
 
@@ -57,6 +69,9 @@ class CargaPublicacion:
         tipo_dato_2: str = None,
         tipo_dato_3: str = None,
     ):
+        """
+        Añade un elemento que representa un problema en la carga de publicaciones.
+        """
 
         problema = ProblemaCargaPublicacion(
             id_carga=self.id_carga,
@@ -97,9 +112,13 @@ class CargaPublicacion:
         self.insertar_problemas()
 
     def es_duplicado(self):
+        """
+        Comprueba si una publicación está duplicada según criterios establecidos
+        """
         identificadores = ",".join(
             identificador.valor for identificador in self.datos.identificadores
         )
+        # DUDA: Se comprueba sólo el id y no el tipo de id (o fuente)
         query = """
                 SELECT p.idPublicacion FROM prisma.p_publicacion p
                 LEFT JOIN prisma.p_identificador_publicacion idp ON idp.idPublicacion = p.idPublicacion
@@ -119,6 +138,10 @@ class CargaPublicacion:
         return self.duplicado
 
     def insertar_publicacion(self):
+        """
+        Inserta la publicación en base de dato
+        DUDA: esto es lo único que se almacena de la publicación en Prisma?
+        """
         query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen)
                     VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s)"""
 
@@ -133,6 +156,9 @@ class CargaPublicacion:
         self.id_publicacion = self.db.last_id
 
     def buscar_autores(self):
+        """
+        Busca los autores en la base de datos para asignarlos a la publicación
+        """
         query = (
             """SELECT * FROM prisma.p_autor WHERE idPublicacion = %(idPublicacion)s"""
         )
@@ -151,6 +177,9 @@ class CargaPublicacion:
             return True
 
     def insertar_autores(self):
+        """
+        Inserta los autores de una publicación.
+        """
         if self.buscar_autores():
             return None
         for autor in self.datos.autores:

@@ -34,6 +34,10 @@ class DatosCarga(ABC):
 
 
 class DatosCargaPublicacion(DatosCarga):
+    """
+    Clase que representa los datos necesarios para una publicacion en Prisma
+    """
+
     def __init__(self) -> None:
         self.fuente_datos = ""
         self.titulo = ""
