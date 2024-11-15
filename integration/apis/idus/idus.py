@@ -15,14 +15,11 @@ class IdusAPI(API):
         )
 
     def get_respose(self, request_method="GET", id="", timeout=3, tryouts=5) -> dict:
-        proxies = {
-            "http": "",
-            "https": "",
-        }
+
         if tryouts == 0:
             return None
         try:
-            return super().get_respose(request_method, id, timeout, proxies=proxies)
+            return super().get_respose(request_method, id, timeout)
         except (
             requests.exceptions.Timeout,
             requests.exceptions.ProxyError,
