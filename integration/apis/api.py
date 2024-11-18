@@ -64,11 +64,6 @@ class API:
 
         function = response_type_to_function.get(self.response_type)
 
-        if proxies:
-            proxies = self.proxies
-        else:
-            proxies = {}
-
         response = requests.request(
             method=request_method.lower(),
             url=self.uri + id,
