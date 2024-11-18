@@ -27,7 +27,7 @@ class API:
         self.uri = None
         self.response_type = response_type
         self.format_uri()
-        self.response = None
+        self.response: dict = None
         self.api_key_index = 0
         self.retries = 3
         self.set_api_key()
