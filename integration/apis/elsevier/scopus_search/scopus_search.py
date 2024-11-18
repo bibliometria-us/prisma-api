@@ -4,6 +4,10 @@ from integration.apis.elsevier import config
 
 
 class ScopusSearch(API):
+    """
+    Clase que representa el objeto de conexión con la API de Scopus.
+    """
+
     def __init__(
         self,
         api_keys: list[str] = config.api_key,
@@ -16,6 +20,7 @@ class ScopusSearch(API):
         response_type: str = "json",
         complete_view: bool = False,
     ):
+        self.inst_token = config.inst_token_key
         super().__init__(
             api_keys, uri_template, uri_data, route, args, headers, json, response_type
         )
@@ -33,9 +38,8 @@ class ScopusSearch(API):
     def search(self):
         self.get_respose()
 
-        search_results: dict = self.response["search-results"]
-        entry = search_results.get("entry", [])
-        self.results = entry
+        search_results: dict = self.response.get("search-results", {})
+        self.results = search_results.get("entry", [])
 
     def search_by_DOI_list(self, doi_list: List[str]):
         if len(doi_list) > self.max_length:
@@ -56,6 +60,14 @@ class ScopusSearch(API):
         query = " OR ".join(f"DOI({doi})" for doi in doi_list)
         self.args["query"] = query
         self.args["start"] = self.max_length * self.page
+
+        self.search()
+
+        return self.results
+
+    def get_from_id(self, id: str):
+        query = f"EID(2-s2.0-{id})"
+        self.args["query"] = query
 
         self.search()
 

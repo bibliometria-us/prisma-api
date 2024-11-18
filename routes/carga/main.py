@@ -2,6 +2,7 @@ from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.publicacion.idus.parser import IdusParser
+from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
 from security.check_users import es_admin, es_editor
 from celery import current_app
@@ -25,7 +26,7 @@ class CargaGrupos(Resource):
         files = request.files.getlist("files[]")
 
         for file in files:
-            file_path = "/var/www/prisma-api/temp/" + file.filename
+            file_path = "/app/temp/" + file.filename
             file.save(file_path)
             actualizar_tabla_sica(file_path)
 
@@ -99,6 +100,25 @@ class CargaPublicacionIdus(Resource):
             response.headers["Content-Type"] = "application/xml"
 
             return response
+
+        except Exception:
+            return {"message": "Error inesperado"}, 500
+
+
+@carga_namespace.route(
+    "/publicacion/scopus/", doc=False, endpoint="carga_publicacion_scopus"
+)
+class CargaPublicacionScopus(Resource):
+    def get(self):
+        args = request.args
+
+        id = args.get("id", None)
+
+        try:
+            parser = ScopusParser(id=id)
+            json = parser.datos_carga_publicacion.to_json()
+
+            return Response(json, content_type="application/json; charset=utf-8")
 
         except Exception:
             return {"message": "Error inesperado"}, 500
