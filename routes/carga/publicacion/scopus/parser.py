@@ -1,4 +1,4 @@
-from integration.apis.idus.idus import IdusAPIItems
+from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
@@ -10,7 +10,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
 from routes.carga.publicacion.parser import Parser
 
 
-class IdusParser(Parser):
+class ScopusParser(Parser):
     def __init__(self, handle: str) -> None:
         super().__init__()
         self.handle = handle
@@ -20,10 +20,10 @@ class IdusParser(Parser):
         self.carga()
 
     def set_fuente_datos(self):
-        self.datos_carga_publicacion.set_fuente_datos("IDUS")
+        self.datos_carga_publicacion.set_fuente_datos("Scopus")
 
     def api_request(self):
-        api = IdusAPIItems()
+        api = ScopusParser()
         response = api.get_from_handle(self.handle)
 
         self.data = response

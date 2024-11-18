@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 from models.colectivo.area import Area
 from models.investigador import Investigador
@@ -33,7 +34,21 @@ def database():
 
 
 @pytest.fixture(scope="session")
-def seed_centros(database):
+def seed(database: BaseDatos):
+    datos = {
+        "centros": seed_centros(database),
+        "departamentos": seed_departamentos(database),
+        "categorias": seed_categorias(database),
+        "grupos": seed_grupos(database),
+        "ramas": seed_ramas(database),
+    }
+    datos["areas"] = seed_areas(database, datos)
+    datos["investigadores"] = seed_investigadores(database, datos)
+    database.set_savepoint("seed")
+    yield datos
+
+
+def seed_centros(database: BaseDatos):
     centros = {}
     while len(centros) < 100:
         attributes = crear_datos_centro()
@@ -44,10 +59,9 @@ def seed_centros(database):
         centro.create()
         centros[centro.get_primary_key().value] = attributes
 
-    yield centros
+    return centros
 
 
-@pytest.fixture(scope="session")
 def seed_departamentos(database):
     departamentos = {}
     while len(departamentos) < 500:
@@ -59,10 +73,9 @@ def seed_departamentos(database):
         departamento.create()
         departamentos[departamento.get_primary_key().value] = attributes
 
-    yield departamentos
+    return departamentos
 
 
-@pytest.fixture(scope="session")
 def seed_categorias(database):
     categorias = {}
     while len(categorias) < 300:
@@ -74,10 +87,9 @@ def seed_categorias(database):
         categoria.create()
         categorias[categoria.get_primary_key().value] = attributes
 
-    yield categorias
+    return categorias
 
 
-@pytest.fixture(scope="session")
 def seed_grupos(database):
     grupos = {}
     while len(grupos) < 400:
@@ -89,12 +101,10 @@ def seed_grupos(database):
         grupo.create()
         grupos[grupo.get_primary_key().value] = attributes
 
-    yield grupos
+    return grupos
 
 
-@pytest.fixture(scope="session")
 def seed_ramas(database):
-
     ramas = {}
     while len(ramas) < 10:
         attributes = crear_datos_rama()
@@ -105,11 +115,12 @@ def seed_ramas(database):
         rama.create()
         ramas[rama.get_primary_key().value] = attributes
 
-    yield ramas
+    return ramas
 
 
-@pytest.fixture(scope="session")
-def seed_areas(database, seed_ramas: dict):
+def seed_areas(database, seed: dict):
+    seed_ramas = seed.get("ramas")
+
     def get_rama():
         rama = ru.random_element(collection=seed_ramas.values())
         return rama
@@ -130,18 +141,16 @@ def seed_areas(database, seed_ramas: dict):
 
         areas[area.get_primary_key().value] = attributes
 
-    yield areas
+    return areas
 
 
-@pytest.fixture(scope="session")
-def seed_investigadores(
-    database,
-    seed_areas: dict,
-    seed_grupos: dict,
-    seed_departamentos: dict,
-    seed_categorias: dict,
-    seed_centros: dict,
-):
+def seed_investigadores(database, seed):
+    seed_areas = seed.get("areas")
+    seed_grupos = seed.get("grupos")
+    seed_departamentos = seed.get("departamentos")
+    seed_categorias = seed.get("categorias")
+    seed_centros = seed.get("centros")
+
     def get_area():
         area = ru.random_element(collection=seed_areas.values())
         return area
@@ -162,12 +171,12 @@ def seed_investigadores(
         centro = ru.random_element(collection=seed_centros.values())
         return centro
 
-    investigadors = {}
+    investigadores = {}
 
     i = 1
-    while len(investigadors) < 100:
+    while len(investigadores) < 100:
         attributes = crear_datos_investigador(i)
-        if attributes["idInvestigador"] in investigadors.keys():
+        if attributes["idInvestigador"] in investigadores.keys():
             continue
         investigador = Investigador(db=database)
         investigador.set_attributes(attributes)
@@ -190,7 +199,7 @@ def seed_investigadores(
 
         investigador.create()
 
-        investigadors[investigador.get_primary_key().value] = attributes
+        investigadores[investigador.get_primary_key().value] = attributes
         i += 1
-
-    yield investigadors
+    database
+    return investigadores

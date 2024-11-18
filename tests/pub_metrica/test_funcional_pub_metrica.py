@@ -33,8 +33,6 @@ def get_fuentes(tipo):
 
 
 @pytest.mark.skip
-@pytest.mark.slow
-@pytest.mark.pub_metrica
 def test_pub_metrica():
     fuentes = {
         "departamento": get_fuentes("departamento"),
@@ -71,7 +69,6 @@ def test_pub_metrica():
 
 
 @pytest.mark.skip
-@pytest.mark.pub_metrica
 def test_pub_metrica_informes_personalizados():
     for i in range(30):
         filename = f"tests/temp/prueba_random_{i+1}"

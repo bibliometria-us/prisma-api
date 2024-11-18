@@ -22,7 +22,9 @@ def salida(texto):
         print(texto.encode("UTF-8"))
 
 
-def enviar_correo(destinatarios, texto_plano, texto_html, asunto, adjuntos=None):
+def enviar_correo(
+    destinatarios, texto_plano, texto_html, asunto, adjuntos=None, tryouts=10
+):
     """
     Función para enviar correos
     @param destinatarios: lista con los emails de los destinatarios
@@ -100,8 +102,10 @@ def enviar_correo(destinatarios, texto_plano, texto_html, asunto, adjuntos=None)
         )
         msg.attach(adjunto)
 
-    server = smtplib.SMTP(correo["servidor"], port=correo["puerto"])
+    started = False
     try:
+        server = smtplib.SMTP(correo["servidor"], port=correo["puerto"])
+        started = True
         server.starttls()
         server.login(correo["usuario"], correo["clave"])
         # server.login(Claves.correo['usuario'], Claves.correo['claves'])
@@ -113,10 +117,24 @@ def enviar_correo(destinatarios, texto_plano, texto_html, asunto, adjuntos=None)
             )
         )
         enviado = True
+    except TimeoutError:
+        if tryouts == 0:
+            enviado = False
+        else:
+            enviar_correo(
+                destinatarios,
+                texto_plano,
+                texto_html,
+                asunto,
+                adjuntos,
+                tryouts=tryouts - 1,
+            )
     except Exception as e:
         salida("{}: Error al enviar el correo".format(time.strftime("%d/%m/%y %H:%M")))
         print(e)
         enviado = False
+
     finally:
-        server.quit()
-        return enviado
+        if started:
+            server.quit()
+            return enviado

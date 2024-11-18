@@ -1,10 +1,16 @@
 import mysql.connector
 from mysql.connector.errors import OperationalError
+from pandas import DataFrame
 import db.claves as claves
+from utils.format import table_to_pandas
 from utils.timing import func_timer as timer
 
 
 class BaseDatos:
+    """
+    Clase que representa un objeto Base de Datos, el cual es necesario para en ciertas funciones
+    donde se hace uso de la misma.
+    """
 
     def __init__(
         self,
@@ -14,8 +20,9 @@ class BaseDatos:
         autocommit=True,
         test=False,
     ) -> None:
-        self.is_active = False
-        self.connection = None
+        # Constructor y se inicializan los atributos.
+        self.is_active = False  # Indica que la conexión está activa
+        self.connection = None  # Representa el objeto de la conexion
         self.database = database
         self.local_infile = local_infile
         self.autocommit = autocommit
@@ -24,8 +31,12 @@ class BaseDatos:
         self.error = False
         self.last_id = None
         self.test = test
+        self.result = None
 
     def startConnection(self):
+        """
+        Permite establecer una conexion con la bd.
+        """
         self.connection = mysql.connector.connect(
             host=claves.db_host if not self.test else claves.test_db_host,
             user=claves.db_user if not self.test else claves.test_db_user,
@@ -41,13 +52,41 @@ class BaseDatos:
         return self.error == False
 
     def has_rows(self) -> bool:
+        """
+        Devuelve si la consulta contiene filas
+        """
         return self.rowcount > 0
 
     def closeConnection(self):
+        """
+        Cierra la conexion del objeto de la base de datos (rollback incluido).
+        """
         self.connection.close()
+        self.connection.rollback
         self.is_active = False
 
+    def rollback(self):
+        """
+        Se realiza un rollback.
+        """
+        self.connection.rollback()
+
+    def set_savepoint(self, savepoint: str):
+        """
+        Se crea un punto de guardado.
+        """
+        self.ejecutarConsulta(f"SAVEPOINT {savepoint}")
+
+    def rollback_to_savepoint(self, savepoint: str):
+        """
+        Se vuelve al punto de guardado.
+        """
+        self.ejecutarConsulta(f"ROLLBACK TO SAVEPOINT {savepoint}")
+
     def ejecutarConsulta(self, consulta: str, params: str = []):
+        """
+        Ejecuta una consuta en la conexion de la base de datos.
+        """
         if not self.is_active:
             self.startConnection()
 
@@ -58,7 +97,7 @@ class BaseDatos:
             result = [column_names] + list(cursor.fetchall())
             self.rowcount = cursor.rowcount
             self.last_id = cursor.lastrowid
-        except OperationalError as e:
+        except OperationalError as e:  # DUDA: que se controla con esta excepción?
             if self.keep_connection_alive:
                 self.startConnection()
                 self.ejecutarConsulta(consulta, params)
@@ -75,4 +114,23 @@ class BaseDatos:
         if not self.keep_connection_alive:
             self.closeConnection()
 
+        self.result = result
         return result
+
+    def get_first_cell(self):
+        """
+        Obtiene la primera celda si existe en el resultado de la consulta.
+        """
+        if not (self.result and len(self.result)) > 1:
+            return None
+
+        return self.result[1][0]
+
+    def get_dataframe(self) -> DataFrame:
+        """
+        Obtienes el resultado de la consulta como un DataFrame
+        """
+        if not self.result:
+            return None
+
+        return table_to_pandas(self.result)

@@ -36,10 +36,11 @@ from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import logging
 import urllib.parse as urlparse
 
+import config.local_config as local_config
 from security.protected_routes import mandatory_auth_endpoints
 from celery import Celery
 
-prisma_base_url = "https://prisma.us.es"
+prisma_base_url = local_config.api_domain
 
 app = Flask(__name__)
 CORS(

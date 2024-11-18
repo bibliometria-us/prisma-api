@@ -59,9 +59,7 @@ class API:
         if self.route:
             self.uri = self.uri + self.route
 
-    def get_respose(
-        self, request_method="GET", id="", timeout=None, proxies=False
-    ) -> dict:
+    def get_respose(self, request_method="GET", id="", timeout=None, **kwargs) -> dict:
         response_type_to_function = {"json": self.get_json_response}
 
         function = response_type_to_function.get(self.response_type)
@@ -78,7 +76,7 @@ class API:
             params=self.args,
             json=self.json,
             timeout=timeout,
-            proxies=proxies,
+            **kwargs
         )
 
         if response.status_code == 200:
@@ -86,7 +84,9 @@ class API:
         if response.status_code in [401, 429] and self.api_keys:
             self.roll_api_key()
             sleep(1)
-            self.get_respose(request_method=request_method)
+            self.get_respose(
+                request_method=request_method, id=id, timeout=timeout, kwargs=kwargs
+            )
             return None
 
         result = function(response)

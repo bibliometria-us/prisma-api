@@ -1,7 +1,6 @@
 import requests
 from integration.apis.api import API
 from integration.apis.idus import config
-from integration.apis.idus.config import url_api_idus
 
 
 class IdusAPI(API):
@@ -15,7 +14,11 @@ class IdusAPI(API):
             route=route,
         )
 
-    def get_respose(self, request_method="GET", id="", timeout=3, tryouts=3) -> dict:
+    def get_respose(self, request_method="GET", id="", timeout=3, tryouts=5) -> dict:
+        proxies = {
+            "http": "",
+            "https": "",
+        }
         if tryouts == 0:
             return None
         try:
@@ -28,6 +31,8 @@ class IdusAPI(API):
             tryouts -= 1
             timeout += 2
             self.get_respose(tryouts=tryouts, timeout=timeout)
+        except Exception as e:
+            return None
 
 
 class IdusAPISearch(IdusAPI):

@@ -18,7 +18,7 @@ class xmlDoiIdus:
 
     def api_request(self):
         parser = IdusParser(handle=self.handle)
-        self.data = parser.carga_publicacion
+        self.data = parser.datos_carga_publicacion
         self.data_dict = self.data.to_dict()
 
     def prettify_xml(self):
