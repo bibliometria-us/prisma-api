@@ -22,7 +22,7 @@ class IdusAPI(API):
         if tryouts == 0:
             return None
         try:
-            return super().get_respose(request_method, id, timeout, proxies=proxies)
+            return super().get_respose(request_method, id, timeout)
         except (
             requests.exceptions.Timeout,
             requests.exceptions.ProxyError,
