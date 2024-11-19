@@ -60,7 +60,13 @@ class API:
             self.uri = self.uri + self.route
 
     def get_respose(
-        self, request_method="GET", id="", timeout=None, proxies=True, **kwargs
+        self,
+        request_method="GET",
+        id="",
+        timeout=None,
+        proxies=True,
+        tryouts=5,
+        **kwargs
     ) -> dict:
         response_type_to_function = {"json": self.get_json_response}
 
@@ -71,16 +77,24 @@ class API:
         else:
             proxy_list = {}
 
-        response = requests.request(
-            method=request_method.lower(),
-            url=self.uri + id,
-            headers=self.headers,
-            params=self.args,
-            json=self.json,
-            timeout=timeout,
-            proxies=proxy_list,
-            **kwargs,
-        )
+        try:
+            response = requests.request(
+                method=request_method.lower(),
+                url=self.uri + id,
+                headers=self.headers,
+                params=self.args,
+                json=self.json,
+                timeout=timeout or (3, 3),
+                proxies=proxy_list,
+                **kwargs,
+            )
+        except Exception:
+
+            if tryouts > 0:
+                tryouts -= 1
+                self.get_respose(
+                    self, request_method, id, timeout, proxies, tryouts, **kwargs
+                )
 
         if response.status_code == 200:
             pass
