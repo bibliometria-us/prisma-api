@@ -93,7 +93,7 @@ class API:
             if tryouts > 0:
                 tryouts -= 1
                 self.get_respose(
-                    self, request_method, id, timeout, proxies, tryouts, **kwargs
+                    request_method, id, timeout, proxies, tryouts, **kwargs
                 )
 
         if response.status_code == 200:

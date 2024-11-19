@@ -49,12 +49,6 @@ class JournalsAPI(API):
 
     def get_respose(
         self,
-        request_method="GET",
-        id="",
-        timeout=None,
-        proxies=True,
-        tryouts=5,
-        **kwargs,
     ) -> dict:
         result = super().get_respose(proxies=True)
 
