@@ -10,6 +10,7 @@ from celery import shared_task, current_app, group
 from celery.utils.log import get_task_logger
 import os
 
+from utils.date import str_to_date
 from utils.format import table_to_pandas
 
 logger = get_task_logger(__name__)
@@ -178,7 +179,9 @@ def cargar_grupo_sica(datos_grupo: dict):
             "codigo": datos_grupo.get("codigo"),
             "institucion": datos_grupo.get("institucion"),
             "estado": datos_grupo.get("estado"),
-            "fecha_creacion": datos_grupo.get("fecha_creacion"),
+            "fecha_creacion": str_to_date(
+                datos_grupo.get("fecha_creacion"), format="%d/%m/%Y"
+            ),
         }
     )
     grupo.update()
