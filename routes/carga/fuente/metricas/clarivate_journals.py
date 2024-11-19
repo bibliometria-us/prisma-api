@@ -38,6 +38,13 @@ def obtener_lista_de_fuentes(fuentes: str) -> list:
 
     if fuentes == "todas":
         pass
+    if "a" in fuentes:
+
+        lista_fuentes = list(
+            map(str, range(int(fuentes.split("a")[0]), int(fuentes.split("a")[1])))
+        )
+        filtrar_revistas = filtrar_revistas.format(",".join(lista_fuentes))
+        query_revistas += filtrar_revistas
     else:
         lista_fuentes = list(f"{id_fuente}" for id_fuente in fuentes.split(","))
         filtrar_revistas = filtrar_revistas.format(",".join(lista_fuentes))
