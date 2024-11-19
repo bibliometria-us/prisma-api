@@ -132,10 +132,16 @@ class Model(ABC):
             if key not in attribute_filter
         }
 
-        columns = list(attribute.column_name for attribute in attributes.values())
+        columns = list(
+            attribute.column_name
+            for attribute in attributes.values()
+            if attribute.value is not None
+        )
 
         param_ids = list(
-            f"%({attribute.column_name})s" for attribute in attributes.values()
+            f"%({attribute.column_name})s"
+            for attribute in attributes.values()
+            if attribute.value is not None
         )
 
         params = {key: value.value for key, value in self.attributes.items()}
