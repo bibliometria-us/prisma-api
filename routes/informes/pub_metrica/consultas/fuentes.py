@@ -72,8 +72,7 @@ def consulta_investigadores(fuentes):
         _conditions.append(condition)
 
     query += f"{' '.join(_joins)}"
-    query += f""" WHERE cat.idCategoria != 'honor' 
-                AND (cat.tipo_pp != 'exc' OR ie.excluido = 0)
+    query += f""" WHERE (cat.tipo_pp != 'exc' OR ie.excluido = 0)
                 AND (ie.excluido IS NULL OR ie.excluido != 1)
                 AND ({' OR '.join(_conditions)})"""
 
