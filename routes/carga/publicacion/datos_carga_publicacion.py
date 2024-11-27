@@ -160,7 +160,7 @@ class DatosCargaPublicacion(DatosCarga):
 class DatosCargaAutor(DatosCarga):
     def __init__(self, firma: str = "", tipo: str = "", orden: int = "") -> None:
         self.firma = firma
-        self.tipo = tipo
+        self.tipo = tipo  # Tipología de autor: mínimo tipo Autor/a
         self.orden = orden
         self.contacto = "N"
         self.ids: list[DatosCargaIdentificadorAutor] = list()

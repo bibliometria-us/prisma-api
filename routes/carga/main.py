@@ -112,12 +112,19 @@ class CargaPublicacionScopus(Resource):
     def get(self):
         args = request.args
 
-        id = args.get("id", None)
+        idScopus = args.get("id", None)
 
         try:
-            parser = ScopusParser(id=id)
+            # Parser Me devuelve el dato en formato comun
+            #    - Recibe un id
+            #    - Llamada a la API Scopus y devuelve objeto
+            #    - Mapeo objeto scopus a objeto generico
+            #    - Almacena objeto generico en BD
+
+            parser = ScopusParser(idScopus=idScopus)
             json = parser.datos_carga_publicacion.to_json()
 
+            # TODO: Añadir funcionalidad de carga en BD
             return Response(json, content_type="application/json; charset=utf-8")
 
         except Exception:
