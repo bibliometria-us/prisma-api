@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Dict
 
 import pandas as pd
 from db.conexion import BaseDatos
@@ -20,6 +21,7 @@ class CargaPublicacion:
     """
     Clase que representa una carga de publicación de publicación generica
     """
+
     def __init__(self, db: BaseDatos = None, id_carga=None) -> None:
         self.id_carga = id_carga or datetime.now().strftime("%Y%m%d%H%M%S.%f")[:-3]
         self.datos: DatosCargaPublicacion = None
@@ -32,7 +34,7 @@ class CargaPublicacion:
 
     def start_database(self, db: BaseDatos):
         """
-        Crea la conexión con la base de datos 
+        Crea la conexión con la base de datos
         """
         if db:
             self.db = db
@@ -46,26 +48,26 @@ class CargaPublicacion:
 
     def stop_database(self):
         """
-        Crea la cierra y revierte cambios en la conexión con la base de datos 
+        Crea la cierra y revierte cambios en la conexión con la base de datos
         """
         self.db.connection.rollback()
         self.db.connection.close()
 
     def close_database(self):
         """
-        Crea la cierra y persiste cambios en la conexión con la base de datos 
+        Crea la cierra y persiste cambios en la conexión con la base de datos
         """
         self.db.connection.commit()
         self.db.connection.close()
 
     def add_problema(
         self,
-        tipo_problema: str,
         mensaje: str,
         antigua_fuente: str,
         antiguo_valor: str,
         nueva_fuente: str,
         nuevo_valor: str,
+        tipo_problema: str = "Advertencia",
         tipo_dato_2: str = None,
         tipo_dato_3: str = None,
     ):
@@ -102,46 +104,74 @@ class CargaPublicacion:
         self.datos = parser.datos_carga_publicacion
 
     def cargar_publicacion(self):
-        if self.es_duplicado():
-            return self.id_publicacion
-
         self.insertar_publicacion()
         self.insertar_autores()
         self.insertar_identificadores_publicacion()
         self.insertar_datos_publicacion()
         self.insertar_problemas()
 
-    def es_duplicado(self):
+    def buscar_publicacion(self):
         """
         Comprueba si una publicación está duplicada según criterios establecidos
         """
         identificadores = ",".join(
-            identificador.valor for identificador in self.datos.identificadores
+            f"'{identificador.valor}'" for identificador in self.datos.identificadores
         )
         # DUDA: Se comprueba sólo el id y no el tipo de id (o fuente)
-        query = """
-                SELECT p.idPublicacion FROM prisma.p_publicacion p
+        # Se buscan las publicaciones por el o los identificadores (DOI, ID Scopus, ID WoS...) localizados en la carga
+        query = f"""
+                SELECT p.idPublicacion, p.tipo, p.titulo, p.agno as año_publicacion, p.origen FROM prisma.p_publicacion p
                 LEFT JOIN prisma.p_identificador_publicacion idp ON idp.idPublicacion = p.idPublicacion
-                WHERE idp.valor IN (%(identificadores)s)
+                WHERE idp.valor IN ({identificadores})
+                GROUP BY p.idPublicacion
                 """
-        params = {"identificadores": identificadores}
+        # params = {"identificadores": identificadores}
 
-        self.db.ejecutarConsulta(query, params)
+        self.db.ejecutarConsulta(query)
         id_publicacion = self.db.get_first_cell()
+        datos_publicacion = None
 
         if id_publicacion:
             self.id_publicacion = id_publicacion
             self.duplicado = True
+            datos_publicacion = self.db.get_dataframe()
+            datos_publicacion = datos_publicacion.iloc[0].to_dict()
         else:
             self.duplicado = False
 
-        return self.duplicado
+        return datos_publicacion
+
+    def comparar_publicacion(self, publicacion_antigua: Dict[str, Any]):
+        """
+        Si se ha encontrado una publicación existente con identificadores comunes,
+        comparar los atributos entre sí.
+        """
+
+        tipos_atributo = ["tipo", "titulo", "año_publicacion"]  # Columnas a comprobar
+
+        for tipo_atributo in tipos_atributo:
+            antiguo_atributo = publicacion_antigua[tipo_atributo]
+            nuevo_atributo = getattr(self.datos, tipo_atributo)
+            if not antiguo_atributo == nuevo_atributo:
+                self.add_problema(
+                    mensaje="",
+                    antigua_fuente=publicacion_antigua["origen"],
+                    antiguo_valor=antiguo_atributo,
+                    nueva_fuente=self.origen,
+                    nuevo_valor=nuevo_atributo,
+                    tipo_dato_2=tipo_atributo,
+                )
 
     def insertar_publicacion(self):
         """
         Inserta la publicación en base de dato
         DUDA: esto es lo único que se almacena de la publicación en Prisma?
         """
+        publicacion_antigua = self.buscar_publicacion()
+        if publicacion_antigua:
+            self.comparar_publicacion(publicacion_antigua=publicacion_antigua)
+            return None
+
         query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen)
                     VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s)"""
 
@@ -149,7 +179,7 @@ class CargaPublicacion:
             "tipo": self.datos.tipo,
             "titulo": self.datos.titulo,
             "agno": self.datos.año_publicacion,
-            "origen": self.datos.tipo,
+            "origen": self.origen,
         }
 
         self.db.ejecutarConsulta(query, params)
@@ -159,9 +189,7 @@ class CargaPublicacion:
         """
         Busca los autores en la base de datos para asignarlos a la publicación
         """
-        query = (
-            """SELECT * FROM prisma.p_autor WHERE idPublicacion = %(idPublicacion)s"""
-        )
+        query = """SELECT *, rol as tipo FROM prisma.p_autor WHERE idPublicacion = %(idPublicacion)s"""
         params = {"idPublicacion": self.id_publicacion}
 
         self.db.ejecutarConsulta(query, params)
@@ -172,7 +200,7 @@ class CargaPublicacion:
         else:
             nuevos_autores = pd.DataFrame(self.datos.to_dict().get("autores").values())
             comparacion_autores = ComparacionAutores(antiguos_autores, nuevos_autores)
-            comparacion_autores.comparar()
+            comparacion_autores.comparar(tipo_comparacion="cantidad")
 
             return True
 

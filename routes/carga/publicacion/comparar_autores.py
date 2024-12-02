@@ -20,12 +20,34 @@ class ComparacionAutores:
         self.k = 1
         self.clusters: dict[int, list[str]] = {}
         self.reversed_name_cluster: dict[str, int] = {}
-        self.errores: list[ErrorAutor] = list()
 
-    def add_error(self, error: "ErrorAutor"):
-        self.errores.append(error)
+    def comparar(self, tipo_comparacion="cantidad"):
+        """
+        Decidir el tipo de comparación que se va a utilizar.
+        """
+        if tipo_comparacion == "cantidad":
+            return self.comparar_cantidad_autores()
+        if tipo_comparacion == "fuzz_ratio":
+            self.comparar_fuzz_ratio()
 
-    def comparar(self):
+    def comparar_cantidad_autores(self):
+        """
+        Realizar una comparación solo por la longitud de las listas de autores de la publicación.
+        """
+
+        count_nuevos = self.nuevos_autores["tipo"].value_counts().to_dict()
+        count_antiguos = self.antiguos_autores["tipo"].value_counts().to_dict()
+
+        if count_nuevos != count_antiguos:
+            return count_nuevos, count_antiguos
+        else:
+            return None
+
+    def comparar_fuzz_ratio(self):
+        """
+        Este método compara la similitud de autores mediante fuzz ratio, permitiendo detectar coincidencias
+        en firmas de autor con ligeras diferencias por uso de siglas o typos.
+        """
         self.set_firma_autores = set(
             self.nuevos_autores["firma"].tolist()
             + self.antiguos_autores["firma"].tolist()
@@ -103,13 +125,3 @@ class ComparacionAutores:
                     1
                 ],  # Compare based on the fuzz.ratio value (item[1])
             )
-
-            if max_fuzz_ratio < 70:
-                error = ErrorAutor()
-
-
-class ErrorAutor:
-    def __init__(self, tipo: str, orden: int = None, rol: str = None):
-        self.tipo = tipo
-        self.orden = orden
-        self.rol = rol

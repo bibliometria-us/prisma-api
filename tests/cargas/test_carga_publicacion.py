@@ -142,6 +142,10 @@ def check_insertar_fuente(carga: CargaPublicacion):
 def check_insertar_problemas(carga: CargaPublicacion):
     carga.origen = "Scopus"
 
+    carga.datos.tipo = "Tipo erroneo"
+    carga.datos.año_publicacion = "1900"
+    carga.insertar_publicacion()
+
     carga.datos.datos[0].valor = "error"
     carga.insertar_datos_publicacion()
 
@@ -151,13 +155,37 @@ def check_insertar_problemas(carga: CargaPublicacion):
     carga.datos.autores[0].firma = "prueba"
     carga.insertar_autores()
 
+    carga.datos.tipo = "Artículo"
+    carga.datos.año_publicacion = "2014"
     carga.origen = "idUS"
     carga.datos.datos[0].valor = "743"
     carga.datos.identificadores[0].valor = "10.1016/j.nima.2013.12.056"
 
     carga.insertar_problemas()
+    check_insertar_problemas_publicacion(carga)
     check_insertar_problemas_datos_publicacion(carga)
     check_insertar_problemas_identificadores_publicacion(carga)
+
+
+def check_insertar_problemas_publicacion(carga: CargaPublicacion):
+    query = "SELECT * FROM prisma.a_problemas WHERE tipo_dato = %(tipo_dato)s AND id_dato = %(id_dato)s"
+    params = {
+        "tipo_dato": "Publicación",
+        "id_dato": carga.id_publicacion,
+    }
+
+    carga.db.ejecutarConsulta(query, params)
+    df = carga.db.get_dataframe()
+
+    assert df.iloc[0]["antigua_fuente"] == "idUS"
+    assert df.iloc[0]["antiguo_valor"] == carga.datos.tipo
+    assert df.iloc[0]["nueva_fuente"] == "Scopus"
+    assert df.iloc[0]["nuevo_valor"] == "Tipo erroneo"
+
+    assert df.iloc[1]["antigua_fuente"] == "idUS"
+    assert df.iloc[1]["antiguo_valor"] == carga.datos.año_publicacion
+    assert df.iloc[1]["nueva_fuente"] == "Scopus"
+    assert df.iloc[1]["nuevo_valor"] == "1900"
 
 
 def check_insertar_problemas_datos_publicacion(carga: CargaPublicacion):
