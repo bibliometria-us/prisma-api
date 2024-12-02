@@ -1,4 +1,4 @@
-from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
+from integration.apis.clarivate.wos.wos_api import WosAPI
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
@@ -11,28 +11,36 @@ from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
 
-class ScopusParser(Parser):
-    def __init__(self, idScopus: str) -> None:
+class WosParser(Parser):
+    def __init__(self, idWos: str) -> None:
         # Se inicializa la clase padre
         # La clase padre Parser tiene el atributo datos_carga_publicacion
         super().__init__()
         # Se definen los atributos de la clase
-        self.idScopus = idScopus
+        self.idWos = idWos
         self.data: dict = None
-        self.api_request()  # Se hace la petición de Scopus
+        self.api_request()  # Se hace la petición de Wos
         self.carga()  # Con los datos recuperados, se rellena el objeto datos_carga_publicacion
 
     def set_fuente_datos(self):
-        self.datos_carga_publicacion.set_fuente_datos("Scopus")
+        self.datos_carga_publicacion.set_fuente_datos("WOS")
 
     def api_request(self):
-        api = ScopusSearch()
-        response = api.get_from_id(self.idScopus)
+        api = WosAPI()
+        response = api.get_from_id(self.idWos)
 
         self.data = response
 
     def cargar_titulo(self):
-        titulo = self.data[0].get("dc:title")
+        titulo_dict = self.data["static_data"]["summary"]["titles"]
+        titulo = next(
+            (
+                element.get("content")
+                for element in titulo_dict["title"]
+                if element.get("type") == "item"
+            ),
+            None,
+        )
         self.datos_carga_publicacion.set_titulo(titulo)
 
     def cargar_titulo_alternativo(self):
@@ -40,7 +48,7 @@ class ScopusParser(Parser):
         pass
 
     def cargar_tipo(self):
-        tipo = self.data[0].get("subtype")
+        tipo = self.data["static_data"]["summary"]["doctypes"]["doctype"]
 
         tipos = {
             "ar": "Artículo",

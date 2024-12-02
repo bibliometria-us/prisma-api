@@ -56,6 +56,7 @@ class Parser(ABC):
         pass
 
     def carga(self):
+
         self.set_fuente_datos()
         self.cargar_titulo()
         self.cargar_titulo_alternativo()

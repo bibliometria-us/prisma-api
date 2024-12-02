@@ -3,6 +3,7 @@ from flask import Response, make_response, request, jsonify
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.scopus.parser import ScopusParser
+from routes.carga.publicacion.wos.parser import WosParser
 from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
 from security.check_users import es_admin, es_editor
 from celery import current_app
@@ -112,12 +113,45 @@ class CargaPublicacionScopus(Resource):
     def get(self):
         args = request.args
 
-        id = args.get("id", None)
+        idScopus = args.get("id", None)
 
         try:
-            parser = ScopusParser(id=id)
+            # Parser Me devuelve el dato en formato comun
+            #    - Recibe un id
+            #    - Llamada a la API Scopus y devuelve objeto
+            #    - Mapeo objeto scopus a objeto generico
+            #    - Almacena objeto generico en BD
+
+            parser = ScopusParser(idScopus=idScopus)
             json = parser.datos_carga_publicacion.to_json()
 
+            # TODO: Añadir funcionalidad de carga en BD
+            return Response(json, content_type="application/json; charset=utf-8")
+
+        except Exception:
+            return {"message": "Error inesperado"}, 500
+
+
+@carga_namespace.route("/publicacion/wos/", doc=False, endpoint="carga_publicacion_wos")
+class CargaPublicacionWos(Resource):
+    def get(self):
+        args = request.args
+
+        idWos = args.get("id", None)
+
+        try:
+            # Parser Me devuelve el dato en formato comun
+            #    - Recibe un id
+            #    - Llamada a la API Wos y devuelve objeto
+            #    - Mapeo objeto Wos a objeto generico
+            #    - Almacena objeto generico en BD
+
+            # TODO: contemplar ID wos, medline, et
+            # TODO: contemplar formato correcto de ID (elevar en parser y campturar en main)
+            parser = WosParser(idWos=idWos)
+            json = parser.datos_carga_publicacion.to_json()
+
+            # TODO: Añadir funcionalidad de carga en BD
             return Response(json, content_type="application/json; charset=utf-8")
 
         except Exception:

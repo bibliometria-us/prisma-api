@@ -62,3 +62,26 @@ class WosAPI(API):
 
         if self.records_found > self.json["firstRecord"] + self.json["count"]:
             self.search(page=page + 1)
+
+    def get_from_id(self, id: str):
+        self.route = "/"
+        # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
+        self.set_api_key()
+        # TODO: dataBaseId WOS o WOK ?
+        dataBaseId = f"WOS"
+
+        # Controla que incluya el prefijo
+        prefijo = "WOS:"
+        query = f"UT=({id if id.startswith(prefijo) else prefijo + id})"
+
+        body_args = {}
+
+        body_args["usrQuery"] = query
+        body_args["databaseId"] = dataBaseId
+
+        self.add_json_data(body_args)
+
+        self.search()
+        # TODO: controlar que el resultado no venga vacío
+        # Se devuelve un resultado ya que es una petición de una pub por id
+        return self.records[0]
