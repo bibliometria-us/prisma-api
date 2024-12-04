@@ -1,6 +1,7 @@
 from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
+from routes.carga.publicacion.idus.carga import CargaPublicacionIdus
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.publicacion.wos.parser import WosParser
@@ -64,17 +65,18 @@ class CargaWosJournals(Resource):
 @carga_namespace.route(
     "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
 )
-class CargaPublicacionIdus(Resource):
+class CargaIdus(Resource):
     def get(self):
         args = request.args
 
         handle = args.get("handle", None)
 
         try:
-            parser = IdusParser(handle=handle)
-            json = parser.datos_carga_publicacion.to_json()
 
-            return Response(json, content_type="application/json; charset=utf-8")
+            carga = CargaPublicacionIdus()
+            carga.cargar_publicacion_por_handle(handle)
+
+            # TODO: Gestionar excepciones y devolver un mensaje en función del resultado
 
         except Exception:
             return {"message": "Error inesperado"}, 500
@@ -83,7 +85,7 @@ class CargaPublicacionIdus(Resource):
 @carga_namespace.route(
     "/publicacion/idus/doi_xml/", doc=False, endpoint="carga_doi_xml"
 )
-class CargaPublicacionIdus(Resource):
+class CargaDoiIdus(Resource):
     def get(self):
         args = request.args
 

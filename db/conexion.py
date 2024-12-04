@@ -61,9 +61,17 @@ class BaseDatos:
         """
         Cierra la conexion del objeto de la base de datos (rollback incluido).
         """
+        if self.test:
+            return None
         self.connection.close()
         self.connection.rollback
         self.is_active = False
+
+    def commit(self):
+        if self.test:
+            return None
+
+        self.connection.commit()
 
     def rollback(self):
         """

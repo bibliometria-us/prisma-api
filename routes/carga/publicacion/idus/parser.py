@@ -11,12 +11,18 @@ from routes.carga.publicacion.parser import Parser
 
 
 class IdusParser(Parser):
-    def __init__(self, handle: str) -> None:
+    def __init__(self, handle: str = None, data: dict = None) -> None:
         super().__init__()
-        self.handle = handle
-        self.data: dict = None
-        self.api_request()
-        self.metadata: dict = self.data.get("metadata")
+        if not data:
+            self.handle = handle
+            self.data: dict = None
+            self.api_request()
+            self.metadata: dict = self.data.get("metadata")
+        else:
+            self.data = data
+            self.handle = data.get("handle")
+            self.metadata = data.get("metadata")
+
         self.carga()
 
     def set_fuente_datos(self):
@@ -117,7 +123,7 @@ class IdusParser(Parser):
         self.datos_carga_publicacion.add_identificador(identificador)
 
     def cargar_idus(self):
-        idus: str = self.handle
+        idus: str = self.data.get("handle")
         assert idus.startswith("11441/")
 
         identificador = DatosCargaIdentificadorPublicacion(valor=idus, tipo="idus")

@@ -22,12 +22,12 @@ class CargaPublicacion:
     Clase que representa una carga de publicación de publicación generica
     """
 
-    def __init__(self, db: BaseDatos = None, id_carga=None) -> None:
+    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
         self.id_carga = id_carga or datetime.now().strftime("%Y%m%d%H%M%S.%f")[:-3]
         self.datos: DatosCargaPublicacion = None
+        self.auto_commit = auto_commit
         self.start_database(db)
         self.id_publicacion = 0
-        self.duplicado = False
         self.fuente_existente = False
         self.origen = None
         self.problemas: list[ProblemaCargaPublicacion] = []
@@ -50,15 +50,16 @@ class CargaPublicacion:
         """
         Crea la cierra y revierte cambios en la conexión con la base de datos
         """
-        self.db.connection.rollback()
-        self.db.connection.close()
+        self.db.rollback()
+        self.db.closeConnection()
 
     def close_database(self):
         """
         Crea la cierra y persiste cambios en la conexión con la base de datos
         """
-        self.db.connection.commit()
-        self.db.connection.close()
+        if self.auto_commit:
+            self.db.commit()
+            self.db.closeConnection()
 
     def add_problema(
         self,
@@ -99,16 +100,13 @@ class CargaPublicacion:
         for problema in self.problemas:
             problema.insertar()
 
-    def add_carga_idus(self, handle: str):
-        parser = IdusParser(handle=handle)
-        self.datos = parser.datos_carga_publicacion
-
     def cargar_publicacion(self):
         self.insertar_publicacion()
         self.insertar_autores()
         self.insertar_identificadores_publicacion()
         self.insertar_datos_publicacion()
         self.insertar_problemas()
+        self.close_database()
 
     def buscar_publicacion(self):
         """
@@ -129,15 +127,13 @@ class CargaPublicacion:
 
         self.db.ejecutarConsulta(query)
         id_publicacion = self.db.get_first_cell()
+
         datos_publicacion = None
 
         if id_publicacion:
             self.id_publicacion = id_publicacion
-            self.duplicado = True
             datos_publicacion = self.db.get_dataframe()
             datos_publicacion = datos_publicacion.iloc[0].to_dict()
-        else:
-            self.duplicado = False
 
         return datos_publicacion
 
@@ -200,7 +196,19 @@ class CargaPublicacion:
         else:
             nuevos_autores = pd.DataFrame(self.datos.to_dict().get("autores").values())
             comparacion_autores = ComparacionAutores(antiguos_autores, nuevos_autores)
-            comparacion_autores.comparar(tipo_comparacion="cantidad")
+            count_nuevos, count_antiguos = comparacion_autores.comparar(
+                tipo_comparacion="cantidad"
+            )
+
+            if count_nuevos != count_antiguos:
+                self.add_problema(
+                    mensaje="",
+                    antigua_fuente=None,
+                    antiguo_valor=str(count_antiguos),
+                    nueva_fuente=self.origen,
+                    nuevo_valor=str(count_nuevos),
+                    tipo_dato_2="autores",
+                )
 
             return True
 
@@ -213,23 +221,8 @@ class CargaPublicacion:
         for autor in self.datos.autores:
             self.insertar_autor(autor)
 
-    def insertar_autor(self, autor: DatosCargaAutor):
-        query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador)
-                    VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s)
-                """
-        params = {
-            "orden": autor.orden,
-            "firma": autor.firma,
-            "rol": autor.tipo,
-            "contacto": autor.contacto,
-            "idPublicacion": self.id_publicacion,
-            "idInvestigador": self.buscar_id_investigador(autor),
-        }
-
-        self.db.ejecutarConsulta(query, params)
-
     def buscar_id_investigador(self, autor: DatosCargaAutor):
-
+        # TODO: Plantear que la id de investigador de autor se actualice siempre
         where = " OR ".join(
             f"(idi.tipo = '{identificador.tipo}' AND idi.valor = '{identificador.valor}')"
             for identificador in autor.ids
@@ -246,6 +239,21 @@ class CargaPublicacion:
 
         return id_investigador or 0
 
+    def insertar_autor(self, autor: DatosCargaAutor):
+        query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador)
+                    VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s)
+                """
+        params = {
+            "orden": autor.orden,
+            "firma": autor.firma,
+            "rol": autor.tipo,
+            "contacto": autor.contacto,
+            "idPublicacion": self.id_publicacion,
+            "idInvestigador": self.buscar_id_investigador(autor),
+        }
+
+        self.db.ejecutarConsulta(query, params)
+
     def insertar_identificadores_publicacion(self):
         for identificador in self.datos.identificadores:
             self.insertar_identificador_publicacion(identificador)
@@ -254,7 +262,7 @@ class CargaPublicacion:
         self, identificador: DatosCargaIdentificadorPublicacion
     ) -> bool:
         query = """
-                SELECT * FROM prisma.p_identificador_publicacion WHERE idPublicacion = %(idPublicacion)s AND tipo = %(tipo)s
+                SELECT valor, origen FROM prisma.p_identificador_publicacion WHERE idPublicacion = %(idPublicacion)s AND tipo = %(tipo)s
                 """
         params = {
             "idPublicacion": self.id_publicacion,
@@ -265,9 +273,11 @@ class CargaPublicacion:
 
         if df.empty:
             return False
-        if df.iloc[0]["origen"] == self.origen:
-            return False
+        if df.iloc[0]["valor"] == identificador.valor:
+            # Si el valor es el mismo, se devuelve duplicado a True para no insertarlo
+            return True
         else:
+            # Si el valor no es el mismo, se devuelve duplicado a True para no insertarlo, y se introduce problema
             mensaje = f"Publicación {self.id_publicacion}. Identificador '{identificador.tipo}'. Actual ({df.iloc[0]['origen']}): {df.iloc[0]['valor']}, Nuevo: ({self.origen}): {identificador.valor}"
             kwargs = {
                 "tipo_problema": "Advertencia",
@@ -371,10 +381,14 @@ class CargaPublicacion:
         else:
             return self.db.last_id
 
+    def comparar_fuente(self):
+        pass
+
     def insertar_fuente(self) -> int:
         id_fuente = self.buscar_fuente()
-
-        if not self.fuente_existente:
+        if self.fuente_existente:
+            self.comparar_fuente()
+        else:
 
             query = """INSERT INTO prisma.p_fuente (tipo, titulo, editorial, origen)
                 VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)"""
@@ -382,6 +396,7 @@ class CargaPublicacion:
             params = {
                 "tipo": self.datos.fuente.tipo,
                 "titulo": self.datos.fuente.titulo,
+                # TODO: Esto funcionará así al comienzo, y para mantener la funcionalidad legacy, pero hay que vincular todas las editoriales
                 "editorial": self.datos.fuente.editoriales[0].nombre,
                 "origen": self.origen,
             }
@@ -391,20 +406,23 @@ class CargaPublicacion:
 
         self.datos.fuente.id_fuente = id_fuente
 
-        for identificador in self.datos.fuente.identificadores:
-            self.insertar_identificador_fuente(identificador, id_fuente)
+        self.insertar_identificadores_fuente()
 
         return id_fuente
 
+    def insertar_identificadores_fuente(self):
+        for identificador in self.datos.fuente.identificadores:
+            self.insertar_identificador_fuente(identificador)
+
     def insertar_identificador_fuente(
-        self, identificador: DatosCargaIdentificadorFuente, id_fuente: int
+        self, identificador: DatosCargaIdentificadorFuente
     ):
         query = """
-                INSERT INTO prisma.p_identificador_fuente (idFuente, tipo, valor, origen)
+                REPLACE INTO prisma.p_identificador_fuente (idFuente, tipo, valor, origen)
                 VALUES (%(idFuente)s, %(tipo)s, %(valor)s, %(origen)s)
                 """
         params = {
-            "idFuente": id_fuente,
+            "idFuente": self.datos.fuente.id_fuente,
             "tipo": identificador.tipo,
             "valor": identificador.valor,
             "origen": self.origen,

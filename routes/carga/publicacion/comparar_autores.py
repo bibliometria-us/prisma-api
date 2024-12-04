@@ -38,10 +38,7 @@ class ComparacionAutores:
         count_nuevos = self.nuevos_autores["tipo"].value_counts().to_dict()
         count_antiguos = self.antiguos_autores["tipo"].value_counts().to_dict()
 
-        if count_nuevos != count_antiguos:
-            return count_nuevos, count_antiguos
-        else:
-            return None
+        return count_nuevos, count_antiguos
 
     def comparar_fuzz_ratio(self):
         """

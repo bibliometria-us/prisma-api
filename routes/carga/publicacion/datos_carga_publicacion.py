@@ -77,9 +77,7 @@ class DatosCargaPublicacion(DatosCarga):
 
     def set_año_publicacion(self, año: str):
         año_str = str(año)
-        assert len(año_str) == 4 and (
-            año_str.startswith("19") or año_str.startswith("20")
-        )
+        assert len(año_str) == 4
 
         self.año_publicacion = año
 
