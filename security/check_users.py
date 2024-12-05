@@ -49,6 +49,7 @@ def pertenece_a_conjunto(tipo, dato, privileged=False, api_key=None):
         "investigador": es_investigador,
         "centromixto": pertenece_a_centro_mixto,
         "unidadexcelencia": pertenece_a_unidad_excelencia,
+        "doctorado": pertenece_a_doctorado,
     }
 
     func = tipo_to_func.get(tipo)
@@ -205,6 +206,30 @@ def pertenece_a_unidad_excelencia(unidad_excelencia, privileged=False, api_key=N
                     ))"""
 
     params = [unidad_excelencia]
+
+    result = db.ejecutarConsulta(query, params)[1][0]
+
+    return result != 0
+
+
+def pertenece_a_doctorado(doctorado, privileged=False, api_key=None):
+    db = BaseDatos()
+    emails = session["samlUserdata"]["mail"]
+
+    if not api_key:
+        emails = session["samlUserdata"]["mail"]
+    else:
+        user = get_user_from_api_key(api_key)
+        emails = [user + "@us.es"]
+
+    query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
+                    i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
+                    AND i.idInvestigador IN (SELECT idInvestigador FROM i_profesor_doctorado 
+                    WHERE idDoctorado = %s
+                    
+                    ))"""
+
+    params = [doctorado]
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
