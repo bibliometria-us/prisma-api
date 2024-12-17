@@ -32,6 +32,9 @@ class DatosCarga(ABC):
 
         return [object_class().from_dict(valor) for valor in source.values()]
 
+    def __str__(self):
+        return str(self.to_dict())
+
 
 class DatosCargaPublicacion(DatosCarga):
     """
@@ -165,24 +168,6 @@ class DatosCargaPublicacion(DatosCarga):
             and self.identificadores == value.identificadores
             and self.datos == value.datos
             and self.fuente == value.fuente
-        )
-
-    def __str__(self):
-        return (
-            f"DatosCargaPublicacion(\n"
-            f"  fuente_datos='{self.fuente_datos}',\n"
-            f"  titulo='{self.titulo}',\n"
-            f"  titulo_alternativo='{self.titulo_alternativo}',\n"
-            f"  tipo='{self.tipo}',\n"
-            f"  autores={self.autores},\n"
-            f"  año_publicacion='{self.año_publicacion}',\n"
-            f"  mes_publicacion='{self.mes_publicacion}',\n"
-            f"  fecha_publicacion='{self.fecha_publicacion}',\n"
-            f"  identificadores={self.identificadores},\n"
-            f"  datos={self.datos},\n"
-            f"  fuente={self.fuente},\n"
-            f"  dict={self.dict}\n"
-            f")"
         )
 
 
