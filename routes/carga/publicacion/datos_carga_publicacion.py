@@ -45,11 +45,15 @@ class DatosCargaPublicacion(DatosCarga):
         self.tipo = ""
         self.autores: list[DatosCargaAutor] = list()
         self.año_publicacion: str = ""
+        self.mes_publicacion: str = ""
         self.fecha_publicacion: str = ""
         self.identificadores: list[DatosCargaIdentificadorPublicacion] = list()
         self.datos: list[DatosCargaDatoPublicacion] = list()
         self.fuente: DatosCargaFuente = DatosCargaFuente()
         self.dict: dict = {}
+        # TODO: acceso_abierto
+        # TODO: ACKs
+        # TODO: keywords
 
     def set_fuente_datos(self, fuente_datos: str):
         self.fuente_datos = fuente_datos
@@ -81,6 +85,12 @@ class DatosCargaPublicacion(DatosCarga):
 
         self.año_publicacion = año
 
+    def set_mes_publicacion(self, mes: str):
+        mes_str = str(mes)
+        # assert len(mes_str) == 2 #TODO: comprobar aqui tambien ?
+
+        self.mes_publicacion = mes
+
     def set_fecha_publicacion(self, fecha: str):
         self.fecha_publicacion = fecha
 
@@ -106,6 +116,7 @@ class DatosCargaPublicacion(DatosCarga):
             "tipo": self.tipo,
             "autores": self.merge_dict(self.autores),
             "año_publicacion": self.año_publicacion,
+            "mes_publicacion": self.mes_publicacion,
             "fecha_publicacion": self.fecha_publicacion,
             "identificadores": self.merge_dict(self.identificadores),
             "datos": self.merge_dict(self.datos),
@@ -128,6 +139,7 @@ class DatosCargaPublicacion(DatosCarga):
         )
 
         self.año_publicacion = source.get("año_publicacion")
+        self.mes_publicacion = source.get("mes_publicacion")
         self.fecha_publicacion = source.get("fecha_publicacion")
         self.fuente = DatosCargaFuente().from_dict(source=source.get("fuente"))
 
@@ -148,10 +160,29 @@ class DatosCargaPublicacion(DatosCarga):
             and self.tipo == value.tipo
             and self.autores == value.autores
             and self.año_publicacion == value.año_publicacion
+            and self.mes_publicacion == value.mes_publicacion
             and self.fecha_publicacion == value.fecha_publicacion
             and self.identificadores == value.identificadores
             and self.datos == value.datos
             and self.fuente == value.fuente
+        )
+
+    def __str__(self):
+        return (
+            f"DatosCargaPublicacion(\n"
+            f"  fuente_datos='{self.fuente_datos}',\n"
+            f"  titulo='{self.titulo}',\n"
+            f"  titulo_alternativo='{self.titulo_alternativo}',\n"
+            f"  tipo='{self.tipo}',\n"
+            f"  autores={self.autores},\n"
+            f"  año_publicacion='{self.año_publicacion}',\n"
+            f"  mes_publicacion='{self.mes_publicacion}',\n"
+            f"  fecha_publicacion='{self.fecha_publicacion}',\n"
+            f"  identificadores={self.identificadores},\n"
+            f"  datos={self.datos},\n"
+            f"  fuente={self.fuente},\n"
+            f"  dict={self.dict}\n"
+            f")"
         )
 
 
@@ -162,9 +193,13 @@ class DatosCargaAutor(DatosCarga):
         self.orden = orden
         self.contacto = "N"
         self.ids: list[DatosCargaIdentificadorAutor] = list()
+        self.afiliaciones: list[DatosCargaAfiliacionesAutor] = list()
 
     def add_id(self, id: "DatosCargaIdentificadorAutor"):
         self.ids.append(id)
+
+    def add_afiliacion(self, afiliacion: "DatosCargaAfiliacionesAutor"):
+        self.afiliaciones.append(afiliacion)
 
     def set_contacto(self, contacto: str):
         assert contacto in ("S", "N")
@@ -177,6 +212,7 @@ class DatosCargaAutor(DatosCarga):
             "orden": self.orden,
             "contacto": self.contacto,
             "ids": self.merge_dict(self.ids),
+            "afiliaciones": self.merge_dict(self.afiliaciones),
         }
 
         return dict
@@ -191,6 +227,14 @@ class DatosCargaAutor(DatosCarga):
         self.ids = [
             DatosCargaIdentificadorAutor().from_dict(identificador)
             for identificador in ids.values()
+        ]
+
+        afiliaciones: dict[int, DatosCargaAfiliacionesAutor] = source.get(
+            "afiliaciones"
+        )
+        self.afiliaciones = [
+            DatosCargaAfiliacionesAutor().from_dict(afiliacion)
+            for afiliacion in afiliaciones.values()
         ]
 
         return self
@@ -226,6 +270,40 @@ class DatosCargaIdentificadorAutor(DatosCarga):
 
     def __hash__(self) -> int:
         return hash((self.tipo, self.valor))
+
+
+class DatosCargaAfiliacionesAutor(DatosCarga):
+    def __init__(self, nombre: str = "", pais: str = "", ror_id: str = "") -> None:
+        self.nombre = nombre
+        self.pais = pais
+        # TODO: ror_vacio: controlar que si el ror_id sea vacio (ideal tabla identificador Aff)
+        self.ror_id = ror_id
+
+    def to_dict(self):
+        dict = {
+            "nombre": self.nombre,
+            "pais": self.pais,
+            "ror_id": self.ror_id,
+        }
+
+        return dict
+
+    def from_dict(self, source: dict):
+        self.nombre = source.get("nombre")
+        self.pais = source.get("pais")
+        self.ror_id = source.get("ror_id")
+
+        return self
+
+    def __eq__(self, value: "DatosCargaAfiliacionesAutor") -> bool:
+        return (
+            self.nombre == value.nombre
+            and self.pais == value.pais
+            and self.ror_id == value.ror_id
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.nombre, self.pais, self.ror_id))
 
 
 class DatosCargaIdentificadorPublicacion(DatosCarga):
