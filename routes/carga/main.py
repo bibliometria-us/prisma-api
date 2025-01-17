@@ -4,6 +4,7 @@ from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
+from routes.carga.investigador.centros_censo.procesado import procesado_fichero
 from security.check_users import es_admin, es_editor
 from celery import current_app
 from routes.carga.investigador.grupos.actualizar_sica import (
@@ -36,12 +37,26 @@ class CargaGrupos(Resource):
 
 
 @carga_namespace.route(
-    "/investigador/centros_censo", doc=False, endpoint="carga_centros_censo"
+    "/investigador/centros_censo/", doc=False, endpoint="carga_centros_censo"
 )
 class CargaCentrosCenso(Resource):
     def post(Resource):
         # TODO: Implementar llamada a la API para la carga del fichero de centros de censo.
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        if "files[]" not in request.files:
+            return {"error": "No se han encontrado archivos en la petición"}, 400
+
+        file = request.files.getlist("files[]")[0]
+
+        if not file.filename.endswith((".xls", ".xlsx")):
+            return {"error": "El archivo no es un Excel válido"}, 400
+
         # 1. Lectura de fichero. Crear estos métodos en routes/carga/investigador/centros_censo/procesado.py
+        procesado_fichero(file)
         # 2. Crear un AsyncRequest al que le pasas la ruta del fichero como parámetro
         # 3. Llamar a la función de Celery etiquetada como "carga_centros_censo" con la ID del AsyncRequest creado como parámetro
 

@@ -1,8 +1,17 @@
-def procesado_fichero():
-    # TODO: Implementar procesado del fichero con todas las funciones secundarias que requiera
+import csv
+import io
+from datetime import datetime
+import pandas as pd
+from flask import Response, make_response, request, jsonify
+from werkzeug.datastructures import FileStorage
 
+
+def procesado_fichero(file: FileStorage):
+    # TODO: Implementar procesado del fichero con todas las funciones secundarias que requiera
     # 1. Transformar a csv (esto hay que verlo, podemos forzar a que el fichero se suba como csv, o admitir xls/xlsx y si fuese, transformarlo a csv)
-    #
+    df = pd.read_excel(file)
+    # Inspeccionar el DataFrame (opcional)
+
     # 2. Normalizar columnas. Si acabamos con ficheros con columnas con nombres distintos, gestionarlo para que se puedan leer.
     # La idea es que siempre tengamos un fichero final con la misma forma sin importar el input.
     #
