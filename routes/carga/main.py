@@ -36,6 +36,19 @@ class CargaGrupos(Resource):
 
 
 @carga_namespace.route(
+    "/investigador/centros_censo", doc=False, endpoint="carga_centros_censo"
+)
+class CargaCentrosCenso(Resource):
+    def post(Resource):
+        # TODO: Implementar llamada a la API para la carga del fichero de centros de censo.
+        # 1. Lectura de fichero. Crear estos métodos en routes/carga/investigador/centros_censo/procesado.py
+        # 2. Crear un AsyncRequest al que le pasas la ruta del fichero como parámetro
+        # 3. Llamar a la función de Celery etiquetada como "carga_centros_censo" con la ID del AsyncRequest creado como parámetro
+
+        pass
+
+
+@carga_namespace.route(
     "/fuente/wos_journals/", doc=False, endpoint="carga_wos_journals"
 )
 class CargaWosJournals(Resource):
