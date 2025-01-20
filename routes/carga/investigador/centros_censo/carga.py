@@ -3,20 +3,25 @@ import os
 from db.conexion import BaseDatos
 from integration.email.email import enviar_correo
 from logger.async_request import AsyncRequest
+from celery import shared_task
 
 
+@shared_task(
+    queue="cargas", name="carga_centros_censo", ignore_result=True, acks_late=True
+)
 def task_carga_centros_censados(request_id: str):
 
-    request = AsyncRequest(request_id=request_id)
+    request = AsyncRequest(id=request_id)
     ruta_fichero = request.params["ruta"]
 
     try:
         carga_centros_censados(ruta_fichero)
-        request.close()
+        request.close(message="Carga realizada con éxito.")
 
         enviar_correo(
             destinatarios=[request.email],
             asunto="Carga de centros del censo",
+            texto_plano="",
             texto_html="La carga de centros del censo ha finalizado correctamente.",
         )
     except Exception as e:
@@ -25,6 +30,7 @@ def task_carga_centros_censados(request_id: str):
         enviar_correo(
             destinatarios=[request.email],
             asunto="Carga de centros del censo",
+            texto_plano="",
             texto_html=f"""Ha ocurrido un error en la carga de centros del censo:
             {str(e)}""",
         )
