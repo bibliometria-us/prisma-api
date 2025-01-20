@@ -155,9 +155,9 @@ def pertenece_a_centro(centro, privileged=False, api_key=None):
 
     query = f"""SELECT EXISTS (SELECT 1 FROM i_investigador_activo i WHERE
                     i.email IN ({', '.join(["'{}'".format(email) for email in emails])})
-                    AND i.idCentro = %s)"""
+                    AND (i.idCentro = %(idCentro)s) OR i.idCentroCenso = %(idCentro)s)"""
 
-    params = [centro]
+    params = {"idCentro": centro}
 
     result = db.ejecutarConsulta(query, params)[1][0]
 
