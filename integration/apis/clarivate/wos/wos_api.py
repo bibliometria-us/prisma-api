@@ -71,6 +71,7 @@ class WosAPI(API):
         dataBaseId = f"WOS"
 
         # Controla que incluya el prefijo
+        # TODO: distinguir WOS y Medline
         prefijo = "WOS:"
         query = f"UT=({id if id.startswith(prefijo) else prefijo + id})"
 
