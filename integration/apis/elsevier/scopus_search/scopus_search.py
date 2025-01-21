@@ -30,7 +30,6 @@ class ScopusSearch(API):
         self.args["view"] = "STANDARD" if not complete_view else "COMPLETE"
 
     def set_api_key(self):
-        # DUDA: que proposito tiene esto ?
         super().set_api_key()
 
     def set_headers_key(self):

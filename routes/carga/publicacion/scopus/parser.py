@@ -6,6 +6,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorPublicacion,
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorAutor,
+    DatosCargaAfiliacionesAutor,
 )
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
@@ -64,7 +65,7 @@ class ScopusParser(Parser):
         tipo: str,
         attr_name: str,
     ):
-        # TODO: Controlar que no vengan los autores vacíos
+        # TODO: Autores vacios scopus - Controlar que no vengan los autores vacíos
         # Se extraen las afiliaciones de la publicacion
         afiliaciones_publicacion = dict()
         for aff_pub in self.data[0].get("affiliation"):
@@ -85,16 +86,16 @@ class ScopusParser(Parser):
             id_autor = DatosCargaIdentificadorAutor(tipo=tipo_id, valor=valor_id)
             carga_autor.add_id(id_autor)  # Lo añadimos al objeto de Autor
 
-            afiliaciones_autor = []
-            # Se completa las el Objeto DatosCargaAfiliacion(Afiliaciones del Autor)
+            # Se completa las el Objeto DatosCargaAfiliacionesAutor(Afiliaciones del Autor)
             for aff in autor.get("afid"):
                 if_aff = aff.get("$")
                 nombre_aff = afiliaciones_publicacion[if_aff]["nombre"]
                 pais_aff = afiliaciones_publicacion[if_aff]["pais"]
-                # afiliacion_autor = DatosCargaAfiliacion(id=id_aff, nombre= nombre_aff, pais_aff = pais_aff)
-                # afiliaciones_autor.append(afiliacion_autor)
-            # TODO: Implementar
-            # carga_autor.add_afiliaciones(afiliaciones_autor)
+                afiliacion_autor = DatosCargaAfiliacionesAutor(
+                    nombre=nombre_aff, pais=pais_aff, ror_id=None
+                )
+                carga_autor.add_afiliacion(afiliacion_autor)
+                # TODO: difieren aff scopus y wos: que pasa cuando las afiliaciones no son iguales en distintas fuentes
 
             self.datos_carga_publicacion.add_autor(carga_autor)
 
@@ -112,10 +113,17 @@ class ScopusParser(Parser):
 
     def cargar_año_publicacion(self):
         año = datetime.strptime(self.data[0].get("prism:coverDate"), "%Y-%m-%d").year
-        # TODO: esto se debería recoger en un nivel superior
+        # TODO: Control Excep - esto se debería recoger en un nivel superior
         assert len(str(año)) == 4
 
         self.datos_carga_publicacion.set_año_publicacion(año)
+
+    def cargar_mes_publicacion(self):
+        mes = datetime.strptime(self.data[0].get("prism:coverDate"), "%Y-%m-%d").month
+        # TODO: Control Excep - esto se debería recoger en un nivel superior
+        assert len(str(mes)) == 2
+
+        self.datos_carga_publicacion.set_mes_publicacion(mes)
 
     def cargar_fecha_publicacion(self):
         fecha = self.data[0].get("prism:coverDate")
@@ -142,12 +150,14 @@ class ScopusParser(Parser):
         if not valor:
             return None
         dato = DatosCargaDatoPublicacion(tipo="volumen", valor=valor)
+        self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_numero(self):
         valor = self.data[0].get("article-number")
         if not valor:
             return None
         dato = DatosCargaDatoPublicacion(tipo="numero", valor=valor)
+        self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_pag_inicio_fin(self):
         rango = self.data[0].get("prism:pageRange")
@@ -161,8 +171,10 @@ class ScopusParser(Parser):
                 dato_inicio = DatosCargaDatoPublicacion(
                     tipo="pag_inicio", valor=pag_inicio
                 )
+                self.datos_carga_publicacion.add_dato(dato_inicio)
             if pag_fin:
                 dato_fin = DatosCargaDatoPublicacion(tipo="pag_fin", valor=pag_fin)
+                self.datos_carga_publicacion.add_dato(dato_fin)
 
     def cargar_datos(self):
         if self.datos_carga_publicacion.es_tesis():
@@ -204,10 +216,7 @@ class ScopusParser(Parser):
         titulo = self.data[0].get("prism:publicationName")
         tipo_scopus = self.data[0].get("prism:aggregationType")
         tipo_fuente = tipos_fuente.get(tipo_scopus) or tipo_scopus
-        # TODO: revisar si debe contemplarse en la carga
-        # COLECCIÓN: tipo Libros que pertenecen a revista
-        # if self.datos_carga_publicacion.tipo == "Libro" and tipo_fuente == "Revista":
-        #     tipo = "Colección"
+
         self.datos_carga_publicacion.fuente.set_titulo(titulo)
         self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
 

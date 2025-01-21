@@ -45,6 +45,8 @@ class DatosCargaPublicacion(DatosCarga):
         self.fuente_datos = ""
         self.titulo = ""
         self.titulo_alternativo = ""
+        # self.titulo_alternativo = list[str] = list()
+        # TODO: Puede haber mas de un titulo alternativo
         self.tipo = ""
         self.autores: list[DatosCargaAutor] = list()
         self.año_publicacion: str = ""
@@ -55,7 +57,7 @@ class DatosCargaPublicacion(DatosCarga):
         self.fuente: DatosCargaFuente = DatosCargaFuente()
         self.dict: dict = {}
         # TODO: acceso_abierto
-        # TODO: ACKs
+        # TODO: ACKs: prioridad alta
         # TODO: keywords
 
     def set_fuente_datos(self, fuente_datos: str):
@@ -68,6 +70,11 @@ class DatosCargaPublicacion(DatosCarga):
     def set_titulo_alternativo(self, titulo_alternativo: str):
         assert titulo_alternativo
         self.titulo_alternativo = titulo_alternativo
+
+    # TODO: varios tit alternativos
+    # def add_titulo_alternativo(self, titulo_alternativo: str):
+    #     assert titulo_alternativo
+    #     self.titulo_alternativo.append(titulo_alternativo)
 
     def set_tipo(self, tipo: str):
         assert tipo

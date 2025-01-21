@@ -40,6 +40,10 @@ class Parser(ABC):
         pass
 
     @abstractmethod
+    def cargar_mes_publicacion(self):
+        pass
+
+    @abstractmethod
     def cargar_fecha_publicacion(self):
         pass
 
@@ -64,6 +68,7 @@ class Parser(ABC):
         self.cargar_autores()
         self.cargar_editores()
         self.cargar_año_publicacion()
+        self.cargar_mes_publicacion()
         self.cargar_fecha_publicacion()
         self.cargar_identificadores()
         self.cargar_datos()
