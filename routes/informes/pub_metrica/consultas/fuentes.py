@@ -18,6 +18,7 @@ tipo_fuente_to_column = {
     "unidad_excelencia": "mue.idUdExcelencia",
     "investigador": "i.idInvestigador",
     "centro": "i.idCentro",
+    "centrocenso": "i.idCentroCenso",
     "area": "i.idArea",
     "doctorado": "pd.idDoctorado",
 }
@@ -40,6 +41,7 @@ es_int = {
     "unidad_excelencia": True,
     "investigador": False,
     "centro": False,
+    "centrocenso": False,
     "area": False,
     "doctorado": True,
 }

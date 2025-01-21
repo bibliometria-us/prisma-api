@@ -113,6 +113,7 @@ class InformePubMetrica(Resource):
             "investigadores": args.get("investigadores", None),
             "investigador": args.get("investigador"),
             "centro": args.get("centro", None),
+            "centrocenso": args.get("centrocenso", None),
             "area": args.get("area", None),
             "doctorado": args.get("doctorado", None),
         }

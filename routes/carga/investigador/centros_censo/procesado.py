@@ -20,7 +20,9 @@ def procesado_fichero(file: FileStorage):
     # COLUMNAS:
     # dni: DNI del investigador del centro
     # id_centro: id del centro donde ese investigador está censando
-    dni_column = [col for col in df.columns if "dni" in col.lower()]
+    dni_column = [
+        col for col in df.columns if "dni" in col.lower() or "nif" in col.lower()
+    ]
     if dni_column:
         # Renombrar la primera coincidencia a "dni"
         df.rename(columns={dni_column[0]: "dni"}, inplace=True)

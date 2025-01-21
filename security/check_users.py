@@ -46,6 +46,7 @@ def pertenece_a_conjunto(tipo, dato, privileged=False, api_key=None):
         "grupo": pertenece_a_grupo,
         "instituto": pertenece_a_instituto,
         "centro": pertenece_a_centro,
+        "centro_censo": pertenece_a_centro,
         "investigador": es_investigador,
         "centromixto": pertenece_a_centro_mixto,
         "unidadexcelencia": pertenece_a_unidad_excelencia,

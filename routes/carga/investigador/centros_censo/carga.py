@@ -44,14 +44,18 @@ def carga_centros_censados(ruta_fichero: str, db: BaseDatos = None):
     # TODO: Implementar toda la carga de centros censados. Esta función debe recibir como input el fichero (o su ruta)
 
     for index, row in df.iterrows():
+        dni: str = row["dni"]
+        dni = dni.replace("-", "").upper()
+        id_centro = row["id_centro"]
+
         query = """
             UPDATE prisma.i_investigador
             SET idCentroCenso = %(idCentroCenso)s
             WHERE docuIden = %(docuIden)s
                 """
         params = {
-            "docuIden": row["dni"],
-            "idCentroCenso": row["id_centro"],
+            "docuIden": dni,
+            "idCentroCenso": id_centro,
         }
 
         db.ejecutarConsulta(query, params)
