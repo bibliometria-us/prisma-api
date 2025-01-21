@@ -4,7 +4,7 @@ import config.global_config as gconfig
 from logger.async_request import AsyncRequest
 from routes.informes.pub_metrica.pub_metrica import (
     generar_informe,
-    generar_informe_email,
+    buscar_publicaciones,
 )
 from datetime import datetime
 import os
@@ -171,6 +171,8 @@ class InformePubMetrica(Resource):
                     "fuentes": fuentes,
                     "tipo": tipo,
                 }
+
+                buscar_publicaciones(fuentes, año_inicio, año_fin)
 
                 destinatarios = session["samlUserdata"]["mail"]
                 async_request = AsyncRequest(

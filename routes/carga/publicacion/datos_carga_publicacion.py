@@ -7,7 +7,7 @@ from typing import Any, Type
 
 
 class Encoder(JSONEncoder):
-    def default(self, o):
+    def default(self, o: "DatosCarga"):
         return o.to_dict()
 
 
@@ -225,7 +225,12 @@ class DatosCargaAutor(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaAutor") -> bool:
-        return self.tipo == value.tipo and self.orden == value.orden
+        return (
+            self.tipo == value.tipo
+            and self.orden == value.orden
+            and self.contacto == value.contacto
+            and self.afiliaciones == value.afiliaciones
+        )
 
     def __hash__(self) -> int:
         return hash((self.firma, self.tipo, self.orden))
@@ -282,10 +287,8 @@ class DatosCargaAfiliacionesAutor(DatosCarga):
 
     def __eq__(self, value: "DatosCargaAfiliacionesAutor") -> bool:
         return (
-            self.nombre == value.nombre
-            and self.pais == value.pais
-            and self.ror_id == value.ror_id
-        )
+            self.nombre == value.nombre and self.pais == value.pais
+        ) or self.ror_id == value.ror_id
 
     def __hash__(self) -> int:
         return hash((self.nombre, self.pais, self.ror_id))
@@ -425,19 +428,15 @@ class DatosCargaEditorial(DatosCarga):
     def __init__(self, nombre: str = "") -> None:
         self.nombre = nombre
         self.tipo = "Otros"
-        self.vease = None
         self.pais = "Desconocido"
         self.url = None
-        self.visible = True
 
     def to_dict(self):
         dict = {
             "nombre": self.nombre,
             "tipo": self.tipo,
-            "vease": self.vease,
             "pais": self.pais,
             "url": self.url,
-            "visible": self.visible,
         }
 
         return dict
@@ -445,10 +444,8 @@ class DatosCargaEditorial(DatosCarga):
     def from_dict(self, source: dict):
         self.nombre = source.get("nombre")
         self.tipo = source.get("tipo")
-        self.vease = source.get("vease")
         self.pais = source.get("pais")
         self.url = source.get("url")
-        self.visible = source.get("visible")
 
         return self
 
@@ -456,13 +453,163 @@ class DatosCargaEditorial(DatosCarga):
         return (
             self.nombre == value.nombre
             and self.tipo == value.tipo
-            and self.vease == value.vease
             and self.pais == value.pais
             and self.url == value.url
-            and self.visible == value.visible
         )
 
     def __hash__(self) -> int:
         return hash(
-            self.nombre, self.tipo, self.vease, self.pais, self.url, self.visible
+            self.nombre,
+            self.tipo,
+            self.pais,
+            self.url,
         )
+
+
+def datos_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPublicacion:
+    # Buscar publicacion por id e introducir sus atributos
+    datos_carga_publicacion = DatosCargaPublicacion()
+
+    query_publicacion = (
+        "SELECT * FROM prisma.i_publicacion WHERE idPublicacion = %(idPublicacion)s"
+    )
+
+    params_publicacion = {"idPublicacion": id_publicacion}
+
+    db.ejecutarConsulta(query_publicacion, params_publicacion)
+    publicacion = db.get_dataframe().iloc[0]
+
+    datos_carga_publicacion.fuente_datos = publicacion["origen"]
+    datos_carga_publicacion.titulo = publicacion["titulo"]
+    datos_carga_publicacion.tipo = publicacion["tipo"]
+    datos_carga_publicacion.año_publicacion = publicacion["agno"]
+
+    # Buscar e insertar autores
+    lista_datos_autor: list[DatosCargaAutor] = []
+
+    query_autores = (
+        "SELECT * FROM prisma.p_autor WHERE idPublicacion = %(idPublicacion)s"
+    )
+    params_autores = {"idPublicacion": id_publicacion}
+
+    db.ejecutarConsulta(query_autores, params_autores)
+    autores = db.get_dataframe()
+
+    for index, autor in autores.iterrows():
+        dato_autor = DatosCargaAutor()
+
+        dato_autor.firma = autor["firma"]
+        dato_autor.tipo = autor["rol"]
+        dato_autor.orden = autor["orden"]
+        dato_autor.contacto = autor["contacto"]
+
+        lista_datos_autor.append(dato_autor)
+
+    datos_carga_publicacion.autores = lista_datos_autor
+
+    # Buscar e insertar identificadores
+
+    lista_datos_identificador_publicacion: list[DatosCargaIdentificadorPublicacion] = []
+
+    query_identificadores_publicacion = "SELECT * FROM prisma.p_identificador_publicacion WHERE idPublicacion = %(idPublicacion)s"
+    params_identificadores_publicacion = {"idPublicacion": id_publicacion}
+
+    db.ejecutarConsulta(
+        query_identificadores_publicacion, params_identificadores_publicacion
+    )
+    identificadores_publicacion = db.get_dataframe()
+
+    for index, identificador_publicacion in identificadores_publicacion.iterrows():
+        dato_identificador_publicacion = DatosCargaIdentificadorPublicacion()
+
+        dato_identificador_publicacion.tipo = identificador_publicacion["rol"]
+        dato_identificador_publicacion.valor = identificador_publicacion["orden"]
+
+        lista_datos_identificador_publicacion.append(dato_identificador_publicacion)
+
+    datos_carga_publicacion.identificadores = lista_datos_identificador_publicacion
+
+    # Buscar e insertar datos
+
+    lista_datos_dato_publicacion: list[DatosCargaDatoPublicacion] = []
+
+    query_datoes_publicacion = "SELECT * FROM prisma.p_dato_publicacion WHERE idPublicacion = %(idPublicacion)s"
+    params_datoes_publicacion = {"idPublicacion": id_publicacion}
+
+    db.ejecutarConsulta(query_datoes_publicacion, params_datoes_publicacion)
+    datos_publicacion = db.get_dataframe()
+
+    for index, dato_publicacion in datos_publicacion.iterrows():
+        dato_dato_publicacion = DatosCargaDatoPublicacion()
+
+        dato_dato_publicacion.tipo = dato_publicacion["rol"]
+        dato_dato_publicacion.valor = dato_publicacion["orden"]
+
+        lista_datos_dato_publicacion.append(dato_dato_publicacion)
+
+    datos_carga_publicacion.datos = lista_datos_dato_publicacion
+
+    # Buscar e insertar fuente
+
+    datos_carga_fuente = DatosCargaFuente()
+    datos_carga_fuente.id_fuente = publicacion["idFuente"]
+
+    query_fuente = "SELECT * FROM prisma.p_fuente WHERE idFuente = %(idFuente)s"
+    params_query_fuente = {"idFuente": datos_carga_fuente.id_fuente}
+
+    db.ejecutarConsulta(query_fuente, params_query_fuente)
+    datos_fuente = db.get_dataframe().iloc[0]
+
+    datos_carga_fuente.titulo = datos_fuente["titulo"]
+    datos_carga_fuente.tipo = datos_fuente["tipo"]
+
+    # Buscar e insertar editoriales de fuente
+
+    lista_datos_carga_editorial: list[DatosCargaEditorial] = []
+
+    query_editoriales = """SELECT * FROM prisma.p_editor e
+                            INNER JOIN (
+                                SELECT valor FROM prisma.p_dato_fuente WHERE tipo = 'editorial' 
+                                                                    AND idFuente = %(idFuente)s
+                                        ) df ON df.valor = e.idFuente
+                        """
+    params_query_editoriales = {"idFuente": datos_carga_fuente.id_fuente}
+
+    db.ejecutarConsulta(query_editoriales, params_query_editoriales)
+    editoriales = db.get_dataframe()
+
+    for index, datos_editorial in editoriales.iterrows():
+        datos_carga_editorial = DatosCargaEditorial()
+
+        datos_carga_editorial.nombre = datos_editorial["nombre"]
+        datos_carga_editorial.tipo = datos_editorial["tipo"]
+        datos_carga_editorial.pais = datos_editorial["pais"]
+        datos_carga_editorial.url = datos_editorial["url"]
+
+        lista_datos_carga_editorial.append(datos_carga_editorial)
+
+    datos_carga_publicacion.fuente.editoriales = lista_datos_carga_editorial
+
+    # Buscar e insertar identificadores de fuente
+
+    lista_datos_identificador_fuente: list[DatosCargaIdentificadorFuente] = []
+
+    query_identificadores_fuente = (
+        "SELECT * FROM prisma.p_identificador_fuente WHERE idFuente = %(idFuente)s"
+    )
+    params_query_identificadores_fuente = {"idFuente": datos_carga_fuente.id_fuente}
+
+    db.ejecutarConsulta(
+        query_identificadores_fuente, params_query_identificadores_fuente
+    )
+    identificadores_fuente = db.get_dataframe()
+
+    for index, datos_identificador_fuente in identificadores_fuente.iterrows():
+        datos_carga_identificador_fuente = DatosCargaIdentificadorFuente()
+
+        datos_carga_identificador_fuente.tipo = datos_identificador_fuente["tipo"]
+        datos_carga_identificador_fuente.valor = datos_identificador_fuente["valor"]
+
+        lista_datos_identificador_fuente.append(datos_carga_identificador_fuente)
+
+    datos_carga_publicacion.fuente.identificadores = lista_datos_identificador_fuente

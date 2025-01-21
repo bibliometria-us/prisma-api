@@ -25,6 +25,7 @@ class CargaPublicacion:
     def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
         self.id_carga = id_carga or datetime.now().strftime("%Y%m%d%H%M%S.%f")[:-3]
         self.datos: DatosCargaPublicacion = None
+        self.datos_antiguos: DatosCargaPublicacion = None
         self.auto_commit = auto_commit
         self.start_database(db)
         self.id_publicacion = 0
