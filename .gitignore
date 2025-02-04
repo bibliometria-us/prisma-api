@@ -315,3 +315,4 @@ celery_config.py
 celery_config.py
 integration/apis/elsevier/config.py
 
+tests/temp_examples

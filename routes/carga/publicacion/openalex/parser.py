@@ -7,33 +7,34 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorAutor,
     DatosCargaAfiliacionesAutor,
+    DatosCargaFechaPublicacion,
+    DatosCargaFuente,
+    DatosCargaDatosFuente,
+    DatosCargaFinanciacion,
+    DatosCargaPublicacion,
+    DatosCargaAccesoAbierto,
 )
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
 
 class OpenalexParser(Parser):
-    def __init__(self, idOpenalex: str) -> None:
+    def __init__(self, data: dict) -> None:
         # Se inicializa la clase padre
         # La clase padre Parser tiene el atributo datos_carga_publicacion
         super().__init__()
         # Se definen los atributos de la clase
-        self.idOpenalex = idOpenalex
-        self.data: dict = None
-        self.api_request()  # Se hace la petición de Openalex
+        self.data: dict = data
         self.carga()  # Con los datos recuperados, se rellena el objeto datos_carga_publicacion
 
     def set_fuente_datos(self):
         self.datos_carga_publicacion.set_fuente_datos("Openalex")
 
     def api_request(self):
-        api = OpenalexAPI()
-        response = api.search_by_doi(self.idOpenalex)
-
-        self.data = response
+        pass
 
     def cargar_titulo(self):
-        titulo = self.data["0"]["metadata"].get("title")
+        titulo = self.data.get("title")
         self.datos_carga_publicacion.set_titulo(titulo)
 
     def cargar_titulo_alternativo(self):
@@ -43,7 +44,7 @@ class OpenalexParser(Parser):
         pass
 
     def cargar_tipo(self):
-        tipo = self.data["0"]["metadata"]["resource_type"]["title"].get("en")
+        tipo = self.data.get("type")
 
         tipos = {
             # TODO: Aclarar tipos pubs - a resolver
@@ -68,36 +69,42 @@ class OpenalexParser(Parser):
         tipo: str,
         attr_name: str,
     ):
-        # TODO: Autores vacíos json - Controlar que no vengan los autores vacíos
-        # Se extraen las afiliaciones de la publicacion
         cont = 1
-        # TODO: hay autores con distintos roles en la misma publicacion (researcher, editor, project leader,supervisor )
-        for autor in self.data["metadata"].get("creators", []):
+        for autor in self.data.get("authorships", []):
             # Se completa el Objeto DatosCargaAutor(Autor)
+            identificadores = {}
+            firma = None
+            for autor_info in autor.get("author", []):
+                firma = autor_info.get("display_name", [])
+                if autor_info.get("id"):
+                    openalex_id = autor_info.get("id").split("/")[-1]
+                    firma["openalex"] = openalex_id
+                if autor_info.get("orcid"):
+                    orcid = autor_info.get("orcid").split("/")[-1]
+                    firma["orcid"] = orcid
 
-            firma = autor["person_or_org"]["name"]
             orden = cont
-            cont += 1
-            # TODO: Aclarar rol autor - en este caso author, comprobar que nombre es en Prisma
+
             carga_autor = DatosCargaAutor(orden=orden, firma=firma, tipo=tipo)
+            cont += 1
 
-            # Se completa el Objeto DatosCargaIdentificadorAutor(Identificador del Autor ORCID)
-            if "identifiers" in autor["person_or_org"]:
-                for id in autor["person_or_org"]["identifiers"]:
-                    if id["scheme"] == "orcid":
-                        id_autor_orcid = DatosCargaIdentificadorAutor(
-                            tipo="orcid", valor=id.get("identifier")
-                        )
-                        carga_autor.add_id(
-                            id_autor_orcid
-                        )  # Lo añadimos al objeto de Autor
+            tipo_identificadores = {"orcid": "orcid", "openalex_id": "openalex_id"}
 
-            # TODO: Zenono solo ofrece nombre afiliacion
-            if "affiliations" in autor["person_or_org"]:
-                for aff in autor["person_or_org"]["affiliations"]:
-                    afiliacion_autor = DatosCargaAfiliacionesAutor(nombre=aff["name"])
-                    carga_autor.add_afiliacion(afiliacion=afiliacion_autor)
+            for key_id, value_id in identificadores:
+                if key_id in tipo_identificadores:
+                    tipo = tipo_identificadores[key_id]
+                    id_autor = DatosCargaIdentificadorAutor(tipo=tipo, valor=value_id)
+                    carga_autor.add_id(id_autor)
 
+            for aff in self.data.get("institutions", []):
+                nombre = aff.get("display_name")
+                ror_id = aff.get("ror").split("/")[-1]
+                pais = aff.get("country_code")
+                afiliacion_autor = DatosCargaAfiliacionesAutor(
+                    nombre=nombre, pais=pais, ror_id=ror_id
+                )
+                carga_autor.add_afiliacion(afiliacion=afiliacion_autor)
+            # TODO: correspondig author, buscar un ejemplo
             self.datos_carga_publicacion.add_autor(carga_autor)
 
     def cargar_autores(self):
@@ -124,63 +131,51 @@ class OpenalexParser(Parser):
             return False
 
     def cargar_año_publicacion(self):
-        formato1 = "%Y-%m-%d"
-        formato2 = "%Y"
-        fecha = self.data["0"]["metadata"].get("publication_date")
-        año = None
-        if self._verificar_formato_fecha(fecha, formato1):
-            año = datetime.strptime(fecha, formato1).year
-        elif self._verificar_formato_fecha(fecha, formato2):
-            año = datetime.strptime(fecha, formato2).year
-        # TODO: Control Excep - (mejos raise que asserts) esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-        assert len(str(año)) == 4
-        self.datos_carga_publicacion.set_año_publicacion(año)
-
-    def cargar_mes_publicacion(self):
-        formato1 = "%Y-%m-%d"
-        fecha = self.data["0"]["metadata"].get("publication_date")
-        mes = None
-        if not self._verificar_formato_fecha(fecha, formato1):
+        formato = "%Y-%m-%d"
+        agno = str(self.data.get("publication_date"))
+        if not self._verificar_formato_fecha(agno, formato):
             return None
-        año = datetime.strptime(fecha, formato1).month
-        # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-        mes_formateado = f"{mes:02d}"  # Usando f-string para forzar 2 dígitos
-        assert len(mes_formateado) == 2  # TODO: formato mes 1d o 2d
-        self.datos_carga_publicacion.set_mes_publicacion(str(mes))
+        if len(str(agno)) != 4:
+            raise TypeError("El año no tiene el formato correcto")
+        self.datos_carga_publicacion.set_agno_publicacion(agno)
 
     def cargar_fecha_publicacion(self):
-        formato1 = "%Y-%m-%d"
-        fecha = self.data["0"]["metadata"].get("publication_date")
-        if not self._verificar_formato_fecha(fecha, formato1):
-            return None
-        self.datos_carga_publicacion.set_fecha_publicacion(fecha)
+        fecha = self.data.get("publication_date")
+        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
+        mes = datetime.strptime(fecha, "%Y-%m-%d").month
+        mes = f"{mes:02d}"
+        if len(str(agno)) != 4 or len(str(mes)) != 2:
+            raise TypeError("El mes o el año no tiene el formato correcto")
+        fecha_insercion = DatosCargaFechaPublicacion(
+            tipo="publicación", agno=agno, mes=mes
+        )
+        self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
     def cargar_identificadores(self):
-        # Identificador ppal Zenodo
-        identificador_zenodo = DatosCargaIdentificadorPublicacion(
-            valor=self.data["0"]["id"], tipo="zenodo"
+        # Identificador ppal Openalex
+        identificador_openalex = DatosCargaIdentificadorPublicacion(
+            valor=self.data.get("id").split("/")[-1], tipo="openalex"
         )
-        self.datos_carga_publicacion.add_identificador(identificador_zenodo)
+        self.datos_carga_publicacion.add_identificador(identificador_openalex)
 
-        # Identificador doi Zenodo
-        if "doi" in self.data["0"]["pids"]:
+        # Identificador doi Openalex
+        if "doi" in self.data:
             identificador_doi = DatosCargaIdentificadorPublicacion(
-                valor=self.data["0"]["pids"]["doi"].get("identifier"), tipo="doi"
+                valor=self.data.get("doi").split("/")[-1], tipo="doi"
             )
         self.datos_carga_publicacion.add_identificador(identificador_doi)
 
-    # TODO: Vol en libro
     def cargar_volumen(self):
-        if "journal:journal" in self.data["0"].get("custom_fields"):
-            valor = self.data["0"]["custom_fields"]["journal:journal"].get("volume")
+        if self.data.get("biblio").get("volume"):
+            valor = self.data.get("biblio").get("volume")
             if not valor:
                 return None
             dato = DatosCargaDatoPublicacion(tipo="volumen", valor=valor)
             self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_numero(self):
-        if "journal:journal" in self.data["0"].get("custom_fields"):
-            valor = self.data["0"]["custom_fields"]["journal:journal"].get("issue")
+        if self.data.get("biblio").get("issue"):
+            valor = self.data.get("biblio").get("issue")
             if not valor:
                 return None
             dato = DatosCargaDatoPublicacion(tipo="numero", valor=valor)
@@ -189,9 +184,20 @@ class OpenalexParser(Parser):
     def cargar_numero_art(self):
         pass
 
-    # TODO: No P.Ini y P.fin - viene el numero de paginas totales
     def cargar_pag_inicio_fin(self):
-        pass
+        if self.data.get("biblio").get("first_page"):
+            valor = self.data.get("biblio").get("first_page")
+            if not valor:
+                return None
+            dato = DatosCargaDatoPublicacion(tipo="pag_inicio", valor=valor)
+            self.datos_carga_publicacion.add_dato(dato)
+
+        if self.data.get("biblio").get("last_page"):
+            valor = self.data.get("biblio").get("last_page")
+            if not valor:
+                return None
+            dato = DatosCargaDatoPublicacion(tipo="pag_fin", valor=valor)
+            self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_datos(self):
         if self.datos_carga_publicacion.es_tesis():
@@ -199,24 +205,15 @@ class OpenalexParser(Parser):
         self.cargar_volumen()
         self.cargar_numero()
         self.cargar_numero_art()
-        # self.cargar_pag_inicio_fin()
+        self.cargar_pag_inicio_fin()
 
-    # TODO: id si es libro o electronico
     def cargar_ids_fuente(self):
-        if "journal:journal" in self.data["0"].get("custom_fields"):
-            valor = self.data["0"]["custom_fields"]["journal:journal"].get("issn")
-            if valor:
-                identificador = DatosCargaIdentificadorFuente(valor=valor, tipo="issn")
+        #  TODO: REVISAR
+        if len(self.data.get("primary_location").get("source").get("issn")) > 0:
+            for id in self.data.get("primary_location").get("source").get("issn"):
+                identificador = DatosCargaIdentificadorFuente(valor=id, tipo="issn")
                 self.datos_carga_publicacion.fuente.add_identificador(id)
-
-        if "identifiers" in self.data["0"].get("metadata"):
-            for id in self.data["0"]["metadata"].get("identifiers"):
-                match id["scheme"]:
-                    case "isbn":
-                        identificador = DatosCargaIdentificadorFuente(
-                            valor=id["identifier"], tipo="isbn"
-                        )
-                        self.datos_carga_publicacion.fuente.add_identificador(id)
+        #  TODO: REVISAR ISBN
 
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar tipos de fuentes
@@ -229,20 +226,39 @@ class OpenalexParser(Parser):
             "Undefined": "Desconocido",
         }
         # Titulo y tipo
-        if "journal:journal" in self.data["0"].get("custom_fields"):
-            self.datos_carga_publicacion.fuente.set_tipo("Revista")
+        if self.data.get("primary_location").get("source"):
+            tipo = self.data.get("primary_location").get("source").get("type")
+            self.datos_carga_publicacion.fuente.set_tipo(tipos_fuente[tipo])
 
-            titulo = self.data["0"]["custom_fields"]["journal:journal"].get("title")
+            titulo = self.data.get("primary_location").get("source").get("display_name")
             if not titulo:
                 return None
             self.datos_carga_publicacion.fuente.set_titulo(titulo)
-        # TODO: book hacerlo para book
 
-    # TODO: no viene info de la editorial
+    # TODO: revisar donde viene la editorial
     def carga_editorial(self):
         pass
 
     def cargar_fuente(self):
         self.cargar_ids_fuente()
         self.cargar_titulo_y_tipo()
-        # self.carga_editorial()
+        self.carga_editorial()
+
+    def carga_acceso_abierto(self):
+        if self.data.get("open_access").get("is_oa"):
+            valor = self.data.get("open_access").get("status")
+            origen = "openalex"
+            if not valor:
+                return None
+            dato = DatosCargaAccesoAbierto(valor=valor, origen=origen)
+            self.datos_carga_publicacion.add_acceso_abierto(dato)
+
+    def cargar_financiacion(self):
+        # TODO: revisar donde viene la financiacion (grant)
+        for grant in self.data.get("grants", []):
+            entidad = grant.get("funder_display_name")
+            proyecto = grant.get("award_id")
+            financiacion = DatosCargaFinanciacion(
+                entidad_financiadora=entidad, proyecto=proyecto
+            )
+            self.datos_carga_publicacion.add_financiacion(financiacion)

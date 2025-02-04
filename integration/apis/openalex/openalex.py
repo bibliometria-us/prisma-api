@@ -4,6 +4,7 @@ import re
 
 
 class OpenalexAPI(API):
+    # TODO: Rehacer con lista de trabajos
     def __init__(
         self,
         api_keys: list[str] = [],
@@ -23,15 +24,15 @@ class OpenalexAPI(API):
         )
         self.results = []
 
-    # def set_api_key(self):
-    #     super().set_api_key()
-    #     self.args["access_token"] = self.api_key
+    def search_get_from_id(self, id=id):
+        self.set_param_mailto()
+        self.get_respose(id=id, timeout=(5, 5))
+        search_results: dict = self.response.get("results", {})  # TODO: cambiar message
+        self.results = search_results
 
-    # def set_headers_complete_view(self):
-    #     self.headers["Accept"] = "application/vnd.inveniordm.v1+json"
-
-    def search(self, doi=""):
-        self.get_respose(id=doi, timeout=(5, 5))
+    def search_get_from_doi(self, id=id):
+        self.set_param_mailto()
+        self.get_respose(id=id, timeout=(5, 5))
         search_results: dict = self.response.get("results", {})  # TODO: cambiar message
         self.results = search_results
 
@@ -40,11 +41,3 @@ class OpenalexAPI(API):
 
     def set_headers_user_agent(self):
         self.headers["User-Agent"] = f"mailto:{config.mail}"
-
-    def search_by_doi(self, doi: str):
-        self.set_param_mailto()
-        # self.set_headers_user_agent()
-        self.search(doi=doi)
-        # TODO: controlar si no devuelve resultados o si devuelve mas de uno
-        assert self.results["total"] != "1"
-        return self.results["results"]

@@ -7,20 +7,23 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorAutor,
     DatosCargaAfiliacionesAutor,
+    DatosCargaFechaPublicacion,
+    DatosCargaFuente,
+    DatosCargaDatosFuente,
+    DatosCargaFinanciacion,
+    DatosCargaPublicacion,
 )
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
 
 class WosParser(Parser):
-    def __init__(self, idWos: str, masivo: True) -> None:
+    def __init__(self, data: dict) -> None:
         # Se inicializa la clase padre
         # La clase padre Parser tiene el atributo datos_carga_publicacion
         super().__init__()
         # Se definen los atributos de la clase
-        self.idWos = idWos
-        self.data: dict = None
-        self.api_request()  # Se hace la petición de Wos
+        self.data: dict = data
         self.carga()  # Con los datos recuperados, se rellena el objeto datos_carga_publicacion
 
     def set_fuente_datos(self):
@@ -45,7 +48,6 @@ class WosParser(Parser):
         self.datos_carga_publicacion.set_titulo(titulo)
 
     def cargar_titulo_alternativo(self):
-        # TODO: Titulo Alt - revisar en titles
         pass
 
     def cargar_tipo(self):
@@ -145,32 +147,33 @@ class WosParser(Parser):
         pass
 
     def cargar_año_publicacion(self):
-        año = datetime.strptime(
-            self.data["static_data"]["summary"]["pub_info"]["sortdate"], "%Y-%m-%d"
-        ).year
-        # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-        assert len(str(año)) == 4
+        agno = str(
+            datetime.strptime(
+                self.data["static_data"]["summary"]["pub_info"]["sortdate"], "%Y-%m-%d"
+            ).year
+        )
+        if len(str(agno)) != 4:
+            raise TypeError("El año no tiene el formato correcto")
 
-        self.datos_carga_publicacion.set_año_publicacion(año)
-
-    def cargar_mes_publicacion(self):
-        mes = datetime.strptime(
-            self.data["static_data"]["summary"]["pub_info"]["sortdate"], "%Y-%m-%d"
-        ).month
-        # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-        mes_formateado = f"{mes:02d}"  # Usando f-string para forzar 2 dígitos
-        assert len(mes_formateado) == 2  # TODO: formato mes 1d o 2d
-
-        self.datos_carga_publicacion.set_mes_publicacion(str(mes))
+        self.datos_carga_publicacion.set_agno_publicacion(agno)
 
     def cargar_fecha_publicacion(self):
+        # Fecha pub
         fecha = self.data["static_data"]["summary"]["pub_info"]["sortdate"]
-        self.datos_carga_publicacion.set_fecha_publicacion(fecha)
+        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
+        mes = datetime.strptime(fecha, "%Y-%m-%d").month
+        mes = f"{mes:02d}"
+        if len(str(agno)) != 4 or len(str(mes)) != 2:
+            raise TypeError("El mes o el año no tiene el formato correcto")
+        fecha_insercion = DatosCargaFechaPublicacion(
+            tipo="publicación", agno=agno, mes=mes
+        )
+        self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
     def cargar_identificadores(self):
         # Identificador ppal WOS
         identificador_wos = DatosCargaIdentificadorPublicacion(
-            valor=self.data["UID"], tipo="wos"
+            valor=self.data.get("UID"), tipo="wos"
         )
         self.datos_carga_publicacion.add_identificador(identificador_wos)
 
@@ -196,6 +199,7 @@ class WosParser(Parser):
         dato = DatosCargaDatoPublicacion(tipo="volumen", valor=valor)
         self.datos_carga_publicacion.add_dato(dato)
 
+    # TODO: Revisar bien la diferencia entre número y número de artículo
     def cargar_numero(self):
         valor = self.data["static_data"]["summary"]["pub_info"].get("issue")
         if not valor:
@@ -225,7 +229,7 @@ class WosParser(Parser):
         self.cargar_volumen()
         self.cargar_numero()
         self.cargar_numero_art()
-        # self.cargar_pag_inicio_fin()
+        self.cargar_pag_inicio_fin()
 
     def cargar_ids_fuente(self):
         for id in self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
@@ -305,3 +309,24 @@ class WosParser(Parser):
         self.cargar_ids_fuente()
         self.cargar_titulo_y_tipo()
         self.carga_editorial()
+
+    def cargar_financiacion(self):
+        for agencia_obj in self.data["static_data"]["fullrecord_metadata"]["fund_ack"][
+            "grants"
+        ].get("grant", []):
+            agencia = agencia_obj.get("grant_agency")
+            proyectos = agencia_obj["grant_ids"].get("grant_id", [])
+            if len(proyectos) > 1:
+                for proyecto_obj in proyectos:
+                    financiacion = DatosCargaFinanciacion(
+                        entidad_financiadora=agencia, proyecto=proyecto_obj
+                    )
+                    self.datos_carga_publicacion.add_financiacion(financiacion)
+            elif len(proyectos) == 1:
+                proyecto = 1
+                financiacion = DatosCargaFinanciacion(
+                    entidad_financiadora=agencia, proyecto=proyecto_obj
+                )
+
+    def carga_acceso_abierto(self):
+        pass
