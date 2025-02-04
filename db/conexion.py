@@ -139,6 +139,6 @@ class BaseDatos:
         Obtienes el resultado de la consulta como un DataFrame
         """
         if not self.result:
-            return None
+            return DataFrame()
 
         return table_to_pandas(self.result)

@@ -5,13 +5,12 @@ from routes.carga.publicacion.carga_publicacion import CargaPublicacion
 from routes.carga.publicacion.datos_carga_publicacion import DatosCargaPublicacion
 from tests.cargas.fuente import publicacion
 from tests.seed.generator import crear_datos_investigador
-from tests.utils.random_utils import random_element
 
 
 # database = BaseDatos(test=True, autocommit=False, keep_connection_alive=True)
 
 
-def test_carga_publicacion(database: BaseDatos, seed):
+def test_carga_publicacion(database: BaseDatos, seed: dict[str, dict]):
 
     source = publicacion
     datos_carga = DatosCargaPublicacion()
@@ -21,15 +20,17 @@ def test_carga_publicacion(database: BaseDatos, seed):
     carga.datos = datos_carga
     carga.origen = "idUS"
 
-    check_insertar_publicacion(carga)
-    insertar_identificadores_investigador(carga)
-    check_insertar_autores(carga)
-    check_insertar_identificadores_publicacion(carga)
-    check_insertar_datos_publicacion(carga)
-    check_insertar_fuente(carga)
+    carga.cargar_publicacion()
 
-    check_insertar_problemas(carga)
+    datos_carga_busqueda = DatosCargaPublicacion().from_id_publicacion(
+        carga.id_publicacion, database
+    )
+
+    assert datos_carga == datos_carga_busqueda
+
     database.rollback_to_savepoint("seed")
+
+    pass
 
 
 def check_insertar_publicacion(carga: CargaPublicacion):

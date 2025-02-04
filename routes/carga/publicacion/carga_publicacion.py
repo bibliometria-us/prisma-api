@@ -10,6 +10,7 @@ from routes.carga.publicacion.comparar_autores import (
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
+    DatosCargaEditorial,
     DatosCargaIdentificadorPublicacion,
     DatosCargaIdentificadorFuente,
     DatosCargaPublicacion,
@@ -106,6 +107,7 @@ class CargaPublicacion:
         self.insertar_autores()
         self.insertar_identificadores_publicacion()
         self.insertar_datos_publicacion()
+        self.insertar_fuente()
         self.insertar_problemas()
         self.close_database()
 
@@ -135,6 +137,9 @@ class CargaPublicacion:
             self.id_publicacion = id_publicacion
             datos_publicacion = self.db.get_dataframe()
             datos_publicacion = datos_publicacion.iloc[0].to_dict()
+            self.datos_antiguos = DatosCargaPublicacion().from_id_publicacion(
+                id_publicacion, self.db
+            )
 
         return datos_publicacion
 
@@ -397,8 +402,6 @@ class CargaPublicacion:
             params = {
                 "tipo": self.datos.fuente.tipo,
                 "titulo": self.datos.fuente.titulo,
-                # TODO: Esto funcionará así al comienzo, y para mantener la funcionalidad legacy, pero hay que vincular todas las editoriales
-                "editorial": self.datos.fuente.editoriales[0].nombre,
                 "origen": self.origen,
             }
 
@@ -407,9 +410,23 @@ class CargaPublicacion:
 
         self.datos.fuente.id_fuente = id_fuente
 
+        self.insertar_id_fuente_publicacion()
+
         self.insertar_identificadores_fuente()
+        self.insertar_editoriales_fuente()
 
         return id_fuente
+
+    def insertar_id_fuente_publicacion(self):
+        query_insertar_id_fuente_publicacion = "UPDATE prisma.p_publicacion SET idFuente = %(idFuente)s WHERE idPublicacion = %(idPublicacion)s"
+        params_insertar_id_fuente_publicacion = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "idPublicacion": self.id_publicacion,
+        }
+
+        self.db.ejecutarConsulta(
+            query_insertar_id_fuente_publicacion, params_insertar_id_fuente_publicacion
+        )
 
     def insertar_identificadores_fuente(self):
         for identificador in self.datos.fuente.identificadores:
@@ -430,6 +447,46 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
+
+    def insertar_editoriales_fuente(self):
+        for editorial in self.datos.fuente.editoriales:
+            self.insertar_editorial_fuente(editorial)
+
+    def insertar_editorial_fuente(self, editorial: DatosCargaEditorial):
+        editorial_antigua = self.buscar_editorial(editorial)
+
+        if not editorial_antigua:
+            query = """
+                    INSERT INTO prisma.p_editor (nombre)
+                    VALUES (%(nombre)s)
+                    """
+            params = {"nombre": editorial.nombre}
+
+            self.db.ejecutarConsulta(query, params)
+            id_editor = self.db.last_id
+
+        else:
+            id_editor = editorial_antigua.id_editor
+
+        query_insertar_editorial_fuente = """ INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor) VALUES (%(idFuente)s, 'editorial', %(idEditor)s)"""
+        params_insertar_editorial_fuente = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "idEditor": id_editor,
+        }
+
+        self.db.ejecutarConsulta(
+            query_insertar_editorial_fuente, params_insertar_editorial_fuente
+        )
+
+    def buscar_editorial(self, editorial: DatosCargaEditorial) -> DatosCargaEditorial:
+        if not self.datos_antiguos:
+            return None
+
+        for editorial_antigua in self.datos_antiguos.fuente.editoriales:
+            if editorial_antigua.nombre == editorial.nombre:
+                return editorial_antigua
+
+        return None
 
 
 class ProblemaCargaPublicacion(ProblemaCarga):
