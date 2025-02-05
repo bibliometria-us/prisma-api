@@ -1,3 +1,4 @@
+import re
 from typing import List
 from integration.apis.api import API
 from integration.apis.elsevier import config
@@ -46,18 +47,32 @@ class ScopusSearch(API):
         self.results = search_results.get("entry", [])
 
     def get_from_id(self, id: str):
+        scopus_regex = r"^2-s2\.0-\d{11}$"
+        if not re.match(scopus_regex, id, re.IGNORECASE):
+            raise ValueError(
+                f"'{id}' no tiene un formato válido de identificador Scopus."
+            )
+        # TODO: Ver si realmente interesa poner esto aquí o a nivel de constructor
+        self.set_headers_key()
+        self.set_complete_view(True)
+
+        query = f"EID({id})"
+        self.args["query"] = query
+
+        self.search()
+        # TODO: controlar que el resultado no venga vacío
+        return self.results
+
+    def get_from_doi(self, id: str):
+        doi_regex = r"^10\.\d{4,9}/[-._;()/:A-Z0-9]+$"
+        if not re.match(doi_regex, id, re.IGNORECASE):
+            raise ValueError(f"'{id}' no tiene un formato válido de DOI.")
         # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
         self.set_headers_key()
         self.set_complete_view(True)
-        # Controla que incluya el prefijo
-        prefijo = "2-s2.0-"
-        if id.startswith(prefijo):
-            query = f"EID({id})"  # El texto ya tiene el prefijo, lo devolvemos tal cual
-        else:
-            query = f"{prefijo}{id}"
 
+        query = f"DOI({id})"
         self.args["query"] = query
-
         self.search()
         # TODO: controlar que el resultado no venga vacío
         return self.results

@@ -210,3 +210,15 @@ def flask_xls_to_df(file: FileStorage) -> pandas.DataFrame:
 
 def enumerated_dict(iterable) -> dict:
     return {index: item for index, item in enumerate(iterable)}
+
+
+def json_to_dict(json_path: str) -> dict:
+    python_obj = None
+    # Abrir el archivo .txt que contiene el JSON
+    try:
+        with open(json_path, "r") as file:
+            # Cargar el contenido del archivo y convertirlo a un objeto Python
+            python_obj = json.load(file)
+        return python_obj
+    except Exception as e:
+        print("Error: ", e)

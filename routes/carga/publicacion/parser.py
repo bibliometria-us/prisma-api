@@ -55,8 +55,15 @@ class Parser(ABC):
     def cargar_fuente(self):
         pass
 
-    def carga(self):
+    @abstractmethod
+    def cargar_financiacion(self):
+        pass
 
+    @abstractmethod
+    def carga_acceso_abierto(self):
+        pass
+
+    def carga(self):
         self.set_fuente_datos()
         self.cargar_titulo()
         self.cargar_titulo_alternativo()
@@ -67,6 +74,8 @@ class Parser(ABC):
         self.cargar_fecha_publicacion()
         self.cargar_identificadores()
         self.cargar_datos()
+        self.cargar_financiacion()
         self.cargar_fuente()
+        self.carga_acceso_abierto()
 
         self.datos_carga_publicacion.close()

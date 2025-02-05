@@ -38,17 +38,15 @@ class CrossrefAPI(API):
     def set_param_mailto(self):
         self.args["mailto"] = config.mail
 
-    def search(self, doi=""):
-        self.get_respose(id=doi)  # TODO: definir url correctamente
-
-        search_results: dict = self.response.get("message", {})
-        self.results = search_results
-
-    def get_from_doi(self, doi: str):
+    def get_from_doi(self, id: str):
         # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
         # self.set_headers_key()
         self.set_headers_rate_limits()
         self.set_param_mailto()
-        self.search(doi=doi)
+        self.get_respose(id=id)  # TODO: definir url correctamente
+
+        search_results: dict = self.response.get("message", {})
+        self.results = search_results
+
         # TODO: controlar que el resultado no venga vacío
         return self.results
