@@ -29,12 +29,6 @@ class WosParser(Parser):
     def set_fuente_datos(self):
         self.datos_carga_publicacion.set_fuente_datos("WOS")
 
-    def api_request(self):
-        api = WosAPI()
-        response = api.get_from_id(self.idWos)
-
-        self.data = response
-
     def cargar_titulo(self):
         titulo_dict = self.data["static_data"]["summary"]["titles"]
         titulo = next(

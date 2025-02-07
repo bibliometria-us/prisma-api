@@ -8,39 +8,39 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorAutor,
     DatosCargaAfiliacionesAutor,
+    DatosCargaFechaPublicacion,
+    DatosCargaFuente,
+    DatosCargaDatosFuente,
+    DatosCargaFinanciacion,
+    DatosCargaPublicacion,
 )
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
 
 class CrossrefParser(Parser):
-    def __init__(self, idCrossref: str) -> None:
+    def __init__(self, data: dict) -> None:
         # Se inicializa la clase padre
         # La clase padre Parser tiene el atributo datos_carga_publicacion
         super().__init__()
         # Se definen los atributos de la clase
-        self.idCrossref = idCrossref
-        self.data: dict = None
-        self.api_request()  # Se hace la petición de Xref
-        self.carga()  # Con los datos recuperados, se rellena el objeto datos_carga_publicacion
+        self.data: dict = data
+        self.carga()
 
     def set_fuente_datos(self):
         self.datos_carga_publicacion.set_fuente_datos("Crossref")
 
-    def api_request(self):
-        api = CrossrefAPI()
-        response = api.get_from_doi(self.idCrossref)
-        self.data = response
-
     def cargar_titulo(self):
-        self.datos_carga_publicacion.set_titulo(self.data["title"])
+        title_list = self.data.get("title", [])
+        title = title_list[0] if title_list else None
+        self.datos_carga_publicacion.set_titulo(title)
 
     def cargar_titulo_alternativo(self):
         # TODO: Titulo Alt - revisar en titles
         pass
 
     def cargar_tipo(self):
-        tipo = self.data["type"]
+        tipo = self.data.get("type")
 
         tipos = {
             # TODO: Aclarar tipos pubs - a resolver
@@ -64,7 +64,8 @@ class CrossrefParser(Parser):
         cont = 1  # TODO: orden - sol temporal
         for autor in self.data.get(attr_name, []):
             # Se completa el Objeto DatosCargaAutor(Autor)
-            firma = f"{autor['family']}, {autor['given']}"
+
+            firma = f"{autor.get('family')}, {autor.get('given')}"
             orden = cont
             cont += 1
             # TODO: Aclarar rol autor - en este caso author, comprobar que nombre es en Prisma
@@ -101,28 +102,26 @@ class CrossrefParser(Parser):
         # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
         assert len(str(año)) == 4
 
-        self.datos_carga_publicacion.set_año_publicacion(año)
-
-    def cargar_mes_publicacion(self):
-        # Si viene mas informacion que el año
-        if len(self.data["published"]["date-parts"][0]) < 1:
-            mes = self.data["published"]["date-parts"][0][1]
-            # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-            mes_formateado = f"{mes:02d}"
-            assert len(str(mes_formateado)) == 2
-
-            self.datos_carga_publicacion.set_mes_publicacion(mes)
+        self.datos_carga_publicacion.set_agno_publicacion(año)
 
     def cargar_fecha_publicacion(self):
-        if len(self.data["published"]["date-parts"][0]) == 3:
-            agno = self.data["published"]["date-parts"][0][0]
-            mes = self.data["published"]["date-parts"][0][1]
-            dia = self.data["published"]["date-parts"][0][2]
-            fecha = f"{agno}-{mes}-{dia}"
-            self.datos_carga_publicacion.set_fecha_publicacion(fecha)
+        date = (
+            self.data.get("published").get("date-parts")[0]
+            if self.data.get("published").get("date-parts")[0]
+            else None
+        )
+        if len(date) == 3:
+            agno = date[0]
+            mes = date[1]
+            fecha_insercion = DatosCargaFechaPublicacion(
+                tipo="publicación", agno=agno, mes=mes
+            )
+            self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
     def cargar_identificadores(self):
-        # Identificador ppal WOS
+        valor = self.data.get("DOI")
+        if not valor:
+            return None
         identificador_doi = DatosCargaIdentificadorPublicacion(
             valor=self.data["DOI"], tipo="doi"
         )
@@ -142,24 +141,12 @@ class CrossrefParser(Parser):
         dato = DatosCargaDatoPublicacion(tipo="numero", valor=valor)
         self.datos_carga_publicacion.add_dato(dato)
 
-    # def cargar_numero_art(self):
-    #     for id in self.data["dynamic_data"]["cluster_related"]["indentifiers"][
-    #         "indentifier"
-    #     ]:
-    #         match id["type"]:
-    #             # Esto es una excepcion, pero se guarda en IDs en el JSON
-    #             case "art_no":
-    #                 identificador = DatosCargaIdentificadorPublicacion(
-    #                     valor=id["value"], tipo="num_articulo"
-    #                 )
-    #                 self.datos_carga_publicacion.add_identificador(identificador)
-
-    # TODO: No P.Ini y P.fin - viene el numero de paginas totales
+    # No P.Ini y P.fin - viene el numero de paginas totales
     def cargar_pag_inicio_fin(self):
-        if (
-            "page" in self.data and self.data["page"]
+        if "page" in self.data and self.data.get(
+            "page"
         ):  # Verifica que existe y no es None o vacío
-            paginas = self.data["page"].split("-")
+            paginas = self.data.get("page").split("-")
 
             if len(paginas) >= 1 and paginas[0].strip():  # Caso: página inicial existe
                 dato_inicio = DatosCargaDatoPublicacion(
@@ -183,9 +170,9 @@ class CrossrefParser(Parser):
 
     def cargar_ids_fuente(self):
         for id_fuente in self.data.get("issn-type", []):
-            valor = id_fuente["value"]
+            valor = id_fuente.get("value")
             tipo = ""
-            match id_fuente["type"]:
+            match id_fuente.get("type"):
                 case "print":
                     tipo = "issn"
                 case "electronic":
@@ -195,10 +182,11 @@ class CrossrefParser(Parser):
                 self.datos_carga_publicacion.fuente.add_identificador(
                     DatosCargaIdentificadorFuente(valor=valor, tipo=tipo)
                 )
+
         for id_fuente in self.data.get("isbn-type", []):
-            valor = id_fuente["value"]
+            valor = id_fuente.get("value")
             tipo = ""
-            match id_fuente["type"]:
+            match id_fuente.get("type"):
                 case "print":
                     tipo = "isbn"
                 case "electronic":
@@ -213,16 +201,23 @@ class CrossrefParser(Parser):
         tipos_fuente = {"Revista": "Revista", "Libro": "Libro", "": "Revista"}
         tipo_fuente = ""
         # Titulo
-        titulo = self.data["container-title"][0]
+        titulo = (
+            self.data.get("container-title")[0]
+            if self.data.get("container-title")[0]
+            else None
+        )
         # Necesario crear los identificadores previamente
+        tipo_fuente = None
         identificadores = self.datos_carga_publicacion.fuente.identificadores
         if any(obj.tipo == "isbn" or obj.tipo == "eisbn" for obj in identificadores):
             tipo_fuente = tipos_fuente["Libro"]
         if any(obj.tipo == "issn" or obj.tipo == "eissn" for obj in identificadores):
             tipo_fuente = tipos_fuente["Revista"]
 
-        self.datos_carga_publicacion.fuente.set_titulo(titulo)
-        self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
+        if tipo_fuente:
+            self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
+        if titulo:
+            self.datos_carga_publicacion.fuente.set_titulo(titulo)
 
     def carga_editorial(self):
         # TODO: 2 Editoriales - puede darse el caso ?
@@ -235,3 +230,22 @@ class CrossrefParser(Parser):
         self.cargar_ids_fuente()
         self.cargar_titulo_y_tipo()
         self.carga_editorial()
+
+    def cargar_financiacion(self):
+        for agencia_obj in self.data.get("funder", []):
+            agencia = agencia_obj.get("name")
+            proyectos = agencia_obj.get("award", [])
+            if len(proyectos) > 1:
+                for proyecto_obj in proyectos:
+                    financiacion = DatosCargaFinanciacion(
+                        entidad_financiadora=agencia, proyecto=proyecto_obj
+                    )
+                    self.datos_carga_publicacion.add_financiacion(financiacion)
+            elif len(proyectos) == 1:
+                proyecto = 1
+                financiacion = DatosCargaFinanciacion(
+                    entidad_financiadora=agencia, proyecto=proyecto_obj
+                )
+
+    def carga_acceso_abierto(self):
+        pass

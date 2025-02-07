@@ -2,6 +2,7 @@ from db.conexion import BaseDatos
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
 from routes.carga.publicacion.zenodo.parser import ZenodoParser
 from integration.apis.zenodo.zenodo import ZenodoAPI
+import json
 
 
 class CargaPublicacionZenodo(CargaPublicacion):
@@ -12,37 +13,34 @@ class CargaPublicacionZenodo(CargaPublicacion):
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
-            "zenodo_id": self.cargar_publicacion_por_id,
             "doi": self.cargar_publicacion_por_doi,
         }
         funcion = funciones.get(tipo)
         if funcion:
             funcion(id)
 
-    def cargar_publicacion_por_id(self, id: str):
-        api = ZenodoAPI()
-        records = api.get_from_id(id=id)
-
-        if len(records) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
-        for publicacion in records:
-            # TODO: parser = ScopusParser(data=publicacion)
-            # TODO: self.datos = parser.datos_carga_publicacion
-            # TODO: self.cargar_publicacion()
-            pass
-        return None
-
     def cargar_publicacion_por_doi(self, id: str):
         api = ZenodoAPI()
-        records = api.get_from_doi(id=id)
+        # TODO: restaurar
+        # records = api.search_by_doi(id=id)
 
+        # TODO: borrar
+        # -------------------------
+        records = None
+        # Abrir el archivo .txt que contiene el JSON
+        with open("tests/cargas/generico/json_zenodo_1_pub.txt", "r") as file:
+            # Cargar el contenido del archivo y convertirlo a un objeto Python
+            records = json.load(file)
+            search_results: dict = records.get("hits", {})
+            records = search_results.get("hits", [])
+        # ---------------------------
         if len(records) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:
-            # TODO: parser = ScopusParser(data=publicacion)
-            # TODO: self.datos = parser.datos_carga_publicacion
-            # TODO: self.cargar_publicacion()
-            pass
+            parser = ZenodoParser(data=publicacion)
+            self.datos = parser.datos_carga_publicacion
+            self.cargar_publicacion()
+
         return None
 
     def cargar_publicaciones_por_investigador(id_investigador: str):

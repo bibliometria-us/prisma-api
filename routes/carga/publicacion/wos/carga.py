@@ -20,6 +20,8 @@ class CargaPublicacionWos(CargaPublicacion):
         funcion = funciones.get(tipo)
         if funcion:
             funcion(id)
+        else:
+            raise ValueError(f"El tipo {tipo} no está soportado.")
 
     def cargar_publicacion_por_id(self, id: str):
         api = WosAPI()
