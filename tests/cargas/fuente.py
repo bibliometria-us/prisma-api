@@ -2,7 +2,6 @@ publicacion = {
     "titulo": "Measurement of the angular distribution of fission fragments using a PPAC assembly at CERN n-TOF",
     "titulo_alternativo": "",
     "tipo": "Artículo",
-    "mes_publicacion": None,
     "autores": {
         0: {
             "firma": "Tarrío, D.",
@@ -110,7 +109,7 @@ publicacion = {
         },
     },
     "año_publicacion": "2014",
-    "fecha_publicacion": "2020-04-15T06:28:08Z",
+    "fechas_publicacion": {0: {"mes": "1", "agno": "2014", "tipo": "publicacion"}},
     "identificadores": {
         0: {"tipo": "doi", "valor": "10.1016/j.nima.2013.12.056"},
         1: {"tipo": "idus", "valor": "11441/95195"},
@@ -127,12 +126,26 @@ publicacion = {
             0: {
                 "nombre": "Elsevier",
                 "tipo": "Otros",
-                "vease": None,
                 "pais": "Desconocido",
                 "url": None,
-                "visible": True,
             },
         },
         "identificadores": {0: {"tipo": "issn", "valor": "0168-9002"}},
+        "datos": {},
+    },
+    "financiacion": {
+        0: {
+            "proyecto": "FPA2011-24553",
+            "entidad_financiadora": "Ministerio de Ciencia e Innovación",
+            "pais": "España",
+            "ror": "05r0vyz12",
+        },
+    },
+    "fechas_publicacion": {
+        0: {
+            "tipo": "publicacion",
+            "mes": "1",
+            "agno": "2014",
+        },
     },
 }
