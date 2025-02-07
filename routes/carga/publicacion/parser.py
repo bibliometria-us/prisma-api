@@ -11,7 +11,6 @@ class Parser(ABC):
     def set_fuente_datos(self):
         pass
 
-    @abstractmethod
     def api_request(self):
         pass
 
