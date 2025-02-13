@@ -6,12 +6,16 @@ from routes.informes.pub_metrica.pub_metrica import (
     generar_informe,
     buscar_publicaciones,
 )
-from datetime import datetime
+from datetime import datetime, date
 import os
+
+from db.conexion import BaseDatos
+from routes.informes.misc.misc import get_metrica_calidad
 
 from routes.informes.pub_metrica.security import comprobar_permisos
 from security.check_users import es_admin, pertenece_a_departamento
 
+from utils import format
 from celery import current_app
 
 informe_namespace = Namespace("informe", description="Consultas para obtener informes")
@@ -229,3 +233,21 @@ class InformeMediasDepartamento(Resource):
 
         departamentos = set(departamentos)
         return response
+
+
+@informe_namespace.route("/calidad/", endpoint="calidad", doc=False)
+class InformeCalidad(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key", None)
+        try:
+            assert es_admin(api_key=api_key)
+        except:
+            return {"message": "No autorizado"}, 401
+        try:
+            bd_object = BaseDatos()
+            response = get_metrica_calidad(bd=bd_object)
+            res = format.dict_to_json(response)
+            return Response(res, status=200, mimetype="application/json")
+        except Exception as e:
+            return {"error": e.message}, 400
