@@ -61,9 +61,17 @@ class BaseDatos:
         """
         Cierra la conexion del objeto de la base de datos (rollback incluido).
         """
+        if self.test:
+            return None
         self.connection.close()
         self.connection.rollback
         self.is_active = False
+
+    def commit(self):
+        if self.test:
+            return None
+
+        self.connection.commit()
 
     def rollback(self):
         """
@@ -131,6 +139,6 @@ class BaseDatos:
         Obtienes el resultado de la consulta como un DataFrame
         """
         if not self.result:
-            return None
+            return DataFrame()
 
         return table_to_pandas(self.result)

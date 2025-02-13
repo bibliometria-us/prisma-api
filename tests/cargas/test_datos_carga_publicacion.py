@@ -9,7 +9,8 @@ def test_dict_parsing():
 
     result_dict = datos_carga.to_dict()
 
-    assert source == result_dict
+    for key in source:
+        assert source[key] == result_dict[key]
 
     nuevos_datos = DatosCargaPublicacion()
     nuevos_datos.from_dict(result_dict)

@@ -35,6 +35,7 @@ class API:
             "http": "http://proxy.int.local:3128",
             "https": "http://proxy.int.local:3128",
         }
+        # TODO: proxies en config global
 
     @abc.abstractmethod
     def set_api_key(self):
@@ -66,8 +67,9 @@ class API:
         timeout=None,
         proxies=True,
         tryouts=5,
-        **kwargs
+        **kwargs,
     ) -> dict:
+        json = None
         response_type_to_function = {"json": self.get_json_response}
 
         function = response_type_to_function.get(self.response_type)
@@ -77,25 +79,27 @@ class API:
         else:
             proxy_list = {}
 
+        request_method = request_method.lower()
+        if not request_method == "get":
+            json = self.json
+
         try:
             response = requests.request(
                 method=request_method.lower(),
                 url=self.uri + id,
                 headers=self.headers,
                 params=self.args,
-                json=self.json,
+                json=json,
                 timeout=timeout or (3, 3),
                 proxies=proxy_list,
                 **kwargs,
             )
         except Exception:
-
             if tryouts > 0:
                 tryouts -= 1
                 self.get_respose(
                     request_method, id, timeout, proxies, tryouts, **kwargs
                 )
-
         if response.status_code == 200:
             pass
         if response.status_code in [401, 429] and self.api_keys:
@@ -105,7 +109,6 @@ class API:
                 request_method=request_method, id=id, timeout=timeout, kwargs=kwargs
             )
             return None
-
         result = function(response)
 
         return result

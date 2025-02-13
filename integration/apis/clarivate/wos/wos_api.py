@@ -62,3 +62,73 @@ class WosAPI(API):
 
         if self.records_found > self.json["firstRecord"] + self.json["count"]:
             self.search(page=page + 1)
+
+    def get_from_id(self, id: str):
+        self.route = "/"
+        # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
+        self.set_api_key()
+        # TODO: dataBaseId WOS o WOK ?
+        dataBaseId = f"WOS"
+
+        # Controla que incluya el prefijo
+        # TODO: distinguir WOS y Medline
+        prefijo = "WOS:"
+        query = f"UT=({id if id.startswith(prefijo) else prefijo + id})"
+
+        body_args = {}
+
+        body_args["usrQuery"] = query
+        body_args["databaseId"] = dataBaseId
+
+        self.add_json_data(body_args)
+
+        self.search()
+        # TODO: controlar que el resultado no venga vacío
+        # Se devuelve un resultado ya que es una petición de una pub por id
+        return self.records[0]
+
+    def get_from_doi(self, id: str):
+        self.route = "/"
+        # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
+        self.set_api_key()
+        # TODO: dataBaseId WOS o WOK ?
+        dataBaseId = f"WOS"
+
+        # Controla que incluya el prefijo
+        # TODO: distinguir WOS y Medline
+        prefijo = "WOS:"
+        query = f"DO=({id if id.startswith(prefijo) else prefijo + id})"
+
+        body_args = {}
+
+        body_args["usrQuery"] = query
+        body_args["databaseId"] = dataBaseId
+
+        self.add_json_data(body_args)
+
+        self.search()
+        # TODO: controlar que el resultado no venga vacío
+        # Se devuelve un resultado ya que es una petición de una pub por id
+        return self.records[0]
+
+    def get_metrics_from_id(self, id: str):
+        self.route = "/citing"
+        self.set_api_key()
+        dataBaseId = f"WOS"
+
+        # Controla que incluya el prefijo
+        # TODO: distinguir WOS y Medline
+        prefijo = "WOS:"
+        uniqueId = f"{id if id.startswith(prefijo) else prefijo + id}"
+
+        body_args = {}
+
+        body_args["UniqueId"] = uniqueId
+        body_args["databaseId"] = dataBaseId
+
+        self.add_json_data(body_args)
+
+        self.search()
+        # TODO: controlar que el resultado no venga vacío
+        # Se devuelve un resultado ya que es una petición de una pub por id
+        return self.records[0]

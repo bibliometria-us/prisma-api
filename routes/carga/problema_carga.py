@@ -16,17 +16,20 @@ class ProblemaCarga(ABC):
         tipo_dato_2: str = None,
         tipo_dato_3: str = None,
     ):
-        self.id_carga = id_carga
+        self.id_carga = (
+            id_carga  # Sirve para asociar un conjunto de problemas a una carga
+        )
         self.db = db
-        self.tipo_problema = None
+        self.tipo_problema = None  # Por ejemplo, Advertencia o Error
         self.revisado = False
-        self.id_dato = id_dato
-        self.tipo_dato_2 = tipo_dato_2
-        self.tipo_dato_3 = tipo_dato_3
-        self.antigua_fuente = antigua_fuente
-        self.antiguo_valor = antiguo_valor
-        self.nueva_fuente = nueva_fuente
-        self.nuevo_valor = nuevo_valor
+        self.tipo_dato = None  # Tipo de dato sobre el que se aplica el problema, por ejemplo Publicación
+        self.id_dato = id_dato  # ID del dato del problema
+        self.tipo_dato_2 = tipo_dato_2  # Subtipo del dato (opcional), por ejemplo, fuente, si fuera la fuente de una publicación
+        self.tipo_dato_3 = tipo_dato_3  # Sub-subtipo del dato (opcional), por ejemplo, titulo, si es el título de la fuente de la publicación
+        self.antigua_fuente = antigua_fuente  # Fuente del dato que ya está almacenado (opcional), por ejemplo Scopus
+        self.antiguo_valor = antiguo_valor  # Valor del antiguo dato
+        self.nueva_fuente = nueva_fuente  # Fuente del nuevo dato, por ejemplo WoS
+        self.nuevo_valor = nuevo_valor  # Valor del nuevo dato
         self.mensaje = ""
 
     def advertencia(self, mensaje: str):

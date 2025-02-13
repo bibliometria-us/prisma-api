@@ -1,5 +1,6 @@
 from integration.apis.api import API
 import integration.apis.zenodo.config as config
+import re
 
 
 class ZenodoAPI(API):
@@ -23,11 +24,21 @@ class ZenodoAPI(API):
         super().set_api_key()
         self.args["access_token"] = self.api_key
 
+    def set_headers_complete_view(self):
+        self.headers["Accept"] = "application/vnd.inveniordm.v1+json"
+
     def search(self):
         self.get_respose()
-        pass
+        search_results: dict = self.response.get("hits", {})  # TODO: cambiar message
+        self.results = search_results
 
     def search_by_doi(self, doi: str):
-        self.args["q"] = f'doi:"{doi}"'
+        self.set_api_key()
+        self.set_headers_complete_view()
+        # escaped_doi = re.escape(doi)
+        self.args["q"] = f"doi:{doi}"
         self.args["all_versions"] = 1
         self.search()
+        # TODO: controlar si no devuelve resultados o si devuelve mas de uno
+        assert self.results["total"] != "1"
+        return self.results["hits"]

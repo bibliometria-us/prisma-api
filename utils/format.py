@@ -4,7 +4,8 @@ import json
 from typing import List
 import xml.etree.ElementTree as ET
 
-import datetime
+from datetime import datetime, date
+
 import numpy as np
 from utils.date import date_to_str
 from utils.exceptions import FileFormatError
@@ -100,8 +101,19 @@ def dict_to_xml(data, root_name=None, object_name=""):
     return ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
 
 
+def date_serializer(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()  # Convierte a string compatible con JSON
+    raise TypeError(f"Tipo no serializable: {type(obj)}")
+
+
 def dict_to_json(data):
-    result = json.dumps(data, indent=4, sort_keys=False)
+    result = json.dumps(
+        data,
+        indent=4,
+        sort_keys=False,
+        default=date_serializer,
+    )
     return result
 
 
@@ -210,3 +222,15 @@ def flask_xls_to_df(file: FileStorage) -> pandas.DataFrame:
 
 def enumerated_dict(iterable) -> dict:
     return {index: item for index, item in enumerate(iterable)}
+
+
+def json_to_dict(json_path: str) -> dict:
+    python_obj = None
+    # Abrir el archivo .txt que contiene el JSON
+    try:
+        with open(json_path, "r") as file:
+            # Cargar el contenido del archivo y convertirlo a un objeto Python
+            python_obj = json.load(file)
+        return python_obj
+    except Exception as e:
+        print("Error: ", e)

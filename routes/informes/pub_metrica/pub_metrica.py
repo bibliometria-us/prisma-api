@@ -37,7 +37,9 @@ from celery import shared_task
 
 
 # @timer
-def generar_informe(fuentes, año_inicio, año_fin, tipo, filename):
+
+
+def buscar_publicaciones(fuentes, año_inicio, año_fin):
 
     investigadores = consulta_investigadores(fuentes)
     if not investigadores:
@@ -46,6 +48,13 @@ def generar_informe(fuentes, año_inicio, año_fin, tipo, filename):
     publicaciones = consulta_publicaciones(investigadores, año_inicio, año_fin)
     if not publicaciones:
         raise InformeSinPublicaciones(año_inicio, año_fin)
+
+    return investigadores, publicaciones
+
+
+def generar_informe(fuentes, año_inicio, año_fin, tipo, filename):
+
+    investigadores, publicaciones = buscar_publicaciones(fuentes, año_inicio, año_fin)
 
     resumen = datos_resumen(fuentes, investigadores, publicaciones, año_inicio, año_fin)
 

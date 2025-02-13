@@ -9,6 +9,7 @@ publicacion = {
             "orden": 1,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Tarrío, D."}},
+            "afiliaciones": {},
         },
         1: {
             "firma": "Leong, L. S.",
@@ -16,6 +17,7 @@ publicacion = {
             "orden": 2,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Leong, L. S."}},
+            "afiliaciones": {},
         },
         2: {
             "firma": "Audouin, Laurent",
@@ -23,6 +25,7 @@ publicacion = {
             "orden": 3,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Audouin, Laurent"}},
+            "afiliaciones": {},
         },
         3: {
             "firma": "Duran, I.",
@@ -30,6 +33,7 @@ publicacion = {
             "orden": 4,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Duran, I."}},
+            "afiliaciones": {},
         },
         4: {
             "firma": "Paradela, C.",
@@ -37,6 +41,7 @@ publicacion = {
             "orden": 5,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Paradela, C."}},
+            "afiliaciones": {},
         },
         5: {
             "firma": "Tassan-Got, L.",
@@ -44,6 +49,7 @@ publicacion = {
             "orden": 6,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Tassan-Got, L."}},
+            "afiliaciones": {},
         },
         6: {
             "firma": "Le Naour, C.",
@@ -51,6 +57,7 @@ publicacion = {
             "orden": 7,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Le Naour, C."}},
+            "afiliaciones": {},
         },
         7: {
             "firma": "Bacri, C.O.",
@@ -58,6 +65,7 @@ publicacion = {
             "orden": 8,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Bacri, C.O."}},
+            "afiliaciones": {},
         },
         8: {
             "firma": "Petitbon, V.",
@@ -65,6 +73,7 @@ publicacion = {
             "orden": 9,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Petitbon, V."}},
+            "afiliaciones": {},
         },
         9: {
             "firma": "Cortés Giraldo, Miguel Antonio",
@@ -72,6 +81,7 @@ publicacion = {
             "orden": 10,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Cortés Giraldo, Miguel Antonio"}},
+            "afiliaciones": {},
         },
         10: {
             "firma": "Quesada Molina, José Manuel",
@@ -79,6 +89,7 @@ publicacion = {
             "orden": 11,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Quesada Molina, José Manuel"}},
+            "afiliaciones": {},
         },
         11: {
             "firma": "Žugec, P.",
@@ -86,6 +97,7 @@ publicacion = {
             "orden": 12,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Žugec, P."}},
+            "afiliaciones": {},
         },
         12: {
             "firma": "Praena Rodríguez, Javier",
@@ -93,10 +105,11 @@ publicacion = {
             "orden": 13,
             "contacto": "N",
             "ids": {0: {"tipo": "idus", "valor": "Praena Rodríguez, Javier"}},
+            "afiliaciones": {},
         },
     },
     "año_publicacion": "2014",
-    "fecha_publicacion": "2020-04-15T06:28:08Z",
+    "fechas_publicacion": {0: {"mes": "1", "agno": "2014", "tipo": "publicacion"}},
     "identificadores": {
         0: {"tipo": "doi", "valor": "10.1016/j.nima.2013.12.056"},
         1: {"tipo": "idus", "valor": "11441/95195"},
@@ -113,12 +126,26 @@ publicacion = {
             0: {
                 "nombre": "Elsevier",
                 "tipo": "Otros",
-                "vease": None,
                 "pais": "Desconocido",
                 "url": None,
-                "visible": True,
             },
         },
         "identificadores": {0: {"tipo": "issn", "valor": "0168-9002"}},
+        "datos": {},
+    },
+    "financiacion": {
+        0: {
+            "proyecto": "FPA2011-24553",
+            "entidad_financiadora": "Ministerio de Ciencia e Innovación",
+            "pais": "España",
+            "ror": "05r0vyz12",
+        },
+    },
+    "fechas_publicacion": {
+        0: {
+            "tipo": "publicacion",
+            "mes": "1",
+            "agno": "2014",
+        },
     },
 }

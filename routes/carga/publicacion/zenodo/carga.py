@@ -1,0 +1,52 @@
+from db.conexion import BaseDatos
+from routes.carga.publicacion.carga_publicacion import CargaPublicacion
+from routes.carga.publicacion.zenodo.parser import ZenodoParser
+from integration.apis.zenodo.zenodo import ZenodoAPI
+import json
+
+
+class CargaPublicacionZenodo(CargaPublicacion):
+    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
+
+        super().__init__(db, id_carga, auto_commit)
+        self.origen = "Zenodo"
+
+    def carga_publicacion(self, tipo: str, id: str):
+        funciones = {
+            "doi": self.cargar_publicacion_por_doi,
+        }
+        funcion = funciones.get(tipo)
+        if funcion:
+            funcion(id)
+
+    def cargar_publicacion_por_doi(self, id: str):
+        api = ZenodoAPI()
+        # TODO: restaurar
+        # records = api.search_by_doi(id=id)
+
+        # TODO: borrar
+        # -------------------------
+        records = None
+        # Abrir el archivo .txt que contiene el JSON
+        with open("tests/cargas/generico/json_zenodo_1_pub.txt", "r") as file:
+            # Cargar el contenido del archivo y convertirlo a un objeto Python
+            records = json.load(file)
+            search_results: dict = records.get("hits", {})
+            records = search_results.get("hits", [])
+        # ---------------------------
+        if len(records) == 0:
+            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+        for publicacion in records:
+            parser = ZenodoParser(data=publicacion)
+            self.datos = parser.datos_carga_publicacion
+            self.cargar_publicacion()
+
+        return None
+
+    def cargar_publicaciones_por_investigador(id_investigador: str):
+        pass
+
+    def cargar_publicaciones_por_investigador_limitada_agnos(
+        self, id_investigador: str, agno_inicio: str, agno_fin: str
+    ):
+        pass
