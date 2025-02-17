@@ -4,7 +4,7 @@ import json
 from typing import List
 import xml.etree.ElementTree as ET
 
-from datetime import datetime, date
+import datetime
 
 import numpy as np
 from utils.date import date_to_str
@@ -102,7 +102,7 @@ def dict_to_xml(data, root_name=None, object_name=""):
 
 
 def date_serializer(obj):
-    if isinstance(obj, (datetime, date)):
+    if isinstance(obj, (datetime.datetime, datetime.date)):
         return obj.isoformat()  # Convierte a string compatible con JSON
     raise TypeError(f"Tipo no serializable: {type(obj)}")
 
