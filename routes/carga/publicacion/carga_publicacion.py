@@ -419,10 +419,16 @@ class CargaPublicacion:
             query = """INSERT INTO prisma.p_fuente (tipo, titulo, editorial, origen)
                 VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)"""
 
+            editorial = (
+                self.datos.fuente.editoriales[0].nombre
+                if self.datos.fuente.editoriales
+                else None
+            )
+
             params = {
                 "tipo": self.datos.fuente.tipo,
                 "titulo": self.datos.fuente.titulo,
-                "editorial": self.datos.fuente.editoriales[0].nombre,
+                "editorial": editorial,
                 "origen": self.origen,
             }
 

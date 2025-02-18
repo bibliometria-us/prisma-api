@@ -607,16 +607,19 @@ class DatosCargaAccesoAbierto(DatosCarga):
 class DatosCargaFechaPublicacion(DatosCarga):
     def __init__(
         self,
+        dia: str = None,
         mes: str = None,
         agno: str = None,
         tipo: str = "",
     ) -> None:
+        self.dia = dia
         self.mes = mes
         self.agno = agno
         self.tipo = tipo
 
     def to_dict(self):
         dict = {
+            "dia": self.dia,
             "mes": self.mes,
             "agno": self.agno,
             "tipo": self.tipo,
@@ -625,6 +628,7 @@ class DatosCargaFechaPublicacion(DatosCarga):
         return dict
 
     def from_dict(self, source: dict):
+        self.dia = source.get("dia")
         self.mes = source.get("mes")
         self.agno = source.get("agno")
         self.tipo = source.get("tipo")
@@ -633,10 +637,11 @@ class DatosCargaFechaPublicacion(DatosCarga):
 
     def __eq__(self, value: "DatosCargaFechaPublicacion") -> bool:
         return (
-            self.mes == value.mes
+            self.dia == value.dia
+            and self.mes == value.mes
             and self.agno == value.agno
             and self.tipo == value.tipo
         )
 
     def __hash__(self) -> int:
-        return hash((self.mes, self.agno, self.tipo))
+        return hash((self.dia, self.mes, self.agno, self.tipo))

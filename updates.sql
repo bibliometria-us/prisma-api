@@ -28,3 +28,6 @@ COMMIT;
 ALTER TABLE `a_problemas` CHANGE `mensaje` `mensaje` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_spanish_ci NOT NULL; 
 ALTER TABLE prisma.a_problemas MODIFY COLUMN antiguo_valor text CHARACTER SET utf8mb4 COLLATE utf8mb4_spanish_ci NOT NULL;
 ALTER TABLE prisma.a_problemas MODIFY COLUMN nuevo_valor text CHARACTER SET utf8mb4 COLLATE utf8mb4_spanish_ci NOT NULL;
+
+
+ALTER TABLE prisma.p_dato_publicacion ADD origen varchar(100) NULL;
