@@ -15,7 +15,7 @@ def get_metrica_calidad(bd: BaseDatos) -> dict:
         WHERE p.eliminado = 0 AND pd.tipo != "titulo_alt"
         GROUP BY p.idPublicacion, pd.tipo, ib.nombre
         HAVING COUNT(DISTINCT pd.valor) > 1;"""
-    # query_publicacion = "SELECT * FROM prisma.i_investigador"
+
     try:
         bd.ejecutarConsulta(query_publicacion)
         metrica = bd.get_dataframe().set_index("ID").to_dict(orient="index")

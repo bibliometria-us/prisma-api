@@ -94,7 +94,7 @@ class API:
                 proxies=proxy_list,
                 **kwargs,
             )
-        except Exception:
+        except Exception as e:
             if tryouts > 0:
                 tryouts -= 1
                 self.get_respose(

@@ -113,6 +113,7 @@ class CrossrefParser(Parser):
         if len(date) == 3:
             agno = date[0]
             mes = date[1]
+            mes = f"{mes:02d}"
             fecha_insercion = DatosCargaFechaPublicacion(
                 tipo="publicación", agno=agno, mes=mes
             )
@@ -242,9 +243,9 @@ class CrossrefParser(Parser):
                     )
                     self.datos_carga_publicacion.add_financiacion(financiacion)
             elif len(proyectos) == 1:
-                proyecto = 1
+                proyecto = proyectos[0]
                 financiacion = DatosCargaFinanciacion(
-                    entidad_financiadora=agencia, proyecto=proyecto_obj
+                    entidad_financiadora=agencia, proyecto=proyecto
                 )
 
     def carga_acceso_abierto(self):

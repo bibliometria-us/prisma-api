@@ -131,12 +131,18 @@ publicacion = {
             },
         },
         "identificadores": {0: {"tipo": "issn", "valor": "0168-9002"}},
-        "datos": {},
+        "datos": {
+            0: {
+                "tipo": "url",
+                "valor": "https://www.sciencedirect.com/science/article/pii/S016890021303056X",
+            },
+        },
     },
     "financiacion": {
         0: {
             "proyecto": "FPA2011-24553",
             "entidad_financiadora": "Ministerio de Ciencia e Innovación",
+            "agencia": "",
             "pais": "España",
             "ror": "05r0vyz12",
         },
@@ -144,8 +150,14 @@ publicacion = {
     "fechas_publicacion": {
         0: {
             "tipo": "publicacion",
-            "mes": "1",
-            "agno": "2014",
+            "mes": 1,
+            "agno": 2014,
+        },
+    },
+    "acceso_abierto": {
+        0: {
+            "valor": "gold",
+            "origen": "upw",
         },
     },
 }

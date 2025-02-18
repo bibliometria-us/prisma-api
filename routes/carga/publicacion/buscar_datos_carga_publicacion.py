@@ -1,8 +1,11 @@
 from db.conexion import BaseDatos
 from routes.carga.publicacion.datos_carga_publicacion import (
+    DatosCargaAccesoAbierto,
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
     DatosCargaEditorial,
+    DatosCargaFechaPublicacion,
+    DatosCargaFinanciacion,
     DatosCargaFuente,
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorPublicacion,
@@ -21,7 +24,12 @@ def busqueda_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPubl
     params_publicacion = {"idPublicacion": id_publicacion}
 
     db.ejecutarConsulta(query_publicacion, params_publicacion)
-    publicacion = db.get_dataframe().iloc[0]
+    df = db.get_dataframe()
+
+    if df.empty:
+        return None
+
+    publicacion = df.iloc[0]
 
     datos_carga_publicacion.fuente_datos = publicacion["origen"]
     datos_carga_publicacion.titulo = publicacion["titulo"]
@@ -35,7 +43,11 @@ def busqueda_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPubl
     id_fuente = int(publicacion["idFuente"])
     buscar_fuente_publicacion(id_fuente, db, datos_carga_publicacion)
     buscar_editoriales_fuente(id_fuente, db, datos_carga_publicacion)
+    buscar_datos_fuente(id_fuente, db, datos_carga_publicacion)
     buscar_identificadores_fuente(id_fuente, db, datos_carga_publicacion)
+    buscar_financiacion(id_publicacion, db, datos_carga_publicacion)
+    buscar_fechas_publicacion(id_publicacion, db, datos_carga_publicacion)
+    buscar_acceso_abierto(id_publicacion, db, datos_carga_publicacion)
 
     return datos_carga_publicacion
 
@@ -134,6 +146,31 @@ def buscar_fuente_publicacion(
     datos_carga_publicacion.fuente = datos_carga_fuente
 
 
+def buscar_datos_fuente(
+    id_fuente, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+):
+    # Buscar e insertar datos de fuente
+
+    lista_datos_dato_fuente: list[DatosCargaDatoPublicacion] = []
+
+    query_datos_fuente = "SELECT * FROM prisma.p_dato_fuente WHERE idFuente = %(idFuente)s AND tipo IN ('url', 'titulo_alt')"
+    params_datos_fuente = {"idFuente": id_fuente}
+
+    db.ejecutarConsulta(query_datos_fuente, params_datos_fuente)
+    datos_fuente = db.get_dataframe()
+
+    if not datos_fuente.empty:
+        for index, dato_fuente in datos_fuente.iterrows():
+            datos_carga_dato_fuente = DatosCargaDatoPublicacion()
+
+            datos_carga_dato_fuente.tipo = dato_fuente["tipo"]
+            datos_carga_dato_fuente.valor = dato_fuente["valor"]
+
+            lista_datos_dato_fuente.append(datos_carga_dato_fuente)
+
+    datos_carga_publicacion.fuente.datos = lista_datos_dato_fuente
+
+
 def buscar_editoriales_fuente(
     id_fuente, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
 ):
@@ -194,3 +231,79 @@ def buscar_identificadores_fuente(
             lista_datos_identificador_fuente.append(datos_carga_identificador_fuente)
 
     datos_carga_publicacion.fuente.identificadores = lista_datos_identificador_fuente
+
+
+def buscar_fechas_publicacion(
+    id_publicacion, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+):
+    # Buscar e insertar fechas de publicación
+
+    query_fechas_publicacion = "SELECT tipo, mes, agno FROM prisma.p_fecha_publicacion WHERE idPublicacion = %(idPublicacion)s"
+    params_fechas_publicacion = {"idPublicacion": id_publicacion}
+
+    db.ejecutarConsulta(query_fechas_publicacion, params_fechas_publicacion)
+    fechas_publicacion = db.get_dataframe()
+
+    if fechas_publicacion.empty:
+        datos_carga_publicacion.fechas_publicacion = []
+        return None
+
+    for index, fecha_publicacion in fechas_publicacion.iterrows():
+        fecha = DatosCargaFechaPublicacion()
+
+        fecha.tipo = fecha_publicacion["tipo"]
+        fecha.mes = fecha_publicacion["mes"]
+        fecha.agno = fecha_publicacion["agno"]
+
+        datos_carga_publicacion.fechas_publicacion.append(fecha)
+
+
+def buscar_acceso_abierto(
+    id_publicacion, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+):
+    # Buscar e insertar acceso abierto
+
+    query_acceso_abierto = "SELECT valor, origen FROM prisma.p_acceso_abierto WHERE publicacion_id = %(publicacion_id)s"
+    params_acceso_abierto = {"publicacion_id": id_publicacion}
+
+    db.ejecutarConsulta(query_acceso_abierto, params_acceso_abierto)
+    acceso_abierto = db.get_dataframe()
+
+    if acceso_abierto.empty:
+        datos_carga_publicacion.acceso_abierto = []
+        return None
+
+    for index, oa in acceso_abierto.iterrows():
+        datos_oa = DatosCargaAccesoAbierto()
+
+        datos_oa.valor = oa["valor"]
+        datos_oa.origen = oa["origen"]
+
+        datos_carga_publicacion.acceso_abierto.append(datos_oa)
+
+
+def buscar_financiacion(
+    id_publicacion, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+):
+    # Buscar e insertar financiación
+
+    query_financiacion = "SELECT codigo, agencia FROM prisma.p_financiacion WHERE publicacion_id = %(publicacion_id)s"
+    params_financiacion = {"publicacion_id": id_publicacion}
+
+    db.ejecutarConsulta(query_financiacion, params_financiacion)
+    financiacion = db.get_dataframe()
+
+    if financiacion.empty:
+        datos_carga_publicacion.financiacion = []
+        return None
+
+    lista_financiacion = []
+    for index, fin in financiacion.iterrows():
+        datos_financiacion = DatosCargaFinanciacion()
+
+        datos_financiacion.proyecto = fin["codigo"]
+        datos_financiacion.agencia = fin["agencia"]
+
+        lista_financiacion.append(datos_financiacion)
+
+    datos_carga_publicacion.financiacion = lista_financiacion

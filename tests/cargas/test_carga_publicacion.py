@@ -22,11 +22,18 @@ def test_carga_publicacion(database: BaseDatos, seed: dict[str, dict]):
 
     carga.cargar_publicacion()
 
-    datos_carga_busqueda = DatosCargaPublicacion().from_id_publicacion(
-        carga.id_publicacion, database
-    )
+    carga.cargar_publicacion()
 
-    assert datos_carga == datos_carga_busqueda
+    assert datos_carga.año_publicacion == carga.datos_antiguos.año_publicacion
+    assert datos_carga.titulo == carga.datos_antiguos.titulo
+    assert datos_carga.tipo == carga.datos_antiguos.tipo
+    assert datos_carga.autores == carga.datos_antiguos.autores
+    assert datos_carga.identificadores == carga.datos_antiguos.identificadores
+    assert datos_carga.datos == carga.datos_antiguos.datos
+    assert datos_carga.fuente == carga.datos_antiguos.fuente
+    assert datos_carga.financiacion == carga.datos_antiguos.financiacion
+    assert datos_carga.acceso_abierto == carga.datos_antiguos.acceso_abierto
+    assert datos_carga.fechas_publicacion == carga.datos_antiguos.fechas_publicacion
 
     database.rollback_to_savepoint("seed")
 

@@ -16,6 +16,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
 )
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
+import routes.carga.publicacion.openalex.country_codes as country_codes
 
 
 class OpenalexParser(Parser):
@@ -74,14 +75,16 @@ class OpenalexParser(Parser):
             # Se completa el Objeto DatosCargaAutor(Autor)
             identificadores = {}
             firma = None
-            for autor_info in autor.get("author", []):
-                firma = autor_info.get("display_name", [])
-                if autor_info.get("id"):
-                    openalex_id = autor_info.get("id").split("/")[-1]
-                    firma["openalex"] = openalex_id
-                if autor_info.get("orcid"):
+            autor_info = autor.get("author", [])
+            if "display_name" in autor_info:
+                firma = autor_info.get("display_name")
+            if "id" in autor_info:
+                openalex_id = autor_info.get("id").split("/")[-1]
+                identificadores["openalex_id"] = openalex_id
+            if "orcid" in autor_info:
+                if autor_info.get("orcid") is not None:
                     orcid = autor_info.get("orcid").split("/")[-1]
-                    firma["orcid"] = orcid
+                    identificadores["orcid"] = orcid
 
             orden = cont
 
@@ -90,16 +93,25 @@ class OpenalexParser(Parser):
 
             tipo_identificadores = {"orcid": "orcid", "openalex_id": "openalex_id"}
 
-            for key_id, value_id in identificadores:
+            for key_id, value_id in identificadores.items():
                 if key_id in tipo_identificadores:
                     tipo = tipo_identificadores[key_id]
                     id_autor = DatosCargaIdentificadorAutor(tipo=tipo, valor=value_id)
                     carga_autor.add_id(id_autor)
 
-            for aff in self.data.get("institutions", []):
+            for aff in autor.get("institutions", []):
                 nombre = aff.get("display_name")
-                ror_id = aff.get("ror").split("/")[-1]
-                pais = aff.get("country_code")
+                if aff.get("ror") is not None:
+                    ror_id = aff.get("ror").split("/")[-1]
+                else:
+                    ror_id = None
+                if (
+                    aff.get("country_code") is not None
+                    and aff.get("country_code") in country_codes.country_codes
+                ):
+                    pais = country_codes.country_codes[aff.get("country_code")]
+                else:
+                    pais = None
                 afiliacion_autor = DatosCargaAfiliacionesAutor(
                     nombre=nombre, pais=pais, ror_id=ror_id
                 )
@@ -121,7 +133,7 @@ class OpenalexParser(Parser):
     def cargar_directores(self):
         pass
 
-    def _verificar_formato_fecha(fecha, formato):
+    def _verificar_formato_fecha(self, fecha, formato):
         try:
             # Intenta convertir la fecha con el formato especificado
             datetime.strptime(fecha, formato)
@@ -132,19 +144,27 @@ class OpenalexParser(Parser):
 
     def cargar_año_publicacion(self):
         formato = "%Y-%m-%d"
-        agno = str(self.data.get("publication_date"))
-        if not self._verificar_formato_fecha(agno, formato):
+        if not self._verificar_formato_fecha(
+            self.data.get("publication_date"), formato
+        ):
             return None
+        fecha = datetime.strptime(self.data.get("publication_date"), "%Y-%m-%d")
+        agno = str(fecha.year)
         if len(str(agno)) != 4:
             raise TypeError("El año no tiene el formato correcto")
         self.datos_carga_publicacion.set_agno_publicacion(agno)
 
     def cargar_fecha_publicacion(self):
-        fecha = self.data.get("publication_date")
-        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
-        mes = datetime.strptime(fecha, "%Y-%m-%d").month
+        formato = "%Y-%m-%d"
+        if not self._verificar_formato_fecha(
+            self.data.get("publication_date"), formato
+        ):
+            return None
+        fecha = datetime.strptime(self.data.get("publication_date"), "%Y-%m-%d")
+        agno = str(fecha.year)
+        mes = fecha.month
         mes = f"{mes:02d}"
-        if len(str(agno)) != 4 or len(str(mes)) != 2:
+        if len(agno) != 4 or len(mes) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
             tipo="publicación", agno=agno, mes=mes
@@ -212,7 +232,7 @@ class OpenalexParser(Parser):
         if len(self.data.get("primary_location").get("source").get("issn")) > 0:
             for id in self.data.get("primary_location").get("source").get("issn"):
                 identificador = DatosCargaIdentificadorFuente(valor=id, tipo="issn")
-                self.datos_carga_publicacion.fuente.add_identificador(id)
+                self.datos_carga_publicacion.fuente.add_identificador(identificador)
         #  TODO: REVISAR ISBN
 
     def cargar_titulo_y_tipo(self):
@@ -228,7 +248,10 @@ class OpenalexParser(Parser):
         # Titulo y tipo
         if self.data.get("primary_location").get("source"):
             tipo = self.data.get("primary_location").get("source").get("type")
-            self.datos_carga_publicacion.fuente.set_tipo(tipos_fuente[tipo])
+            if tipo in tipos_fuente:
+                self.datos_carga_publicacion.fuente.set_tipo(tipos_fuente[tipo])
+            else:
+                self.datos_carga_publicacion.fuente.set_tipo(tipo)  # Tipo no conocido
 
             titulo = self.data.get("primary_location").get("source").get("display_name")
             if not titulo:
@@ -246,7 +269,7 @@ class OpenalexParser(Parser):
 
     def carga_acceso_abierto(self):
         if self.data.get("open_access").get("is_oa"):
-            valor = self.data.get("open_access").get("status")
+            valor = self.data.get("open_access").get("oa_status")
             origen = "openalex"
             if not valor:
                 return None

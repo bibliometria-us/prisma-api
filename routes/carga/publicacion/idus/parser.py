@@ -1,8 +1,10 @@
+from datetime import datetime
 from integration.apis.idus.idus import IdusAPIItems
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
     DatosCargaEditorial,
+    DatosCargaFechaPublicacion,
     DatosCargaIdentificadorPublicacion,
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorAutor,
@@ -107,11 +109,23 @@ class IdusParser(Parser):
         año = self.metadata["dc.date.issued"][0]["value"][0:4]
         assert len(año) == 4
 
-        self.datos_carga_publicacion.set_año_publicacion(año)
+        self.datos_carga_publicacion.año_publicacion = año
 
     def cargar_fecha_publicacion(self):
-        fecha = self.metadata["dc.date.available"][0]["value"]
-        self.datos_carga_publicacion.set_fecha_publicacion(fecha)
+        fecha = datetime.strptime(
+            self.metadata["dc.date.available"][0]["value"], "%Y-%m-%dT%H:%M:%SZ"
+        )
+        agno = fecha.year
+        mes = fecha.month
+        mes = f"{mes:02d}"
+        dia = fecha.day
+        dia = f"{dia:02d}"
+
+        fecha_insercion = DatosCargaFechaPublicacion(
+            tipo="publicacion", agno=agno, mes=mes, dia=dia
+        )
+
+        self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
     def cargar_doi(self):
         doi: dict = self.metadata.get("dc.identifier.doi")
@@ -209,3 +223,9 @@ class IdusParser(Parser):
         self.cargar_isbn()
         self.cargar_titulo_y_tipo()
         self.carga_editorial()
+
+    def carga_acceso_abierto(self):
+        pass
+
+    def cargar_financiacion(self):
+        pass

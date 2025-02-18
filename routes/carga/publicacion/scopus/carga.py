@@ -25,19 +25,8 @@ class CargaPublicacionScopus(CargaPublicacion):
 
     def cargar_publicacion_por_id(self, id: str):
         api = ScopusSearch()
-        # TODO: restaurar
-        # records = api.get_from_id(id=id)
+        records = api.get_from_id(id=id)
 
-        # TODO: borrar
-        # -------------------------
-        records = None
-        # Abrir el archivo .txt que contiene el JSON
-        with open("tests/cargas/generico/json_scopus_1_pub.txt", "r") as file:
-            # Cargar el contenido del archivo y convertirlo a un objeto Python
-            records = json.load(file)
-            search_results: dict = records.get("search-results", {})
-            records = search_results.get("entry", [])
-        # ---------------------------
         if len(records) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:
@@ -63,6 +52,7 @@ class CargaPublicacionScopus(CargaPublicacion):
             records = search_results.get("entry", [])
         # ---------------------------
         if len(records) == 0:
+            # TODO: Devolver nulo y gestionarlo en el método de la API
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:
             parser = ScopusParser(data=publicacion)

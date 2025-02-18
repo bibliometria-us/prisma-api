@@ -61,6 +61,7 @@ class ScopusSearch(API):
 
         self.search()
         # TODO: controlar que el resultado no venga vacío
+
         return self.results
 
     def get_from_doi(self, id: str):
@@ -75,4 +76,5 @@ class ScopusSearch(API):
         self.args["query"] = query
         self.search()
         # TODO: controlar que el resultado no venga vacío
+
         return self.results
