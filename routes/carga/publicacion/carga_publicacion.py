@@ -8,9 +8,13 @@ from routes.carga.publicacion.comparar_autores import (
     ComparacionAutores,
 )
 from routes.carga.publicacion.datos_carga_publicacion import (
+    DatosCargaAccesoAbierto,
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
+    DatosCargaDatosFuente,
     DatosCargaEditorial,
+    DatosCargaFechaPublicacion,
+    DatosCargaFinanciacion,
     DatosCargaIdentificadorPublicacion,
     DatosCargaIdentificadorFuente,
     DatosCargaPublicacion,
@@ -33,6 +37,15 @@ class CargaPublicacion:
         self.fuente_existente = False
         self.origen = None
         self.problemas: list[ProblemaCargaPublicacion] = []
+
+    def busqueda(func):
+        def wrapper(self, *args, **kwargs):
+            if self.datos_antiguos is not None:
+                return func(self, *args, **kwargs)
+            else:
+                return None
+
+        return wrapper
 
     def start_database(self, db: BaseDatos):
         """
@@ -109,12 +122,19 @@ class CargaPublicacion:
         self.insertar_datos_publicacion()
         self.insertar_fuente()
         self.insertar_problemas()
+        self.insertar_financiaciones()
+        self.insertar_fechas_publicacion()
+        self.insertar_valores_acceso_abierto()
         self.close_database()
 
     def buscar_publicacion(self):
         """
         Comprueba si una publicación está duplicada según criterios establecidos
         """
+        self.datos_antiguos = DatosCargaPublicacion().from_id_publicacion(
+            self.id_publicacion, self.db
+        )
+
         identificadores = ",".join(
             f"'{identificador.valor}'" for identificador in self.datos.identificadores
         )
@@ -402,6 +422,7 @@ class CargaPublicacion:
             params = {
                 "tipo": self.datos.fuente.tipo,
                 "titulo": self.datos.fuente.titulo,
+                "editorial": self.datos.fuente.editoriales[0].nombre,
                 "origen": self.origen,
             }
 
@@ -411,7 +432,7 @@ class CargaPublicacion:
         self.datos.fuente.id_fuente = id_fuente
 
         self.insertar_id_fuente_publicacion()
-
+        self.insertar_datos_fuente()
         self.insertar_identificadores_fuente()
         self.insertar_editoriales_fuente()
 
@@ -448,6 +469,23 @@ class CargaPublicacion:
 
         self.db.ejecutarConsulta(query, params)
 
+    def insertar_datos_fuente(self):
+        for dato in self.datos.fuente.datos:
+            self.insertar_dato_fuente(dato)
+
+    def insertar_dato_fuente(self, dato: DatosCargaDatosFuente):
+        query = """
+                INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
+                VALUES (%(idFuente)s, %(tipo)s, %(valor)s)
+                """
+        params = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "tipo": dato.tipo,
+            "valor": dato.valor,
+        }
+
+        self.db.ejecutarConsulta(query, params)
+
     def insertar_editoriales_fuente(self):
         for editorial in self.datos.fuente.editoriales:
             self.insertar_editorial_fuente(editorial)
@@ -478,6 +516,7 @@ class CargaPublicacion:
             query_insertar_editorial_fuente, params_insertar_editorial_fuente
         )
 
+    @busqueda
     def buscar_editorial(self, editorial: DatosCargaEditorial) -> DatosCargaEditorial:
         if not self.datos_antiguos:
             return None
@@ -487,6 +526,88 @@ class CargaPublicacion:
                 return editorial_antigua
 
         return None
+
+    def insertar_fechas_publicacion(self):
+        for fecha in self.datos.fechas_publicacion:
+            self.insertar_fecha_publicacion(fecha)
+
+    @busqueda
+    def buscar_fecha_publicacion(self, fecha: DatosCargaFechaPublicacion):
+        if fecha in self.datos_antiguos.fechas_publicacion:
+            return True
+
+        return False
+
+    def insertar_fecha_publicacion(self, fecha: DatosCargaFechaPublicacion):
+        if self.buscar_fecha_publicacion(fecha):
+            return None
+
+        query = """
+                INSERT INTO prisma.p_fecha_publicacion (idPublicacion, tipo, mes, agno)
+                VALUES (%(idPublicacion)s, %(tipo)s, %(mes)s, %(agno)s)
+                """
+        params = {
+            "idPublicacion": self.id_publicacion,
+            "tipo": fecha.tipo,
+            "mes": fecha.mes,
+            "agno": fecha.agno,
+        }
+
+        self.db.ejecutarConsulta(query, params)
+
+    def insertar_financiaciones(self):
+        for financiacion in self.datos.financiacion:
+            self.insertar_financiacion(financiacion)
+
+    @busqueda
+    def buscar_financiacion(self, financiacion):
+        if financiacion in self.datos_antiguos.financiacion:
+            return True
+
+        return False
+
+    def insertar_financiacion(self, financiacion: DatosCargaFinanciacion):
+        if self.buscar_financiacion(financiacion):
+            return None
+
+        query = """
+            INSERT INTO prisma.p_financiacion (codigo, agencia, publicacion_id)
+            VALUES (%(codigo)s, %(agencia)s, %(publicacion_id)s)
+            """
+        params = {
+            "codigo": financiacion.proyecto,
+            "agencia": financiacion.agencia,
+            "publicacion_id": self.id_publicacion,
+        }
+
+        self.db.ejecutarConsulta(query, params)
+
+    def insertar_valores_acceso_abierto(self):
+        for acceso_abierto in self.datos.acceso_abierto:
+            self.insertar_acceso_abierto(acceso_abierto)
+
+    @busqueda
+    def buscar_acceso_abierto(self, acceso_abierto: DatosCargaAccesoAbierto):
+        if acceso_abierto in self.datos_antiguos.acceso_abierto:
+            return True
+
+        return False
+
+    def insertar_acceso_abierto(self, acceso_abierto: DatosCargaAccesoAbierto):
+        if self.buscar_acceso_abierto(acceso_abierto):
+            return None
+
+        query = """
+                INSERT INTO prisma.p_acceso_abierto (publicacion_id, valor, origen)
+                VALUES (%(publicacion_id)s, %(valor)s, %(origen)s)
+                """
+        params = {
+            "publicacion_id": self.id_publicacion,
+            "valor": acceso_abierto.valor,
+            "origen": acceso_abierto.origen,
+        }
+
+        self.db.ejecutarConsulta(query, params)
 
 
 class ProblemaCargaPublicacion(ProblemaCarga):

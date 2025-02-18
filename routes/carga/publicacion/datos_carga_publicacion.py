@@ -128,6 +128,7 @@ class DatosCargaPublicacion(DatosCarga):
             "financiacion": self.merge_dict(self.financiacion),
             "fechas_publicacion": self.merge_dict(self.fechas_publicacion),
             "fuente": self.fuente.to_dict(),
+            "acceso_abierto": self.merge_dict(self.acceso_abierto),
         }
 
         return result
@@ -153,6 +154,9 @@ class DatosCargaPublicacion(DatosCarga):
         self.fechas_publicacion = self.merged_from_dict(
             source.get("fechas_publicacion"), DatosCargaFechaPublicacion
         )
+        self.acceso_abierto = self.merged_from_dict(
+            source.get("acceso_abierto"), DatosCargaAccesoAbierto
+        )
 
         return self
 
@@ -176,7 +180,6 @@ class DatosCargaPublicacion(DatosCarga):
     def __eq__(self, value: "DatosCargaPublicacion") -> bool:
         return (
             self.titulo == value.titulo
-            and self.titulo_alternativo == value.titulo_alternativo
             and self.tipo == value.tipo
             and self.autores == value.autores
             and self.año_publicacion == value.año_publicacion
@@ -405,7 +408,7 @@ class DatosCargaFuente(DatosCarga):
     def from_dict(self, source: dict):
         self.titulo = source.get("titulo")
         self.tipo = source.get("tipo")
-
+        self.datos = self.merged_from_dict(source.get("datos"), DatosCargaDatosFuente)
         self.editoriales = self.merged_from_dict(
             source.get("editoriales"), DatosCargaEditorial
         )
@@ -419,9 +422,13 @@ class DatosCargaFuente(DatosCarga):
         return (
             self.titulo == value.titulo
             and self.tipo == value.tipo
+            and self.datos == value.datos
             and self.editoriales == value.editoriales
             and self.identificadores == value.identificadores
         )
+
+    def __hash__(self):
+        return hash(self.titulo, self.tipo, self.editoriales, self.identificadores)
 
 
 class DatosCargaIdentificadorFuente(DatosCarga):
@@ -523,12 +530,14 @@ class DatosCargaFinanciacion(DatosCarga):
     def __init__(
         self,
         entidad_financiadora: str = "",
+        agencia: str = "",
         proyecto: str = "",
         pais: str = "",
         ror: str = "",
     ) -> None:
         self.proyecto = proyecto
         self.entidad_financiadora = entidad_financiadora
+        self.agencia = agencia
         self.pais = pais
         self.ror = ror
 
@@ -536,6 +545,7 @@ class DatosCargaFinanciacion(DatosCarga):
         dict = {
             "proyecto": self.proyecto,
             "entidad_financiadora": self.entidad_financiadora,
+            "agencia": self.agencia,
             "pais": self.pais,
             "ror": self.ror,
         }
@@ -545,21 +555,27 @@ class DatosCargaFinanciacion(DatosCarga):
     def from_dict(self, source: dict):
         self.proyecto = source.get("proyecto", "")
         self.entidad_financiadora = source.get("entidad_financiadora", "")
+        self.agencia = source.get("agencia", "")
         self.pais = source.get("pais", "")
         self.ror = source.get("ror", "")
 
         return self
 
     def __eq__(self, value: "DatosCargaFinanciacion") -> bool:
-        return (
-            self.proyecto == value.proyecto
-            and self.entidad_financiadora == value.entidad_financiadora
-            and self.pais == value.pais
-            and self.ror == value.ror
+        return (self.proyecto == value.proyecto and self.agencia == value.agencia) or (
+            self.ror == value.ror
         )
 
     def __hash__(self) -> int:
-        return hash((self.proyecto, self.entidad_financiadora, self.pais, self.ror))
+        return hash(
+            (
+                self.proyecto,
+                self.entidad_financiadora,
+                self.agencia,
+                self.pais,
+                self.ror,
+            )
+        )
 
 
 class DatosCargaAccesoAbierto(DatosCarga):
