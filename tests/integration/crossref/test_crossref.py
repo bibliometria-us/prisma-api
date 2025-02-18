@@ -14,12 +14,7 @@ ids_crossref = [
 def test_busqueda_por_id():
     api = CrossrefAPI()
     for id in ids_crossref:
-        api.get_from_doi(id)
+        record = api.get_from_doi(id)
         assert not api.response.get("service-error")
-
-
-def test_parser():
-    for id in ids_crossref:
-        parser = CrossrefParser(idCrossref=id)
+        parser = CrossrefParser(data=record)
         json = parser.datos_carga_publicacion.to_json()
-        pass

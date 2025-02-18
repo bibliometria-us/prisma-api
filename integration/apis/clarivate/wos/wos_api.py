@@ -85,7 +85,7 @@ class WosAPI(API):
         self.search()
         # TODO: controlar que el resultado no venga vacío
         # Se devuelve un resultado ya que es una petición de una pub por id
-        return self.records[0]
+        return self.records
 
     def get_from_doi(self, id: str):
         self.route = "/"
@@ -109,7 +109,7 @@ class WosAPI(API):
         self.search()
         # TODO: controlar que el resultado no venga vacío
         # Se devuelve un resultado ya que es una petición de una pub por id
-        return self.records[0]
+        return self.records
 
     def get_metrics_from_id(self, id: str):
         self.route = "/citing"
