@@ -111,197 +111,12 @@ class CargaDoiIdus(Resource):
             return {"message": "Error inesperado"}, 500
 
 
-# # **** CARGA DE PUBLICACIONES ****
-# # Parser rellana un objeto de publicación relleno en formato comun,
-# # para ello la función realiza los siguentes pasos:
-# #    - Recibe un id
-# #    - Llamada a la API del origen y devuelve un json con info de la pub
-# #    - Mapeo del json al objeto generico
-# #    - Almacena objeto generico en BD
+# ********************************
+# **** CARGA DE PUBLICACIONES ****
+# ********************************
 
 
-# @carga_namespace.route(
-#     "/publicacion/scopus/", doc=False, endpoint="carga_publicacion_scopus"
-# )
-# class CargaPublicacionScopus_old(Resource):
-#     def get(self):
-#         args = request.args
-
-#         idScopus = args.get("id", None)
-
-#         try:
-#             parser = ScopusParser(idScopus=idScopus)
-#             json = parser.datos_carga_publicacion.to_json()
-#             # TODO: Añadir funcionalidad de carga en BD
-#             return Response(json, content_type="application/json; charset=utf-8")
-
-#         except Exception:
-#             return {"message": "Error inesperado"}, 500
-
-
-# @carga_namespace.route("/publicacion/wos/", doc=False, endpoint="carga_publicacion_wos")
-# class CargaPublicacionWos(Resource):
-#     def get(self):
-#         args = request.args
-
-#         idWos = args.get("id", None)
-
-#         try:
-#             # TODO: ID medline - contemplar ID wos, medline, etc (posiblemente a nivel de API)
-#             # TODO: contemplar formato correcto de ID (elevar en parser y campturar en main)
-#             parser = WosParser(idWos=idWos)
-#             print(parser.datos_carga_publicacion.__str__())
-#             json = parser.datos_carga_publicacion.to_json()
-#             # TODO: Añadir funcionalidad de carga en BD
-#             return Response(json, content_type="application/json; charset=utf-8")
-
-#         except Exception:
-#             return {"message": "Error inesperado"}, 500
-
-
-# @carga_namespace.route(
-#     "/publicacion/crossref/", doc=False, endpoint="carga_publicacion_crossref"
-# )
-# class CargaPublicacionCrossref(Resource):
-#     def get(self):
-#         args = request.args
-
-#         idCrossref = args.get("id", None)
-
-#         try:
-#             parser = CrossrefParser(idCrossref=idCrossref)
-#             print(parser.datos_carga_publicacion.to_dict())
-#             json = parser.datos_carga_publicacion.to_json()
-#             # TODO: Añadir funcionalidad de carga en BD
-#             return Response(json, content_type="application/json; charset=utf-8")
-
-#         except Exception:
-#             return {"message": "Error inesperado"}, 500
-
-
-# @carga_namespace.route(
-#     "/publicacion/zenodo/", doc=False, endpoint="carga_publicacion_zenodo"
-# )
-# class CargaPublicacionZenodo(Resource):
-#     def get(self):
-#         args = request.args
-
-#         idZenodo = args.get("id", None)
-
-#         try:
-#             parser = ZenodoParser(idZenodo=idZenodo)
-#             print(parser.datos_carga_publicacion.to_dict())
-#             json = parser.datos_carga_publicacion.to_json()
-#             # TODO: Añadir funcionalidad de carga en BD
-#             return Response(json, content_type="application/json; charset=utf-8")
-
-#         except Exception:
-#             return {"message": "Error inesperado"}, 500
-
-
-# @carga_namespace.route(
-#     "/publicacion/openalex/", doc=False, endpoint="carga_publicacion_openalex"
-# )
-# class CargaPublicacionOpenalex(Resource):
-#     def get(self):
-#         args = request.args
-
-#         idOpenalex = args.get("id", None)
-
-#         try:
-#             parser = OpenalexParser(idOpenalex=idOpenalex)
-#             print(parser.datos_carga_publicacion.to_dict())
-#             json = parser.datos_carga_publicacion.to_json()
-#             # TODO: Añadir funcionalidad de carga en BD
-#             return Response(json, content_type="application/json; charset=utf-8")
-
-#         except Exception:
-#             return {"message": "Error inesperado"}, 500
-
-
-# # obsoleto
-# @carga_namespace.route(
-#     "/publicacion/importar_obs/", doc=False, endpoint="carga_publicacion_importar_obs"
-# )
-# class CargaPublicacionImportar(Resource):
-#     def get(self):
-#         doi_regex = r"^10\.\d{4,9}/[-._;()/:A-Z0-9]+$"
-#         wos_regex = r"^WOS:\d{15}$"
-#         pubmed_regex = r""
-#         scopus_regex = r"^2-s2\.0-\d{11}$"
-#         zenodo_regex = r"^10\.\d{4,9}/[-._;()/:A-Z0-9]+$"
-#         openalex_regex = r"^10\.\d{4,9}/[-._;()/:A-Z0-9]+$"
-
-#         args = request.args
-
-#         tipo = args.get("tipo", None)
-#         id = args.get("id", None)
-
-#         parser = None
-#         try:
-#             match tipo:
-#                 case "doi":
-#                     # Controla que es un formato doi correcto
-#                     if not re.match(doi_regex, id, re.IGNORECASE):
-#                         raise ValueError(f"'{id}' no tiene un formato válido de DOI.")
-#                     else:
-#                         # Busqueda en WOS
-#                         parser = WosParser(idWos=id)
-#                         # TODO: si no devuelve vacio, guardar en BD
-#                         # Busqueda en Scopus
-#                         parser = ScopusParser(idScopus=id)
-#                         # TODO: si no devuelve vacio, guardar en BD
-#                         # Busqueda en Idus
-#                         # TODO: si no devuelve vacio, guardar en BD
-#                         # Busqueda en CrossRef
-#                         parser = CrossrefParser(idCrossref=id)
-#                         # TODO: si no devuelve vacio, guardar en BD
-#                         # Busqueda en OpenAlex
-#                         parser = OpenalexParser(idOpenalex=id)
-#                         # TODO: si no devuelve vacio, guardar en BD
-#                         # Busqueda en Zenodo
-#                         parser = ZenodoParser(idZenodo=id)
-#                         # TODO: si no devuelve vacio, guardar en BD
-
-#                 case "pubmedId" | "wosId":
-#                     if not re.match(wos_regex, id, re.IGNORECASE):
-#                         raise ValueError(
-#                             f"'{id}' no tiene un formato válido de identificador WOS/PubMed."
-#                         )
-#                     parser = WosParser(idWos=id)
-#                     return "Opción wos seleccionada"
-#                 case "scopusId":
-#                     if not re.match(scopus_regex, id, re.IGNORECASE):
-#                         raise ValueError(
-#                             f"'{id}' no tiene un formato válido de identificador Scopus."
-#                         )
-#                     parser = ScopusParser(idScopus=id)
-#                     return "Opción scopus seleccionada"
-#                 # case "handler":
-#                 #     if not re.match(handler_regex, id, re.IGNORECASE):
-#                 #         raise ValueError(f"'{id}' no tiene un formato válido de DOI.")
-#                 #     return "Opción idus seleccionada"
-#                 case "openalexId":
-#                     if not re.match(openalex_regex, id, re.IGNORECASE):
-#                         raise ValueError(
-#                             f"'{id}' no tiene un formato válido de identificacor OpenAlex."
-#                         )
-#                     parser = OpenalexParser(idOpenalex=id)
-#                     return "Opción openalex seleccionada"
-#                 case "zenodo":
-#                     if not re.match(zenodo_regex, id, re.IGNORECASE):
-#                         raise ValueError(
-#                             f"'{id}' no tiene un formato válido de identificador Zenodo."
-#                         )
-#                     parser = ZenodoParser(idZenodo=id)
-#                     return "Opción zenodo seleccionada"
-
-#         except ValueError as e:
-#             return {"message": e}, 500
-#         except Exception:
-#             return {"message": "Error inesperado"}, 500
-
-
+# **** CARGA DE PUBLICACIONES INDIVIDUAL ****
 @carga_namespace.route(
     "/publicacion/importar/", doc=False, endpoint="carga_publicacion_importar"
 )
@@ -324,10 +139,10 @@ class CargaPublicacionImportar(Resource):
                     CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
                 case "doi":
                     CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
-                    # CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
-                    # CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
-                    # CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
-                    # CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
+                    CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
+                    CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
+                    CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
+                    CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
                 # TODO: QUEDA IDUS
 
         except ValueError as e:
@@ -336,6 +151,7 @@ class CargaPublicacionImportar(Resource):
             return {"message": "Error inesperado"}, 500
 
 
+# **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****
 # @carga_namespace.route(
 #     "/publicacion/importar_publicaciones_investigador/",
 #     doc=False,
@@ -346,12 +162,10 @@ class CargaPublicacionImportar(Resource):
 #         args = request.args
 #         tipo = args.get("tipo", None)
 #         id = args.get("id", None)
-
 #         # TODO: llamar a carga unit BD pasandole los params
-
 #         pass
 
-
+# **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES INVESTIGADORES ACTIVOS +- 1 AÑO ****
 # @carga_namespace.route(
 #     "/publicacion/importar_publicaciones_masivo/",
 #     doc=False,
@@ -362,7 +176,5 @@ class CargaPublicacionImportar(Resource):
 #         args = request.args
 #         tipo = args.get("tipo", None)
 #         id = args.get("id", None)
-
 #         # TODO: llamar a carga unit BD pasandole los params
-
 #         pass

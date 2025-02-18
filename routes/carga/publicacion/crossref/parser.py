@@ -242,9 +242,9 @@ class CrossrefParser(Parser):
                     )
                     self.datos_carga_publicacion.add_financiacion(financiacion)
             elif len(proyectos) == 1:
-                proyecto = 1
+                proyecto = proyectos[0]
                 financiacion = DatosCargaFinanciacion(
-                    entidad_financiadora=agencia, proyecto=proyecto_obj
+                    entidad_financiadora=agencia, proyecto=proyecto
                 )
 
     def carga_acceso_abierto(self):

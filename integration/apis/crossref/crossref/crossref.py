@@ -35,12 +35,15 @@ class CrossrefAPI(API):
         self.headers["X-Rate-Limit-Limit"] = "50"
         self.headers["X-Rate-Limit-Interval"] = "15"
 
+    def set_headers_key(self):
+        self.headers["X-ELS-APIKey"] = config.api_key
+
     def set_param_mailto(self):
         self.args["mailto"] = config.mail
 
     def get_from_doi(self, id: str):
         # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
-        # self.set_headers_key()
+        self.set_headers_key()
         self.set_headers_rate_limits()
         self.set_param_mailto()
         self.get_respose(id=id)  # TODO: definir url correctamente

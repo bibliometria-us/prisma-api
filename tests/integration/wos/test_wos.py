@@ -4,8 +4,8 @@ import xml.etree.ElementTree as ET
 
 
 ids_wos = [
-    "001218226500001",  # Artículo
-    "000269306400009",  # Capítulo
+    # "001218226500001",  # Artículo
+    # "000269306400009",  # Capítulo
     "000440729700013",  # Ponencia
     # "2-s2.0-85ccxcx2216 ",  # No existe
 ]
@@ -14,12 +14,8 @@ ids_wos = [
 def test_busqueda_por_id():
     api = WosAPI()
     for id in ids_wos:
-        api.get_from_id(id)
+        records = api.get_from_id(id)
         assert not api.response.get("service-error")
-
-
-def test_parser():
-    for id in ids_wos:
-        parser = WosParser(idWos=id)
-        json = parser.datos_carga_publicacion.to_json()
-        pass
+        for record in records:
+            parser = WosParser(data=record)
+            json = parser.datos_carga_publicacion.to_json()

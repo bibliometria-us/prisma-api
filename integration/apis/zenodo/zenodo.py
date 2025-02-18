@@ -41,4 +41,5 @@ class ZenodoAPI(API):
         self.search()
         # TODO: controlar si no devuelve resultados o si devuelve mas de uno
         assert self.results["total"] != "1"
-        return self.results["hits"]
+        search_results: dict = self.results.get("hits", {})
+        return search_results

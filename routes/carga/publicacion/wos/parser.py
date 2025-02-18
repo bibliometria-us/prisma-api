@@ -305,22 +305,29 @@ class WosParser(Parser):
         self.carga_editorial()
 
     def cargar_financiacion(self):
-        for agencia_obj in self.data["static_data"]["fullrecord_metadata"]["fund_ack"][
-            "grants"
-        ].get("grant", []):
-            agencia = agencia_obj.get("grant_agency")
-            proyectos = agencia_obj["grant_ids"].get("grant_id", [])
-            if len(proyectos) > 1:
-                for proyecto_obj in proyectos:
-                    financiacion = DatosCargaFinanciacion(
-                        entidad_financiadora=agencia, proyecto=proyecto_obj
-                    )
-                    self.datos_carga_publicacion.add_financiacion(financiacion)
-            elif len(proyectos) == 1:
-                proyecto = 1
-                financiacion = DatosCargaFinanciacion(
-                    entidad_financiadora=agencia, proyecto=proyecto_obj
-                )
+        if "fund_ack" in self.data["static_data"].get(
+            "fullrecord_metadata"
+        ):  # Se comprueba que exista info de financiacion
+            for agencia_obj in self.data["static_data"]["fullrecord_metadata"][
+                "fund_ack"
+            ]["grants"].get("grant", []):
+                if (
+                    "grant_ids" in agencia_obj and "grant_agency" in agencia_obj
+                ):  # Se comprueba que para cada entrada haya agencia y proyecto
+                    agencia = agencia_obj.get("grant_agency")
+                    n_proyectos = agencia_obj["grant_ids"].get("count", [])
+                    if n_proyectos > 1:
+                        proyectos = agencia_obj["grant_ids"].get("grant_id", [])
+                        for proyecto_obj in proyectos:
+                            financiacion = DatosCargaFinanciacion(
+                                entidad_financiadora=agencia, proyecto=proyecto_obj
+                            )
+                            self.datos_carga_publicacion.add_financiacion(financiacion)
+                    elif n_proyectos == 1:
+                        proyecto = agencia_obj["grant_ids"].get("grant_id")
+                        financiacion = DatosCargaFinanciacion(
+                            entidad_financiadora=agencia, proyecto=proyecto
+                        )
 
     def carga_acceso_abierto(self):
         pass

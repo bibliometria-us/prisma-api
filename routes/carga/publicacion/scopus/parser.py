@@ -192,7 +192,7 @@ class ScopusParser(Parser):
         rango = self.data.get("prism:pageRange")
         if rango is not None and "-" in rango:
             pags = rango.split("-")
-            pag_inicio = pags.strip() if pags else None  # Validar inicio
+            pag_inicio = pags[0].strip() if pags else None  # Validar inicio
             pag_fin = (
                 pags[1].strip() if len(pags) > 1 and pags[1] else None
             )  # Validar fin
