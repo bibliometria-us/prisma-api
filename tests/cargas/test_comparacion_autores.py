@@ -9,9 +9,9 @@ def test_autores_iguales():
     nuevos_autores = DataFrame(autores_prueba.values())
 
     comparacion_autores = ComparacionAutores(nuevos_autores, antiguos_autores)
-    comparacion_autores.comparar()
+    recuento_autores = comparacion_autores.comparar()
 
-    assert not comparacion_autores.comparar()
+    assert recuento_autores[0] == recuento_autores[1]
 
     pass
 
@@ -27,8 +27,8 @@ def test_autores_diferentes():
     nuevos_autores = DataFrame(nuevos_autores_prueba.values())
 
     comparacion_autores = ComparacionAutores(nuevos_autores, antiguos_autores)
-    comparacion_autores.comparar()
+    recuento_autores = comparacion_autores.comparar()
 
-    assert comparacion_autores.comparar()
+    assert recuento_autores[0] != recuento_autores[1]
 
     pass
