@@ -152,6 +152,7 @@ publicacion = {
             "tipo": "publicacion",
             "mes": 1,
             "agno": 2014,
+            "dia": None,
         },
     },
     "acceso_abierto": {
