@@ -387,6 +387,9 @@ class CargaPublicacion:
         self.db.ejecutarConsulta(query, params)
 
     def buscar_fuente(self) -> int:
+        if not self.datos.fuente.identificadores:
+            return None
+
         where = " OR ".join(
             f"(idf.tipo = '{identificador.tipo}' AND idf.valor = '{identificador.valor}')"
             for identificador in self.datos.fuente.identificadores
