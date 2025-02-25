@@ -14,9 +14,11 @@ def leer_csv() -> list[str]:
 def informe_autores_por_publicaciones():
     dois = leer_csv()
 
+    dois = [doi.lower() for doi in dois]
+
     bd = BaseDatos()
     query_autores = f"""SELECT 
-            doi.valor as 'DOI',
+            LOWER(doi.valor) as 'DOI',
             CONCAT(i.apellidos, ", ", i.nombre) as 'Nombre',
             i.idInvestigador as 'ID Prisma',
             c.nombre as 'Categoria',
@@ -35,7 +37,7 @@ def informe_autores_por_publicaciones():
             LEFT JOIN investigador_biblioteca ib ON ib.idInvestigador = i.idInvestigador
             LEFT JOIN i_biblioteca b ON b.nombre = ib.biblioteca
             LEFT JOIN i_centro centro ON centro.idBiblioteca = b.idBiblioteca
-            WHERE doi.valor IN ({", ".join(f"'{doi}'" for doi in dois)})
+            WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, i.idInvestigador
             ORDER BY doi.valor, i.idInvestigador;
             """
@@ -47,7 +49,7 @@ def informe_autores_por_publicaciones():
     df_autores = pd.concat([df_autores, missing_rows], ignore_index=True)
 
     query_jif = f"""SELECT 
-            doi.valor AS 'DOI',
+            LOWER(doi.valor) AS 'DOI',
             f.titulo AS 'Revista',
             j.edition as 'Edición',
             j.category as 'Categoría',
@@ -62,7 +64,7 @@ def informe_autores_por_publicaciones():
             LEFT JOIN (SELECT * FROM p_identificador_publicacion WHERE tipo = "doi") doi ON doi.idPublicacion = p.idPublicacion
             LEFT JOIN p_fuente f ON f.idFuente = p.idFuente
             LEFT JOIN (SELECT * FROM m_jcr WHERE year = '2023') j ON j.idFuente = f.idFuente
-            WHERE doi.valor IN ({", ".join(f"'{doi}'" for doi in dois)})
+            WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, j.idFuente, j.edition, j.category
             ORDER BY doi.valor, j.idFuente;
             """
@@ -74,7 +76,7 @@ def informe_autores_por_publicaciones():
     df_jif = pd.concat([df_jif, missing_rows], ignore_index=True)
 
     query_jci = f"""SELECT 
-            doi.valor AS 'DOI',
+            LOWER(doi.valor) AS 'DOI',
             f.titulo AS 'Revista',
             j.categoria as 'Categoría',
             j.jci as 'JCI',
@@ -88,7 +90,7 @@ def informe_autores_por_publicaciones():
             LEFT JOIN (SELECT * FROM p_identificador_publicacion WHERE tipo = "doi") doi ON doi.idPublicacion = p.idPublicacion
             LEFT JOIN p_fuente f ON f.idFuente = p.idFuente
             LEFT JOIN (SELECT * FROM m_jci WHERE agno = '2023') j ON j.idFuente = f.idFuente
-            WHERE doi.valor IN ({", ".join(f"'{doi}'" for doi in dois)})
+            WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, j.idFuente, j.categoria
             ORDER BY doi.valor, j.idFuente;
             """
@@ -100,7 +102,7 @@ def informe_autores_por_publicaciones():
     df_jci = pd.concat([df_jci, missing_rows], ignore_index=True)
 
     query_citescore = f"""SELECT 
-            doi.valor AS 'DOI',
+            LOWER(doi.valor) AS 'DOI',
             f.titulo AS 'Revista',
             j.categoria as 'Categoría',
             j.citescore as 'Citescore',
@@ -114,7 +116,7 @@ def informe_autores_por_publicaciones():
             LEFT JOIN (SELECT * FROM p_identificador_publicacion WHERE tipo = "doi") doi ON doi.idPublicacion = p.idPublicacion
             LEFT JOIN p_fuente f ON f.idFuente = p.idFuente
             LEFT JOIN (SELECT * FROM m_citescore WHERE agno = '2023') j ON j.idFuente = f.idFuente
-            WHERE doi.valor IN ({", ".join(f"'{doi}'" for doi in dois)})
+            WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, j.idFuente, j.categoria
             ORDER BY doi.valor, j.idFuente;
             """
