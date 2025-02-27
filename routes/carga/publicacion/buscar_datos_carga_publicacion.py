@@ -1,6 +1,7 @@
 from db.conexion import BaseDatos
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAccesoAbierto,
+    DatosCargaAfiliacionesAutor,
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
     DatosCargaEditorial,
@@ -37,6 +38,7 @@ def busqueda_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPubl
     datos_carga_publicacion.año_publicacion = publicacion["agno"]
 
     buscar_autores(id_publicacion, db, datos_carga_publicacion)
+    buscar_afiliaciones_autor(id_publicacion, db, datos_carga_publicacion)
     buscar_identificadores_publicacion(id_publicacion, db, datos_carga_publicacion)
     buscar_datos_publicacion(id_publicacion, db, datos_carga_publicacion)
 
@@ -69,6 +71,7 @@ def buscar_autores(
     for index, autor in autores.iterrows():
         dato_autor = DatosCargaAutor()
 
+        dato_autor.id_autor = autor["idAutor"]
         dato_autor.firma = autor["firma"]
         dato_autor.tipo = autor["rol"]
         dato_autor.orden = autor["orden"]
@@ -77,6 +80,32 @@ def buscar_autores(
         lista_datos_autor.append(dato_autor)
 
     datos_carga_publicacion.autores = lista_datos_autor
+
+
+def buscar_afiliaciones_autor(
+    id_publicacion, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+):
+    for autor in datos_carga_publicacion.autores:
+        query_afiliaciones_autor = """SELECT * FROM prisma.p_afiliacion a
+            LEFT JOIN prisma.p_autor_afiliacion aa ON a.id = aa.afiliacion_id
+            WHERE aa.autor_id = %(idAutor)s
+            """
+        params_afiliaciones_autor = {"idAutor": autor.id_autor}
+
+        db.ejecutarConsulta(query_afiliaciones_autor, params_afiliaciones_autor)
+        afiliaciones_autor = db.get_dataframe()
+
+        lista_afiliaciones_autor: list[DatosCargaAfiliacionesAutor] = []
+        for index, afiliacion_autor in afiliaciones_autor.iterrows():
+            datos_afiliacion_autor = DatosCargaAfiliacionesAutor()
+
+            datos_afiliacion_autor.nombre = afiliacion_autor["afiliacion"]
+            datos_afiliacion_autor.pais = afiliacion_autor["pais"]
+            datos_afiliacion_autor.ror_id = afiliacion_autor["id_ror"]
+
+            lista_afiliaciones_autor.append(datos_afiliacion_autor)
+
+        autor.afiliaciones = lista_afiliaciones_autor
 
 
 def buscar_identificadores_publicacion(

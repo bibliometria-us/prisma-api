@@ -1,0 +1,64 @@
+<doi_batch xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:schemaLocation="http://www.crossref.org/schema/5.3.0 https://www.crossref.org/schemas/crossref5.3.0.xsd"
+               xmlns="http://www.crossref.org/schema/5.3.0" xmlns:jats="http://www.ncbi.nlm.nih.gov/JATS1"
+               xmlns:fr="http://www.crossref.org/fundref.xsd" xmlns:ai="http://www.crossref.org/AccessIndicators.xsd" xmlns:mml="http://www.w3.org/1998/Math/MathML" version="5.3.0">
+                        
+    <head>
+        <doi_batch_id>"idus:{handle}"</doi_batch_id>
+        <timestamp>{hora_actual(YYYYmmddHHMMSS)}</timestamp>
+        <depositor>
+            <depositor_name>sevl:sevl</depositor_name>
+            <email_address>secpub5@us.es</email_address>
+        </depositor>
+        <registrant>Universidad de Sevilla</registrant>
+    </head>                    
+    <body>
+        <database>
+            <database_metadata language="es">
+                <titles>
+                    <title>Datasets de idUS</title>
+                </titles>
+                <institution>
+                    <institution_name>Universidad de Sevilla</institution_name>
+                    <institution_id type="ror">https://ror.org/03yxnpp24</institution_id>
+                </institution>
+            </database_metadata>
+            <dataset dataset_type="collection">
+                <contributors>
+                    <person_name sequence="{first}" contributor_role="author">
+                        <given_name>{nombre_autor}</given_name>
+                        <surname>{apellido_autor}</surname>
+                    </person_name>
+                    <person_name sequence="{additional}" contributor_role="author">
+                        <given_name>{nombre_autor}</given_name>
+                        <surname>{apellido_autor}</surname>
+                    </person_name>
+                    <person_name sequence="{additional}" contributor_role="author">
+                        <given_name>{nombre_autor}</given_name>
+                        <surname>{apellido_autor}</surname>
+                    </person_name>
+                </contributors>
+                <titles>
+                    <title>{titulo_publicacion}</title>
+                </titles>
+                <database_date> 
+                    <creation_date>
+                        <month>{mes_publicacion(mm)}</month>
+                        <day>{dia_publicacion(dd)}</day>
+                        <year>{año_publicacion(YYYY)}</year>
+                    </creation_date>
+                    <publication_date>
+                        <month>{mes_publicacion(mm)}</month>
+                        <day>{dia_publicacion(dd)}</day>
+                        <year>{año_publicacion(YYYY)}</year>
+                    </publication_date>
+                </database_date>
+                <format mime_type="text/html"/>
+                <doi_data>
+                    <doi>10.12795/{handle}</doi>
+                    <resource>https://idus.us.es/handle/{handle}</resource>
+                </doi_data>
+            </dataset>
+        </database>
+    </body>   
+</doi_batch>

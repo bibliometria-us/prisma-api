@@ -316,3 +316,5 @@ celery_config.py
 integration/apis/elsevier/config.py
 
 tests/temp_examples
+routes/informes/acuerdos_transformativos/fuente/*
+*.xlsx
