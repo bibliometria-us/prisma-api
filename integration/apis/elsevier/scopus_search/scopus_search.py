@@ -2,6 +2,7 @@ import re
 from typing import List
 from integration.apis.api import API
 from integration.apis.elsevier import config
+from urllib.parse import quote
 
 
 class ScopusSearch(API):
@@ -46,35 +47,91 @@ class ScopusSearch(API):
         search_results: dict = self.response.get("search-results", {})
         self.results = search_results.get("entry", [])
 
-    def get_from_id(self, id: str):
-        scopus_regex = r"^2-s2\.0-\d{11}$"
-        if not re.match(scopus_regex, id, re.IGNORECASE):
-            raise ValueError(
-                f"'{id}' no tiene un formato válido de identificador Scopus."
+    def search_pag(self):
+        """
+        Método que ejecuta la paginación completa de la búsqueda y almacena los resultados.
+        """
+        self.results = (
+            []
+        )  # Asegurar que la lista de resultados esté vacía antes de comenzar la búsqueda
+        next_cursor = "*"
+
+        while next_cursor:
+            self.args["cursor"] = f"{next_cursor}"
+            self.get_respose()
+
+            search_results: dict = self.response.get("search-results", {})
+            total_results = int(search_results.get("opensearch:totalResults", 0))
+
+            if total_results == 0:
+                raise ValueError("No se encontraron resultados.")
+
+            self.results.extend(search_results.get("entry", []))
+
+            # Determinar si hay una siguiente página
+            cursor_data = search_results.get("cursor", {})
+            next_cursor = (
+                cursor_data.get("@next") if total_results > len(self.results) else None
             )
-        # TODO: Ver si realmente interesa poner esto aquí o a nivel de constructor
-        self.set_headers_key()
-        self.set_complete_view(True)
-
-        query = f"EID({id})"
-        self.args["query"] = query
-
-        self.search()
-        # TODO: controlar que el resultado no venga vacío
 
         return self.results
 
-    def get_from_doi(self, id: str):
+    def get_publicaciones_por_id(self, id_pub: str):
+        """
+        Método para obtener las publicaciones por id de Scopus.
+        """
+        scopus_regex = r"^2-s2\.0-\d{11}$"
+        if not re.match(scopus_regex, id_pub, re.IGNORECASE):
+            raise ValueError(
+                f"'{id_pub}' no tiene un formato válido de identificador Scopus."
+            )
+
+        self.set_headers_key()
+        self.set_complete_view(True)
+
+        query = f"EID({id_pub})"
+        self.args["query"] = query
+
+        return self.search_pag()
+
+    def get_publicaciones_por_doi(self, id_pub: str):
+        """
+        Método para obtener las publicaciones por DOI.
+        """
         doi_regex = r"^10\.\d{4,9}/[-._;()/:A-Z0-9]+$"
-        if not re.match(doi_regex, id, re.IGNORECASE):
-            raise ValueError(f"'{id}' no tiene un formato válido de DOI.")
-        # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
+        if not re.match(doi_regex, id_pub, re.IGNORECASE):
+            raise ValueError(f"'{id_pub}' no tiene un formato válido de DOI.")
+
         self.set_headers_key()
         self.set_complete_view(True)
 
-        query = f"DOI({id})"
+        query = f"DOI({id_pub})"
         self.args["query"] = query
-        self.search()
-        # TODO: controlar que el resultado no venga vacío
 
-        return self.results
+        return self.search_pag()
+
+    def get_publicaciones_por_investigador_fecha(
+        self, id_inves: str, agno_inicio: str = None, agno_fin: str = None
+    ):
+        """
+        Método para obtener las publicaciones por id de investigador dentro de un período de años.
+        """
+        scopus_regex = r"^\d{10,11}$"
+        if not re.match(scopus_regex, id_inves, re.IGNORECASE):
+            raise ValueError(
+                f"'{id_inves}' no tiene un formato válido de identificador Scopus."
+            )
+
+        self.set_headers_key()
+        self.set_complete_view(True)
+
+        query = f"AU-ID({id_inves})"
+        if agno_inicio and agno_fin:
+            agno_fin = int(agno_fin) + 1
+            agno_inicio = int(agno_inicio) - 1
+            query += f" AND PUBYEAR < {agno_fin} AND PUBYEAR > {agno_inicio}"
+
+        self.args["query"] = query
+
+        # Ejecutar la búsqueda paginada y devolver resultados
+        return self.search_pag()

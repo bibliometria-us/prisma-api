@@ -31,7 +31,7 @@ class ScopusParser(Parser):
 
     def api_request(self):
         api = ScopusSearch()
-        response = api.get_from_id(self.idScopus)
+        response = api.get_publicaciones_por_id(self.idScopus)
 
         self.data = response
 

@@ -1,6 +1,11 @@
 from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify
+from models.investigador import Investigador
+from routes.carga import consultas_cargas
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
+from routes.carga.publicacion.carga_publicacion_por_investigador import (
+    carga_publicaciones_investigador,
+)
 from routes.carga.publicacion.idus.carga import CargaPublicacionIdus
 from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
 from routes.carga.publicacion.scopus.carga import CargaPublicacionScopus
@@ -16,6 +21,7 @@ from routes.carga.investigador.grupos.actualizar_sica import (
 )
 from datetime import datetime
 import re
+
 
 carga_namespace = Namespace("carga", doc=False)
 
@@ -138,6 +144,7 @@ class CargaPublicacionImportar(Resource):
                 case "zenodo_id":
                     CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
                 case "doi":
+                    # TODO: REVISAR ORDEN EJECUCIÓN
                     CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
                     CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
                     CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
@@ -152,29 +159,56 @@ class CargaPublicacionImportar(Resource):
 
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****
-# @carga_namespace.route(
-#     "/publicacion/importar_publicaciones_investigador/",
-#     doc=False,
-#     endpoint="carga_publicaciones_investigador_",
-# )
-# class CargaPublicacionImportar_(Resource):
-#     def get(self):
-#         args = request.args
-#         tipo = args.get("tipo", None)
-#         id = args.get("id", None)
-#         # TODO: llamar a carga unit BD pasandole los params
-#         pass
+@carga_namespace.route(
+    "/publicacion/importar_publicaciones_por_investigador/",
+    doc=False,
+    endpoint="importar_publicaciones_por_investigador",
+)
+class CargaPublicacionImportar(Resource):
+    def get(self):
+
+        args = request.args
+        id = args.get("id", None).strip()
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            carga_publicaciones_investigador(
+                id_investigador=id, agno_inicio=None, agno_fin=None
+            )
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES INVESTIGADORES ACTIVOS +- 1 AÑO ****
-# @carga_namespace.route(
-#     "/publicacion/importar_publicaciones_masivo/",
-#     doc=False,
-#     endpoint="carga_publicaciones_masivo_2",
-# )
-# class CargaPublicacionImportar_2(Resource):
-#     def get(self):
-#         args = request.args
-#         tipo = args.get("tipo", None)
-#         id = args.get("id", None)
-#         # TODO: llamar a carga unit BD pasandole los params
-#         pass
+@carga_namespace.route(
+    "/publicacion/importar_publicaciones_masivo/",
+    doc=False,
+    endpoint="importar_publicaciones_masivo",
+)
+class ImportarPublicacionesMasivo(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+
+        agno_actual = current_year = datetime.now().year
+        agno_inicio = agno_actual - 1
+        agno_fin = agno_actual + 1
+        try:
+            investigadores = consultas_cargas.get_investigadores_activos()
+            for key, value in investigadores.items():
+                carga_publicaciones_investigador(
+                    id_investigador=key, agno_inicio=agno_inicio, agno_fin=agno_fin
+                )
+                pass
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500

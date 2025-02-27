@@ -24,18 +24,7 @@ class CargaPublicacionOpenalex(CargaPublicacion):
 
     def cargar_publicacion_por_id(self, id: str):
         api = OpenalexAPI()
-        # TODO: restaurar
-        # records = api.get_from_id(id=id)
-
-        # TODO: borrar
-        # -------------------------
-        records = None
-        # Abrir el archivo .txt que contiene el JSON
-        with open("tests/cargas/generico/json_openalex_1_pub.txt", "r") as file:
-            # Cargar el contenido del archivo y convertirlo a un objeto Python
-            records = json.load(file)
-            records = records.get("results", {})
-        # ---------------------------
+        records = api.get_publicaciones_por_id(id=id)
         if len(records) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:
@@ -46,12 +35,18 @@ class CargaPublicacionOpenalex(CargaPublicacion):
         return None
 
     def cargar_publicacion_por_doi(self, id: str):
-        pass
+        api = OpenalexAPI()
+        records = api.get_publicaciones_por_doi(id=id)
+        if len(records) == 0:
+            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+        for publicacion in records:
+            parser = OpenalexParser(data=publicacion)
+            self.datos = parser.datos_carga_publicacion
+            self.cargar_publicacion()
 
-    def cargar_publicaciones_por_investigador(id_investigador: str):
-        pass
+        return None
 
-    def cargar_publicaciones_por_investigador_limitada_agnos(
-        self, id_investigador: str, agno_inicio: str, agno_fin: str
+    def cargar_publicaciones_por_investigador(
+        id_investigador: str, agno_inicio: str = None, agno_fin: str = None
     ):
         pass

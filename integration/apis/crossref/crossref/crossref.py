@@ -41,7 +41,7 @@ class CrossrefAPI(API):
     def set_param_mailto(self):
         self.args["mailto"] = config.mail
 
-    def get_from_doi(self, id: str):
+    def get_publicaciones_por_doi(self, id: str):
         # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
         self.set_headers_key()
         self.set_headers_rate_limits()

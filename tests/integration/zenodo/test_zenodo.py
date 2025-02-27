@@ -14,7 +14,7 @@ ids_zenodo = [
 def test_busqueda_por_id():
     api = ZenodoAPI()
     for id in ids_zenodo:
-        records = api.search_by_doi(id)
+        records = api.get_publicaciones_por_doi(id)
         assert not api.response.get("service-error")
         for record in records:
             parser = ZenodoParser(data=record)

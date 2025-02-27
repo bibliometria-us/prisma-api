@@ -21,19 +21,7 @@ class CargaPublicacionZenodo(CargaPublicacion):
 
     def cargar_publicacion_por_doi(self, id: str):
         api = ZenodoAPI()
-        # TODO: restaurar
-        # records = api.search_by_doi(id=id)
-
-        # TODO: borrar
-        # -------------------------
-        records = None
-        # Abrir el archivo .txt que contiene el JSON
-        with open("tests/cargas/generico/json_zenodo_1_pub.txt", "r") as file:
-            # Cargar el contenido del archivo y convertirlo a un objeto Python
-            records = json.load(file)
-            search_results: dict = records.get("hits", {})
-            records = search_results.get("hits", [])
-        # ---------------------------
+        records = api.get_publicaciones_por_doi(id=id)
         if len(records) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:

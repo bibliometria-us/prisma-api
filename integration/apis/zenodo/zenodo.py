@@ -32,7 +32,7 @@ class ZenodoAPI(API):
         search_results: dict = self.response.get("hits", {})  # TODO: cambiar message
         self.results = search_results
 
-    def search_by_doi(self, doi: str):
+    def get_publicaciones_por_doi(self, doi: str):
         self.set_api_key()
         self.set_headers_complete_view()
         # escaped_doi = re.escape(doi)
