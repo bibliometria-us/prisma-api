@@ -25,19 +25,7 @@ class CargaPublicacionWos(CargaPublicacion):
 
     def cargar_publicacion_por_id(self, id: str):
         api = WosAPI()
-        # TODO: restaurar
-        # records = api.get_from_id(id=id)
-
-        # TODO: borrar
-        # -------------------------
-        records = None
-        # Abrir el archivo .txt que contiene el JSON
-        with open("tests/cargas/generico/json_wos_1_pub.txt", "r") as file:
-            # Cargar el contenido del archivo y convertirlo a un objeto Python
-            records = json.load(file)
-            search_results: dict = records.get("Data", {})
-            records = search_results.get("Records", []).get("records", [])
-        # ---------------------------
+        records = api.get_publicaciones_por_id(id=id)
         if len(records) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records.get("REC", []):
@@ -49,19 +37,7 @@ class CargaPublicacionWos(CargaPublicacion):
 
     def cargar_publicacion_por_doi(self, id: str):
         api = WosAPI()
-        # TODO: restaurar
-        # records = api.get_from_doi(id=id)
-
-        # TODO: borrar
-        # -------------------------
-        records = None
-        # Abrir el archivo .txt que contiene el JSON
-        with open("tests/cargas/generico/json_wos_1_pub.txt", "r") as file:
-            # Cargar el contenido del archivo y convertirlo a un objeto Python
-            records = json.load(file)
-            search_results: dict = records.get("search-results", {})
-            records = search_results.get("entry", [])
-        # ---------------------------
+        records = api.get_publicaciones_por_doi(id=id)
         if len(records) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:
@@ -71,10 +47,17 @@ class CargaPublicacionWos(CargaPublicacion):
 
         return None
 
-    def cargar_publicaciones_por_investigador(id_investigador: str):
-        pass
-
-    def cargar_publicaciones_por_investigador_limitada_agnos(
-        self, id_investigador: str, agno_inicio: str, agno_fin: str
+    def cargar_publicaciones_por_investigador(
+        self, id_investigador: str, agno_inicio: str = None, agno_fin: str = None
     ):
-        pass
+        api = WosAPI()
+        records = api.get_publicaciones_por_investigador_fecha(id_inves=id_investigador)
+
+        if len(records) == 0:
+            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+        for publicacion in records:
+            parser = WosParser(data=publicacion)
+            self.datos = parser.datos_carga_publicacion
+            self.cargar_publicacion()
+
+        return None

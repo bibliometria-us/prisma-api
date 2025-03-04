@@ -1,3 +1,4 @@
+import re
 from typing import List
 from integration.apis.api import API
 from integration.apis.clarivate.wos import config
@@ -63,7 +64,23 @@ class WosAPI(API):
         if self.records_found > self.json["firstRecord"] + self.json["count"]:
             self.search(page=page + 1)
 
-    def get_from_id(self, id: str):
+    def search_pag(self, page=0):
+        self.get_respose(request_method="POST")
+
+        self.json["firstRecord"] = self.json["count"] * page + 1
+
+        self.records_found = self.response["QueryResult"]["RecordsFound"]
+        if self.records_found == 0:
+            return None
+
+        records = self.response["Data"]["Records"]["records"]["REC"]
+
+        self.records += records
+
+        if self.records_found > self.json["firstRecord"] + self.json["count"]:
+            self.search(page=page + 1)
+
+    def get_publicaciones_por_id(self, id: str):
         self.route = "/"
         # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
         self.set_api_key()
@@ -87,7 +104,7 @@ class WosAPI(API):
         # Se devuelve un resultado ya que es una petición de una pub por id
         return self.records
 
-    def get_from_doi(self, id: str):
+    def get_publicaciones_por_doi(self, id: str):
         self.route = "/"
         # TODO: Ver si realmente interesa poener esto aquí o a nivel de constructor
         self.set_api_key()
@@ -132,3 +149,32 @@ class WosAPI(API):
         # TODO: controlar que el resultado no venga vacío
         # Se devuelve un resultado ya que es una petición de una pub por id
         return self.records[0]
+
+    def get_publicaciones_por_investigador_fecha(
+        self, id_inves: str, agno_inicio: str = None, agno_fin: str = None
+    ):
+        self.route = "/"
+        wos_regex = r"^[A-Z]-\d{4}-(200[8-9]|201\d|202[0-5])$"
+        if not re.match(wos_regex, id_inves, re.IGNORECASE):
+            raise ValueError(
+                f"'{id_inves}' no tiene un formato válido de identificador ResearcherId."
+            )
+        self.set_api_key()
+        # TODO: dataBaseId WOS o WOK ?
+        dataBaseId = f"WOS"
+        query = f"AI=({id_inves})"
+
+        body_args = {}
+        if agno_inicio and agno_fin:
+            if int(agno_fin) - int(agno_inicio) > 5:
+                raise ValueError(
+                    f"El rango de años '{agno_inicio}-{agno_fin}' no debe ser superior a 5 años."
+                )
+            query += f" AND PY=({agno_inicio}-{agno_fin})"
+
+        body_args["usrQuery"] = query
+        body_args["databaseId"] = dataBaseId
+
+        self.add_json_data(body_args)
+        self.search_pag()
+        return self.records

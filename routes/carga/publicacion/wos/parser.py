@@ -47,6 +47,12 @@ class WosParser(Parser):
     def cargar_tipo(self):
         tipo = self.data["static_data"]["summary"]["doctypes"]["doctype"]
 
+        if self.data["static_data"]["summary"]["doctypes"]["count"] > 1:
+            if "Article" in tipo:
+                tipo = "Article"
+            else:
+                valor = tipo[0]
+
         tipos = {
             # TODO: Aclarar tipos pubs - a resolver
             "ar": "Artículo",
@@ -63,6 +69,7 @@ class WosParser(Parser):
         }
 
         valor = tipos.get(tipo) or "Otros"
+
         self.datos_carga_publicacion.set_tipo(valor)
 
     def _cargar_autores(
@@ -93,36 +100,46 @@ class WosParser(Parser):
                     tipo="orcid", valor=autor.get("orcid_id")
                 )
                 carga_autor.add_id(id_autor_orcid)  # Lo añadimos al objeto de Autor
-
             # Se completa las el Objeto DatosCargaAfiliacion(Afiliaciones del Autor)
-            for aff in self.data["static_data"]["fullrecord_metadata"]["addresses"].get(
-                "address_name", []
-            ):
+
+            # Esto se hace porque a veces addresses es un diccionario y a veces una lista
+            addresses = self.data["static_data"]["fullrecord_metadata"][
+                "addresses"
+            ].get("address_name", [])
+
+            if isinstance(addresses, dict):
+                addresses = [addresses]
+
+            for aff in addresses:
                 author_in_aff = False
-                # afiliaciones con 1 autor
-                if aff["names"]["count"] == 1:
-                    author_in_aff = aff["names"]["name"]["display_name"] == firma
-                else:  # afiliaciones con varios autores
-                    author_in_aff = any(
-                        aff_name_author["display_name"] == firma
-                        for aff_name_author in aff["names"]["name"]
-                    )
 
-                if author_in_aff:
-                    pais_aff = aff["address_spec"]["country"]
+                if "name" in aff:
+                    name = aff["names"].get("name", [])
 
-                    for aff_org in aff["address_spec"]["organizations"].get(
-                        "organization"
-                    ):
-                        if aff_org["pref"] == "Y":
-                            nombre_aff = aff_org["content"]
-                            ror_aff = aff_org["ror_id"]
+                    # afiliaciones con 1 autor
+                    if aff["names"]["count"] == 1:
+                        author_in_aff = name["display_name"] == firma
+                    else:  # afiliaciones con varios autores
+                        author_in_aff = any(
+                            aff_name_author["display_name"] == firma
+                            for aff_name_author in name
+                        )
 
-                            afiliacion_autor = DatosCargaAfiliacionesAutor(
-                                nombre=nombre_aff, pais=pais_aff, ror_id=ror_aff
-                            )
+                    if author_in_aff:
+                        pais_aff = aff["address_spec"]["country"]
 
-                            carga_autor.add_afiliacion(afiliacion=afiliacion_autor)
+                        for aff_org in aff["address_spec"]["organizations"].get(
+                            "organization"
+                        ):
+                            if aff_org["pref"] == "Y":
+                                nombre_aff = aff_org["content"]
+                                ror_aff = aff_org.get("ror_id", None)
+
+                                afiliacion_autor = DatosCargaAfiliacionesAutor(
+                                    nombre=nombre_aff, pais=pais_aff, ror_id=ror_aff
+                                )
+
+                                carga_autor.add_afiliacion(afiliacion=afiliacion_autor)
 
             self.datos_carga_publicacion.add_autor(carga_autor)
 
@@ -136,7 +153,6 @@ class WosParser(Parser):
         pass
 
     # TODO: Introducir editores - Revisar donde está en el JSON
-
     def cargar_directores(self):
         pass
 
@@ -171,9 +187,14 @@ class WosParser(Parser):
         )
         self.datos_carga_publicacion.add_identificador(identificador_wos)
 
-        for id in self.data["dynamic_data"]["cluster_related"]["identifiers"][
-            "identifier"
-        ]:
+        identifier = self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
+            "identifier", []
+        )
+        # Si es un diccionario, lo convertimos en una lista para evitar errores
+        if isinstance(identifier, dict):
+            identifier = [identifier]
+
+        for id in identifier:
             match id["type"]:
                 case "doi":
                     identificador = DatosCargaIdentificadorPublicacion(
@@ -202,9 +223,14 @@ class WosParser(Parser):
         self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_numero_art(self):
-        for id in self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
+        identifier = self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
             "identifier", []
-        ):
+        )
+        # Si es un diccionario, lo convertimos en una lista para evitar errores
+        if isinstance(identifier, dict):
+            identifier = [identifier]
+
+        for id in identifier:
             match id["type"]:
                 # Esto es una excepcion, pero se guarda en IDs en el JSON
                 case "art_no":
@@ -226,9 +252,14 @@ class WosParser(Parser):
         self.cargar_pag_inicio_fin()
 
     def cargar_ids_fuente(self):
-        for id in self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
+        identifier = self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
             "identifier", []
-        ):
+        )
+        # Si es un diccionario, lo convertimos en una lista para evitar errores
+        if isinstance(identifier, dict):
+            identifier = [identifier]
+
+        for id in identifier:
             match id["type"]:
                 case "issn":
                     identificador = DatosCargaIdentificadorFuente(

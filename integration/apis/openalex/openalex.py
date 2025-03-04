@@ -24,30 +24,74 @@ class OpenalexAPI(API):
         )
         self.results = []
 
-    def search_get_from_id(self, id=id):
-        self.set_param_mailto()
-        self.set_param_id(id=id)
-        self.get_respose(timeout=(5, 5))
-        search_results: dict = self.response.get("results", {})  # TODO: cambiar message
-        self.results = search_results
-        return search_results
+    def search_pag(self):
+        """
+        Método que ejecuta la paginación completa de la búsqueda y almacena los resultados.
+        """
+        self.results = (
+            []
+        )  # Asegurar que la lista de resultados esté vacía antes de comenzar la búsqueda
+        next_cursor = "*"
 
-    def search_get_from_doi(self, id=id):
-        self.set_param_mailto()
-        self.set_param_doi(doi=id)
-        self.get_respose(timeout=(5, 5))
-        search_results: dict = self.response.get("results", {})  # TODO: cambiar message
-        self.results = search_results
-        return search_results
+        while next_cursor:
+            self.args["cursor"] = f"{next_cursor}"
+            self.get_respose()
+            meta: dict = self.response.get("meta", {})
+            search_results: dict = self.response.get("results", {})
+            total_results = int(meta.get("count", 0))
+
+            if total_results == 0:
+                raise ValueError("No se encontraron resultados.")
+
+            self.results.extend(search_results)
+
+            # Determinar si hay una siguiente página
+            next_cursor = (
+                meta.get("next_cursor", None)
+                if total_results > len(self.results)
+                else None
+            )
+
+        return self.results
 
     def set_param_mailto(self):
         self.args["mailto"] = config.mail
 
-    def set_param_doi(self, doi):
-        self.args["filter"] = f"doi:{doi}"
-
-    def set_param_id(self, id):
-        self.args["filter"] = f"id.openalex:{id}"
+    def set_param_filter(self, filter):
+        self.args["filter"] = filter
 
     def set_headers_user_agent(self):
         self.headers["User-Agent"] = f"mailto:{config.mail}"
+
+    def get_publicaciones_por_id(self, id=id):
+        self.set_param_mailto()
+        self.set_param_id(id=id)
+        self.set_param_filter(filter=f"id.openalex:{id}")
+
+        return self.search_pag()
+
+    def get_publicaciones_por_doi(self, id=id):
+        self.set_param_mailto()
+        self.set_param_filter(filter=f"doi:{id}")
+
+        return self.search_pag()
+
+    def get_publicaciones_por_investigador_fecha(
+        self, id_inves: str, agno_inicio: str = None, agno_fin: str = None
+    ):
+
+        openalex_regex = r"A(\d+)"
+        if not re.match(openalex_regex, id_inves, re.IGNORECASE):
+            raise ValueError(
+                f"'{id_inves}' no tiene un formato válido de identificador OpenAlex."
+            )
+
+        self.set_param_mailto()
+        filter = f'authorships.author.id:"{id_inves}")'
+        if agno_inicio and agno_fin:
+            agno_fin = int(agno_fin) + 1
+            agno_inicio = int(agno_inicio) - 1
+            filter += f",publication_year:{agno_inicio}-{agno_fin}"
+        self.set_param_filter(filter=filter)
+
+        return self.search_pag()

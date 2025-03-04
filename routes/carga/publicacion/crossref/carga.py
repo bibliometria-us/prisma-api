@@ -23,21 +23,8 @@ class CargaPublicacionCrossref(CargaPublicacion):
 
     def cargar_publicacion_por_doi(self, id: str):
         api = CrossrefAPI()
-        # TODO: restaurar
-        # records = api.get_from_doi(id=id)
-
-        # TODO: borrar
-        # -------------------------
-        records = None
-        # Abrir el archivo .txt que contiene el JSON
-        with open("tests/cargas/generico/json_xref_1_pub.txt", "r") as file:
-            # Cargar el contenido del archivo y convertirlo a un objeto Python
-            records = json.load(file)
-            # En Xref solo viene una publicación en la API
-            record: dict = records.get("message", {})
-        # ---------------------------
-        # TODO: ver como funciona cuando viene de la API
-        if len(records) == 0:
+        record = api.get_publicaciones_por_doi(id=id)
+        if len(record) == 0:
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
 
         parser = CrossrefParser(data=record)
