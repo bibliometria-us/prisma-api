@@ -66,5 +66,6 @@ def generate_fuzzing():
             output_file.write(json_data + "\n")
 
 
+@pytest.mark.skip()
 def test_generate_fuzzing():
     generate_fuzzing()

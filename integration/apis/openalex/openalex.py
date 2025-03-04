@@ -65,8 +65,7 @@ class OpenalexAPI(API):
 
     def get_publicaciones_por_id(self, id=id):
         self.set_param_mailto()
-        self.set_param_id(id=id)
-        self.set_param_filter(filter=f"id.openalex:{id}")
+        self.set_param_filter(filter=f"ids.openalex:{id}")
 
         return self.search_pag()
 

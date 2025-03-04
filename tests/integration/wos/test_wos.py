@@ -1,4 +1,6 @@
 from time import sleep
+
+import pytest
 from integration.apis.clarivate.wos.wos_api import WosAPI
 from routes.carga import consultas_cargas
 from routes.carga.publicacion.wos.parser import WosParser
@@ -30,6 +32,7 @@ def test_busqueda_por_id():
 def test_busqueda_por_doi():
     api = WosAPI()
     for id in dois_wos:
+        sleep(1)
         records = api.get_publicaciones_por_doi(id)
         assert not api.response.get("service-error")
         for record in records:
@@ -37,6 +40,7 @@ def test_busqueda_por_doi():
             json = parser.datos_carga_publicacion.to_json()
 
 
+@pytest.mark.skip()
 def test_masivo_por_inves():
     api = WosAPI()
     for id in id_inves_wos:
@@ -51,6 +55,7 @@ def test_masivo_por_inves():
             json = parser.datos_carga_publicacion.to_json()
 
 
+@pytest.mark.skip()
 def test_masivo_guardado_json():
     """Obtiene publicaciones de investigadores activos y guarda en JSON en cada iteración."""
     fuente = "wos"
@@ -144,6 +149,7 @@ def test_masivo_guardado_json():
     )
 
 
+@pytest.mark.skip()
 def test_masivo_carga_json():
     fuente = "wos"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"

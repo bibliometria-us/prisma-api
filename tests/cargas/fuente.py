@@ -1,3 +1,10 @@
+import copy
+
+
+def get_publicacion_fuente():
+    return copy.deepcopy(publicacion)
+
+
 publicacion = {
     "titulo": "Measurement of the angular distribution of fission fragments using a PPAC assembly at CERN n-TOF",
     "titulo_alternativo": "",
