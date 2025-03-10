@@ -21,6 +21,7 @@ from routes.carga.investigador.grupos.actualizar_sica import (
 )
 from datetime import datetime
 import re
+from utils.format import dataframe_to_json
 
 
 carga_namespace = Namespace("carga", doc=False)
@@ -208,6 +209,149 @@ class ImportarPublicacionesMasivo(Resource):
                     id_investigador=key, agno_inicio=agno_inicio, agno_fin=agno_fin
                 )
                 pass
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# *************************************
+# **** QUALITY RULES PUBLICACIONES ****
+# *************************************
+# p_00
+# No es una regla de calidad - Obtiene la lista de las bibliotecas
+@carga_namespace.route(
+    "/publicacion/p_00",
+    doc=False,
+    endpoint="p_00",
+)
+class p_00(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas_cargas.get_quality_rule_p_00()
+            json = dataframe_to_json(incidencias)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_01
+# Publicación con tipo de Datos duplicado
+@carga_namespace.route(
+    "/publicacion/p_01",
+    doc=False,
+    endpoint="p_01",
+)
+class p_01(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas_cargas.get_quality_rule_p_01()
+            json = dataframe_to_json(incidencias)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_02
+# Publicación con tipo de Identificadores duplicado
+@carga_namespace.route(
+    "/publicacion/p_02",
+    doc=False,
+    endpoint="p_02",
+)
+class p_02(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas_cargas.get_quality_rule_p_02()
+            json = dataframe_to_json(incidencias)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_03
+# Autores duplicados en publicación con mismo rol
+@carga_namespace.route(
+    "/publicacion/p_03",
+    doc=False,
+    endpoint="p_03",
+)
+class p_03(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas_cargas.get_quality_rule_p_03()
+            json = dataframe_to_json(incidencias)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_04
+# Publicación sin autores US
+@carga_namespace.route(
+    "/publicacion/p_04",
+    doc=False,
+    endpoint="p_04",
+)
+class p_04(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas_cargas.get_quality_rule_p_04()
+            json = dataframe_to_json(incidencias)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
         except ValueError as e:
             return {"message": str(e)}, 402
         except Exception as e:
