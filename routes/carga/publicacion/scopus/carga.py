@@ -40,6 +40,7 @@ class CargaPublicacionScopus(CargaPublicacion):
         records = api.get_publicaciones_por_doi(id_pub=id)
 
         if len(records) == 0:
+            # TODO: Devolver nulo y gestionarlo en el método de la API
             raise ValueError(f"El id {id} no devuelve ningún resultado.")
         for publicacion in records:
             parser = ScopusParser(data=publicacion)

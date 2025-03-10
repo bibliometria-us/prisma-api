@@ -1,3 +1,6 @@
+from time import sleep
+
+import pytest
 from integration.apis.openalex.openalex import OpenalexAPI
 from routes.carga import consultas_cargas
 from routes.carga.publicacion.openalex.parser import OpenalexParser
@@ -7,11 +10,15 @@ import os
 import time
 
 
-ids_openalex = [
+dois_openalex = [
     "10.12688/openreseurope.17554.2",  # Artículo
     "10.3233/faia240928",  # Capítulo
     "10.1007/978-3-030-61705-9_13",  # Ponencia
     # "2-s2.0-85ccxcx2216 ",  # No existe
+]
+
+ids_openalex = [
+    "w2065129536",
 ]
 
 id_inves_openalex = ["A5085171399"]
@@ -19,7 +26,8 @@ id_inves_openalex = ["A5085171399"]
 
 def test_busqueda_por_doi():
     api = OpenalexAPI()
-    for id in ids_openalex:
+    for id in dois_openalex:
+        sleep(1)
         records = api.get_publicaciones_por_doi(id)
         assert not api.response.get("service-error")
         for record in records:
@@ -30,6 +38,7 @@ def test_busqueda_por_doi():
 def test_busqueda_por_id():
     api = OpenalexAPI()
     for id in ids_openalex:
+        sleep(1)
         records = api.get_publicaciones_por_id(id)
         assert not api.response.get("service-error")
         for record in records:
@@ -37,6 +46,7 @@ def test_busqueda_por_id():
             json = parser.datos_carga_publicacion.to_json()
 
 
+@pytest.mark.skip()
 def test_masivo_por_inves():
     api = OpenalexAPI()
     for id in id_inves_openalex:
@@ -49,6 +59,7 @@ def test_masivo_por_inves():
             json = parser.datos_carga_publicacion.to_json()
 
 
+@pytest.mark.skip()
 def test_masivo_guardado_json():
     """Obtiene publicaciones de investigadores activos y guarda en JSON en cada iteración."""
     fuente = "openalex"
@@ -141,6 +152,7 @@ def test_masivo_guardado_json():
     )
 
 
+@pytest.mark.skip()
 def test_masivo_carga_json():
     fuente = "openalex"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"

@@ -3,10 +3,15 @@ from flask import Response, make_response, request, jsonify
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
+from routes.carga.investigador.centros_censo.carga import carga_centros_censados
+from routes.carga.publicacion.idus.parser import IdusParser
+from routes.carga.publicacion.scopus.parser import ScopusParser
+from routes.carga.investigador.centros_censo.procesado import procesado_fichero
 from routes.carga.publicacion.carga_publicacion_por_investigador import (
     carga_publicaciones_investigador,
 )
 from routes.carga.publicacion.idus.carga import CargaPublicacionIdus
+from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
 from routes.carga.publicacion.scopus.carga import CargaPublicacionScopus
 from routes.carga.publicacion.wos.carga import CargaPublicacionWos
@@ -20,6 +25,7 @@ from routes.carga.investigador.grupos.actualizar_sica import (
     actualizar_grupos_sica,
 )
 from datetime import datetime
+from logger.async_request import AsyncRequest
 import re
 from utils.format import dataframe_to_json
 
@@ -45,6 +51,42 @@ class CargaGrupos(Resource):
         actualizar_grupos_sica()
 
         return None
+
+
+@carga_namespace.route(
+    "/investigador/centros_censo/", doc=False, endpoint="carga_centros_censo"
+)
+class CargaCentrosCenso(Resource):
+    def post(self):
+        # TODO: Implementar llamada a la API para la carga del fichero de centros de censo.
+        args = request.args
+        try:
+            api_key = args.get("api_key")
+
+            if not es_admin(api_key=api_key):
+                return {"message": "No autorizado"}, 401
+            if "files[]" not in request.files:
+                return {"error": "No se han encontrado archivos en la petición"}, 400
+
+            file = request.files.getlist("files[]")[0]
+
+            if not file.filename.endswith((".xls", ".xlsx")):
+                return {"error": "El archivo no es un Excel válido"}, 400
+
+            # 1. Lectura de fichero. Crear estos métodos en routes/carga/investigador/centros_censo/procesado.py
+            csv_path = procesado_fichero(file)
+            # 2. Crear un AsyncRequest al que le pasas la ruta del fichero como parámetro
+            params = {"ruta": csv_path}
+            async_request = AsyncRequest(
+                email="bibliometria@us.es",
+                params=params,
+                request_type="carga_centros_censo",
+            )
+            # 3. Llamar a la función de Celery etiquetada como "carga_centros_censo" con la ID del AsyncRequest creado como parámetro
+            current_app.tasks["carga_centros_censo"].apply_async([async_request.id])
+        except Exception as e:
+            # Capturar la excepción e imprimir el mensaje de error
+            print(f"Ocurrió un error: {e}")
 
 
 @carga_namespace.route(
@@ -75,18 +117,17 @@ class CargaWosJournals(Resource):
 @carga_namespace.route(
     "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
 )
-class CargaIdus(Resource):
+class CargaPublicacionIdus(Resource):
     def get(self):
         args = request.args
 
         handle = args.get("handle", None)
 
         try:
+            parser = IdusParser(handle=handle)
+            json = parser.datos_carga_publicacion.to_json()
 
-            carga = CargaPublicacionIdus()
-            carga.cargar_publicacion_por_handle(handle)
-
-            # TODO: Gestionar excepciones y devolver un mensaje en función del resultado
+            return Response(json, content_type="application/json; charset=utf-8")
 
         except Exception:
             return {"message": "Error inesperado"}, 500

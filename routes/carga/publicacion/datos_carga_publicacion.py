@@ -24,14 +24,14 @@ class DatosCarga(ABC):
     @staticmethod
     def merge_dict(source: list["DatosCarga"] = []):
         indexed: dict[int, DatosCarga] = enumerated_dict(source)
-        return {index: value.to_dict() for index, value in indexed.items()}
+        return [value.to_dict() for index, value in indexed.items()]
 
     @staticmethod
     def merged_from_dict(source: dict[int, dict], object_class: Type["DatosCarga"]):
         if len(source) == 0:
             return {}
 
-        return [object_class().from_dict(valor) for valor in source.values()]
+        return [object_class().from_dict(valor) for valor in source]
 
     def __str__(self):
         return str(self.to_dict())
@@ -173,6 +173,11 @@ class DatosCargaPublicacion(DatosCarga):
         json_data = json.dumps(self.dict, indent=4, ensure_ascii=False)
         return json_data
 
+    def from_json(self, json_data: str) -> "DatosCargaPublicacion":
+        self.dict = json.loads(json_data)
+        self.from_dict(self.dict)
+        return self
+
     def close(self):
         self.libro_como_fuente()
         self.dict = self.to_dict()
@@ -181,18 +186,19 @@ class DatosCargaPublicacion(DatosCarga):
         return (
             self.titulo == value.titulo
             and self.tipo == value.tipo
-            and self.autores == value.autores
+            and set(self.autores) == set(value.autores)
             and self.año_publicacion == value.año_publicacion
-            and self.identificadores == value.identificadores
-            and self.datos == value.datos
+            and set(self.identificadores) == set(value.identificadores)
+            and set(self.datos) == set(value.datos)
             and self.fuente == value.fuente
-            and self.financiacion == value.financiacion
-            and self.fechas_publicacion == value.fechas_publicacion
+            and set(self.financiacion) == set(value.financiacion)
+            and set(self.fechas_publicacion) == set(value.fechas_publicacion)
         )
 
 
 class DatosCargaAutor(DatosCarga):
     def __init__(self, firma: str = "", tipo: str = "", orden: int = "") -> None:
+        self.id_autor = 0
         self.firma = firma
         self.tipo = tipo  # Tipología de autor: mínimo tipo Autor/a
         self.orden = orden
@@ -231,7 +237,7 @@ class DatosCargaAutor(DatosCarga):
         ids: dict[int, DatosCargaIdentificadorAutor] = source.get("ids")
         self.ids = [
             DatosCargaIdentificadorAutor().from_dict(identificador)
-            for identificador in ids.values()
+            for identificador in ids
         ]
 
         afiliaciones: dict[int, DatosCargaAfiliacionesAutor] = source.get(
@@ -239,7 +245,7 @@ class DatosCargaAutor(DatosCarga):
         )
         self.afiliaciones = [
             DatosCargaAfiliacionesAutor().from_dict(afiliacion)
-            for afiliacion in afiliaciones.values()
+            for afiliacion in afiliaciones
         ]
 
         return self
@@ -249,11 +255,11 @@ class DatosCargaAutor(DatosCarga):
             self.tipo == value.tipo
             and self.orden == value.orden
             and self.contacto == value.contacto
-            and self.afiliaciones == value.afiliaciones
+            and set(self.afiliaciones) == set(value.afiliaciones)
         )
 
     def __hash__(self) -> int:
-        return hash((self.firma, self.tipo, self.orden))
+        return hash((self.tipo, self.orden, self.contacto, self.orden))
 
 
 class DatosCargaIdentificadorAutor(DatosCarga):
@@ -316,7 +322,7 @@ class DatosCargaAfiliacionesAutor(DatosCarga):
         ) or self.ror_id == value.ror_id
 
     def __hash__(self) -> int:
-        return hash((self.nombre, self.pais, self.ciudad, self.ror_id))
+        return hash((self.ror_id))
 
 
 class DatosCargaIdentificadorPublicacion(DatosCarga):
@@ -422,13 +428,13 @@ class DatosCargaFuente(DatosCarga):
         return (
             self.titulo == value.titulo
             and self.tipo == value.tipo
-            and self.datos == value.datos
-            and self.editoriales == value.editoriales
-            and self.identificadores == value.identificadores
+            and set(self.datos) == set(value.datos)
+            and set(self.editoriales) == set(value.editoriales)
+            and set(self.identificadores) == set(value.identificadores)
         )
 
     def __hash__(self):
-        return hash(self.titulo, self.tipo, self.editoriales, self.identificadores)
+        return hash((self.titulo, self.tipo, self.editoriales, self.identificadores))
 
 
 class DatosCargaIdentificadorFuente(DatosCarga):
@@ -519,10 +525,12 @@ class DatosCargaEditorial(DatosCarga):
 
     def __hash__(self) -> int:
         return hash(
-            self.nombre,
-            self.tipo,
-            self.pais,
-            self.url,
+            (
+                self.nombre,
+                self.tipo,
+                self.pais,
+                self.url,
+            )
         )
 
 
@@ -567,15 +575,7 @@ class DatosCargaFinanciacion(DatosCarga):
         )
 
     def __hash__(self) -> int:
-        return hash(
-            (
-                self.proyecto,
-                self.entidad_financiadora,
-                self.agencia,
-                self.pais,
-                self.ror,
-            )
-        )
+        return hash((self.proyecto, self.agencia))
 
 
 class DatosCargaAccesoAbierto(DatosCarga):
@@ -607,16 +607,19 @@ class DatosCargaAccesoAbierto(DatosCarga):
 class DatosCargaFechaPublicacion(DatosCarga):
     def __init__(
         self,
+        dia: str = None,
         mes: str = None,
         agno: str = None,
         tipo: str = "",
     ) -> None:
+        self.dia = dia
         self.mes = mes
         self.agno = agno
         self.tipo = tipo
 
     def to_dict(self):
         dict = {
+            "dia": self.dia,
             "mes": self.mes,
             "agno": self.agno,
             "tipo": self.tipo,
@@ -625,6 +628,7 @@ class DatosCargaFechaPublicacion(DatosCarga):
         return dict
 
     def from_dict(self, source: dict):
+        self.dia = source.get("dia")
         self.mes = source.get("mes")
         self.agno = source.get("agno")
         self.tipo = source.get("tipo")
@@ -633,10 +637,11 @@ class DatosCargaFechaPublicacion(DatosCarga):
 
     def __eq__(self, value: "DatosCargaFechaPublicacion") -> bool:
         return (
-            self.mes == value.mes
+            self.dia == value.dia
+            and self.mes == value.mes
             and self.agno == value.agno
             and self.tipo == value.tipo
         )
 
     def __hash__(self) -> int:
-        return hash((self.mes, self.agno, self.tipo))
+        return hash((self.dia, self.mes, self.agno, self.tipo))

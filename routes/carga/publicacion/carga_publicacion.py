@@ -9,6 +9,7 @@ from routes.carga.publicacion.comparar_autores import (
 )
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAccesoAbierto,
+    DatosCargaAfiliacionesAutor,
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
     DatosCargaDatosFuente,
@@ -220,7 +221,7 @@ class CargaPublicacion:
         if len(antiguos_autores) == 0:
             return False
         else:
-            nuevos_autores = pd.DataFrame(self.datos.to_dict().get("autores").values())
+            nuevos_autores = pd.DataFrame(self.datos.to_dict().get("autores"))
             comparacion_autores = ComparacionAutores(antiguos_autores, nuevos_autores)
             count_nuevos, count_antiguos = comparacion_autores.comparar(
                 tipo_comparacion="cantidad"
@@ -265,9 +266,10 @@ class CargaPublicacion:
 
         return id_investigador or 0
 
+    ## INSERCIÓN DE AUTORES
     def insertar_autor(self, autor: DatosCargaAutor):
-        query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador)
-                    VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s)
+        query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador, contacto)
+                    VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s, %(contacto)s)
                 """
         params = {
             "orden": autor.orden,
@@ -279,6 +281,49 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
+        id_autor = self.db.last_id
+
+        self.insertar_afiliaciones_autor(autor, id_autor)
+
+    ## INSERCIÓN DE AFILIACIONES DE AUTORES
+    def insertar_afiliaciones_autor(self, autor: DatosCargaAutor, id_autor: int):
+        for afiliacion in autor.afiliaciones:
+            self.insertar_afiliacion_autor(afiliacion, id_autor)
+
+    def insertar_afiliacion_autor(
+        self, afiliacion: DatosCargaAfiliacionesAutor, id_autor
+    ):
+        afiliacion_id = self.buscar_afiliacion(afiliacion)
+
+        # Si no existe la afiliación, crear una nueva y obtener su ID para vincularla al autor
+        if not afiliacion_id:
+            query = """INSERT INTO prisma.p_afiliacion (afiliacion, id_ror, pais)
+                        VALUES (%(afiliacion)s, %(id_ror)s, %(pais)s)
+                    """
+            params = {
+                "afiliacion": afiliacion.nombre,
+                "id_ror": afiliacion.ror_id,
+                "pais": afiliacion.pais,
+            }
+
+            self.db.ejecutarConsulta(query, params)
+            afiliacion_id = self.db.last_id
+
+        query = """INSERT INTO prisma.p_autor_afiliacion (autor_id, afiliacion_id)
+                    VALUES (%(idAutor)s, %(nombre)s)
+                """
+        params = {"idAutor": id_autor, "nombre": afiliacion_id}
+
+        self.db.ejecutarConsulta(query, params)
+
+    def buscar_afiliacion(self, afiliacion: DatosCargaAfiliacionesAutor):
+        query = """SELECT id FROM prisma.p_afiliacion WHERE id_ror = %(id_ror)s"""
+        params = {"id_ror": afiliacion.ror_id}
+
+        self.db.ejecutarConsulta(query, params)
+        if self.db.result:
+            id_afiliacion = self.db.get_first_cell()
+            return id_afiliacion
 
     def insertar_identificadores_publicacion(self):
         for identificador in self.datos.identificadores:
@@ -387,6 +432,9 @@ class CargaPublicacion:
         self.db.ejecutarConsulta(query, params)
 
     def buscar_fuente(self) -> int:
+        if not self.datos.fuente.identificadores:
+            return None
+
         where = " OR ".join(
             f"(idf.tipo = '{identificador.tipo}' AND idf.valor = '{identificador.valor}')"
             for identificador in self.datos.fuente.identificadores
@@ -419,10 +467,16 @@ class CargaPublicacion:
             query = """INSERT INTO prisma.p_fuente (tipo, titulo, editorial, origen)
                 VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)"""
 
+            editorial = (
+                self.datos.fuente.editoriales[0].nombre
+                if self.datos.fuente.editoriales
+                else None
+            )
+
             params = {
                 "tipo": self.datos.fuente.tipo,
                 "titulo": self.datos.fuente.titulo,
-                "editorial": self.datos.fuente.editoriales[0].nombre,
+                "editorial": editorial,
                 "origen": self.origen,
             }
 
@@ -495,10 +549,15 @@ class CargaPublicacion:
 
         if not editorial_antigua:
             query = """
-                    INSERT INTO prisma.p_editor (nombre)
-                    VALUES (%(nombre)s)
+                    INSERT INTO prisma.p_editor (nombre, url, pais, tipo)
+                    VALUES (%(nombre)s, %(url)s, %(pais)s, %(tipo)s)
                     """
-            params = {"nombre": editorial.nombre}
+            params = {
+                "nombre": editorial.nombre,
+                "url": editorial.url,
+                "pais": editorial.pais,
+                "tipo": editorial.tipo,
+            }
 
             self.db.ejecutarConsulta(query, params)
             id_editor = self.db.last_id

@@ -18,6 +18,7 @@ tipo_fuente_to_column = {
     "unidad_excelencia": "mue.idUdExcelencia",
     "investigador": "i.idInvestigador",
     "centro": "i.idCentro",
+    "centrocenso": "i.idCentroCenso",
     "area": "i.idArea",
     "doctorado": "pd.idDoctorado",
 }
@@ -40,6 +41,7 @@ es_int = {
     "unidad_excelencia": True,
     "investigador": False,
     "centro": False,
+    "centrocenso": False,
     "area": False,
     "doctorado": True,
 }
@@ -72,8 +74,7 @@ def consulta_investigadores(fuentes):
         _conditions.append(condition)
 
     query += f"{' '.join(_joins)}"
-    query += f""" WHERE cat.idCategoria != 'honor' 
-                AND (cat.tipo_pp != 'exc' OR ie.excluido = 0)
+    query += f""" WHERE (cat.tipo_pp != 'exc' OR ie.excluido = 0)
                 AND (ie.excluido IS NULL OR ie.excluido != 1)
                 AND ({' OR '.join(_conditions)})"""
 

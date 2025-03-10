@@ -1,163 +1,170 @@
+import copy
+
+
+def get_publicacion_fuente():
+    return copy.deepcopy(publicacion)
+
+
 publicacion = {
     "titulo": "Measurement of the angular distribution of fission fragments using a PPAC assembly at CERN n-TOF",
     "titulo_alternativo": "",
     "tipo": "Artículo",
-    "autores": {
-        0: {
+    "autores": [
+        {
             "firma": "Tarrío, D.",
             "tipo": "Autor/a",
             "orden": 1,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Tarrío, D."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Tarrío, D."}],
+            "afiliaciones": [],
         },
-        1: {
+        {
             "firma": "Leong, L. S.",
             "tipo": "Autor/a",
             "orden": 2,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Leong, L. S."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Leong, L. S."}],
+            "afiliaciones": [],
         },
-        2: {
+        {
             "firma": "Audouin, Laurent",
             "tipo": "Autor/a",
             "orden": 3,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Audouin, Laurent"}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Audouin, Laurent"}],
+            "afiliaciones": [],
         },
-        3: {
+        {
             "firma": "Duran, I.",
             "tipo": "Autor/a",
             "orden": 4,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Duran, I."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Duran, I."}],
+            "afiliaciones": [],
         },
-        4: {
+        {
             "firma": "Paradela, C.",
             "tipo": "Autor/a",
             "orden": 5,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Paradela, C."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Paradela, C."}],
+            "afiliaciones": [],
         },
-        5: {
+        {
             "firma": "Tassan-Got, L.",
             "tipo": "Autor/a",
             "orden": 6,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Tassan-Got, L."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Tassan-Got, L."}],
+            "afiliaciones": [],
         },
-        6: {
+        {
             "firma": "Le Naour, C.",
             "tipo": "Autor/a",
             "orden": 7,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Le Naour, C."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Le Naour, C."}],
+            "afiliaciones": [],
         },
-        7: {
+        {
             "firma": "Bacri, C.O.",
             "tipo": "Autor/a",
             "orden": 8,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Bacri, C.O."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Bacri, C.O."}],
+            "afiliaciones": [],
         },
-        8: {
+        {
             "firma": "Petitbon, V.",
             "tipo": "Autor/a",
             "orden": 9,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Petitbon, V."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Petitbon, V."}],
+            "afiliaciones": [],
         },
-        9: {
+        {
             "firma": "Cortés Giraldo, Miguel Antonio",
             "tipo": "Autor/a",
             "orden": 10,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Cortés Giraldo, Miguel Antonio"}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Cortés Giraldo, Miguel Antonio"}],
+            "afiliaciones": [],
         },
-        10: {
+        {
             "firma": "Quesada Molina, José Manuel",
             "tipo": "Autor/a",
             "orden": 11,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Quesada Molina, José Manuel"}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Quesada Molina, José Manuel"}],
+            "afiliaciones": [],
         },
-        11: {
+        {
             "firma": "Žugec, P.",
             "tipo": "Autor/a",
             "orden": 12,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Žugec, P."}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Žugec, P."}],
+            "afiliaciones": [],
         },
-        12: {
+        {
             "firma": "Praena Rodríguez, Javier",
             "tipo": "Autor/a",
             "orden": 13,
             "contacto": "N",
-            "ids": {0: {"tipo": "idus", "valor": "Praena Rodríguez, Javier"}},
-            "afiliaciones": {},
+            "ids": [{"tipo": "idus", "valor": "Praena Rodríguez, Javier"}],
+            "afiliaciones": [],
         },
-    },
+    ],
     "año_publicacion": "2014",
-    "fechas_publicacion": {0: {"mes": "1", "agno": "2014", "tipo": "publicacion"}},
-    "identificadores": {
-        0: {"tipo": "doi", "valor": "10.1016/j.nima.2013.12.056"},
-        1: {"tipo": "idus", "valor": "11441/95195"},
-    },
-    "datos": {
-        0: {"tipo": "volumen", "valor": "743"},
-        1: {"tipo": "pag_inicio", "valor": "79"},
-        2: {"tipo": "pag_fin", "valor": "85"},
-    },
+    "identificadores": [
+        {"tipo": "doi", "valor": "10.1016/j.nima.2013.12.056"},
+        {"tipo": "idus", "valor": "11441/95195"},
+    ],
+    "datos": [
+        {"tipo": "volumen", "valor": "743"},
+        {"tipo": "pag_inicio", "valor": "79"},
+        {"tipo": "pag_fin", "valor": "85"},
+    ],
     "fuente": {
         "titulo": "Nuclear Instruments and Methods in Physics Research, Section A: Accelerators, Spectrometers, Detectors and Associated Equipment, 743, 79-85.",
         "tipo": "Libro",
-        "editoriales": {
-            0: {
+        "editoriales": [
+            {
                 "nombre": "Elsevier",
                 "tipo": "Otros",
                 "pais": "Desconocido",
                 "url": None,
             },
-        },
-        "identificadores": {0: {"tipo": "issn", "valor": "0168-9002"}},
-        "datos": {
-            0: {
+        ],
+        "identificadores": [{"tipo": "issn", "valor": "0168-9002"}],
+        "datos": [
+            {
                 "tipo": "url",
                 "valor": "https://www.sciencedirect.com/science/article/pii/S016890021303056X",
             },
-        },
+        ],
     },
-    "financiacion": {
-        0: {
+    "financiacion": [
+        {
             "proyecto": "FPA2011-24553",
             "entidad_financiadora": "Ministerio de Ciencia e Innovación",
             "agencia": "",
             "pais": "España",
             "ror": "05r0vyz12",
         },
-    },
-    "fechas_publicacion": {
-        0: {
+    ],
+    "fechas_publicacion": [
+        {
             "tipo": "publicacion",
             "mes": 1,
             "agno": 2014,
+            "dia": None,
         },
-    },
-    "acceso_abierto": {
-        0: {
+    ],
+    "acceso_abierto": [
+        {
             "valor": "gold",
             "origen": "upw",
         },
-    },
+    ],
 }

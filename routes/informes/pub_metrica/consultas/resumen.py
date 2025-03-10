@@ -101,7 +101,7 @@ def nombres_fuentes(fuentes):
                 }
             )
 
-        if tipo_fuente == "centro":
+        if tipo_fuente in ("centro", "centrocenso"):
             _query = query.format(
                 **{
                     "columna": "nombre",

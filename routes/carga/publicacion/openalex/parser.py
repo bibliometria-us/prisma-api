@@ -232,7 +232,7 @@ class OpenalexParser(Parser):
         if len(self.data.get("primary_location").get("source").get("issn")) > 0:
             for id in self.data.get("primary_location").get("source").get("issn"):
                 identificador = DatosCargaIdentificadorFuente(valor=id, tipo="issn")
-                self.datos_carga_publicacion.fuente.add_identificador(id)
+                self.datos_carga_publicacion.fuente.add_identificador(identificador)
         #  TODO: REVISAR ISBN
 
     def cargar_titulo_y_tipo(self):

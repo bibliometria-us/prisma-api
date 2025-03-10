@@ -45,18 +45,25 @@ class xmlDoiIdus:
         return xml
 
     def get_date(self):
-        fecha_str = self.data.fecha_publicacion
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%dT%H:%M:%SZ")
+        fecha_publicacion = next(
+            (
+                fecha
+                for fecha in self.data.fechas_publicacion
+                if fecha.tipo == "publicacion"
+            ),
+            None,
+        )
+
         xml = f"""
                 <creation_date>
-                    <month>{str(fecha.month)}</month>
-                    <day>{str(fecha.day)}</day>
-                    <year>{str(fecha.year)}</year>
+                    <month>{str(fecha_publicacion.mes)}</month>
+                    <day>{str(fecha_publicacion.dia)}</day>
+                    <year>{str(fecha_publicacion.agno)}</year>
                 </creation_date>
                 <publication_date>
-                    <month>{str(fecha.month)}</month>
-                    <day>{str(fecha.day)}</day>
-                    <year>{str(fecha.year)}</year>
+                    <month>{str(fecha_publicacion.mes)}</month>
+                    <day>{str(fecha_publicacion.dia)}</day>
+                    <year>{str(fecha_publicacion.agno)}</year>
                 </publication_date>
             """
 

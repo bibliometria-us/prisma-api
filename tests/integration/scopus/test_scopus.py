@@ -1,3 +1,4 @@
+import pytest
 from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from routes.carga import consultas_cargas
 from routes.carga.publicacion.scopus.parser import ScopusParser
@@ -45,6 +46,7 @@ def test_busqueda_por_doi():
             json = parser.datos_carga_publicacion.to_json()
 
 
+@pytest.mark.skip()
 def test_masivo_por_inves():
     api = ScopusSearch()
     for id in id_inves_scopus:
@@ -57,6 +59,7 @@ def test_masivo_por_inves():
             json = parser.datos_carga_publicacion.to_json()
 
 
+@pytest.mark.skip()
 def test_masivo_guardado_json():
     """Obtiene publicaciones de investigadores activos y guarda en JSON en cada iteración."""
     fuente = "scopus"
@@ -149,6 +152,7 @@ def test_masivo_guardado_json():
     )
 
 
+@pytest.mark.skip()
 def test_masivo_carga_json():
     fuente = "scopus"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"

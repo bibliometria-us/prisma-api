@@ -1,3 +1,4 @@
+from time import sleep
 from integration.apis.zenodo.zenodo import ZenodoAPI
 from routes.carga.publicacion.zenodo.parser import ZenodoParser
 import xml.etree.ElementTree as ET
@@ -14,6 +15,7 @@ ids_zenodo = [
 def test_busqueda_por_id():
     api = ZenodoAPI()
     for id in ids_zenodo:
+        sleep(1)
         records = api.get_publicaciones_por_doi(id)
         assert not api.response.get("service-error")
         for record in records:
