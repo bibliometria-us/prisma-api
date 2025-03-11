@@ -165,7 +165,7 @@ class CargaDoiIdus(Resource):
 
 # **** CARGA DE PUBLICACIONES INDIVIDUAL ****
 @carga_namespace.route(
-    "/publicacion/importar/", doc=False, endpoint="carga_publicacion_importar"
+    "/publicacion/importar", doc=False, endpoint="carga_publicacion_importar"
 )
 class CargaPublicacionImportar(Resource):
     def get(self):
@@ -173,7 +173,10 @@ class CargaPublicacionImportar(Resource):
         args = request.args
         tipo = args.get("tipo", None).strip()
         id = args.get("id", None).strip()
+        api_key = args.get("api_key")
 
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
         try:
             match tipo:
                 case "scopus_id":
@@ -192,6 +195,8 @@ class CargaPublicacionImportar(Resource):
                     CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
                     CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
                 # TODO: QUEDA IDUS
+                case "handle_idus":
+                    CargaPublicacionIdus().cargar_publicacion_por_handle(id)
 
         except ValueError as e:
             return {"message": str(e)}, 402
@@ -201,7 +206,7 @@ class CargaPublicacionImportar(Resource):
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****
 @carga_namespace.route(
-    "/publicacion/importar_publicaciones_por_investigador/",
+    "/publicacion/importar_publicaciones_por_investigador",
     doc=False,
     endpoint="importar_publicaciones_por_investigador",
 )
@@ -227,7 +232,7 @@ class CargaPublicacionImportar(Resource):
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES INVESTIGADORES ACTIVOS +- 1 AÑO ****
 @carga_namespace.route(
-    "/publicacion/importar_publicaciones_masivo/",
+    "/publicacion/importar_publicaciones_masivo",
     doc=False,
     endpoint="importar_publicaciones_masivo",
 )

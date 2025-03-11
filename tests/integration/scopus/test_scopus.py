@@ -1,3 +1,4 @@
+import pprint
 import pytest
 from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from routes.carga import consultas_cargas
@@ -7,6 +8,8 @@ import json
 import os
 import time
 from collections import defaultdict
+
+from tests.integration.utils.utils import estadisticas_datos_publicacion
 
 
 ids_scopus = [
@@ -46,7 +49,7 @@ def test_busqueda_por_doi():
             json = parser.datos_carga_publicacion.to_json()
 
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_masivo_por_inves():
     api = ScopusSearch()
     for id in id_inves_scopus:
@@ -59,7 +62,10 @@ def test_masivo_por_inves():
             json = parser.datos_carga_publicacion.to_json()
 
 
-@pytest.mark.skip()
+@pytest.mark.skipif(
+    os.path.exists("tests/integration/scopus/json_masivo_scopus.json"),
+    reason="JSON file already exists",
+)
 def test_masivo_guardado_json():
     """Obtiene publicaciones de investigadores activos y guarda en JSON en cada iteración."""
     fuente = "scopus"
@@ -92,7 +98,7 @@ def test_masivo_guardado_json():
         progreso = set()
 
     # Procesar cada investigador
-    for key, value in list(lista_id_inves.items())[:100]:
+    for key, value in list(lista_id_inves.items())[:1000]:
         if key in progreso:
             print(f"Investigador {key} ya procesado. Saltando...")
             continue
@@ -152,7 +158,6 @@ def test_masivo_guardado_json():
     )
 
 
-@pytest.mark.skip()
 def test_masivo_carga_json():
     fuente = "scopus"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"
@@ -166,74 +171,12 @@ def test_masivo_carga_json():
     print(type(publicaciones))  # Debería ser <class 'list'>
     print(type(publicaciones[0]))  # Cada elemento debería ser <class 'dict'>
 
+    lista_datos_publicacion = []
     # Imprimir algunas publicaciones
     for publicacion in publicaciones:  # Mostrar las primeras 5
         parser = ScopusParser(data=publicacion)
-        publicaciones_parseadas.append(
-            parser.datos_carga_publicacion
-        )  # Cada una es un diccionario
+        datos = parser.datos_carga_publicacion
+        lista_datos_publicacion.append(datos)
 
-    resultado_relleno = calcular_porcentaje_relleno(publicaciones_parseadas)
-    print("Porcentaje de relleno por atributo:")
-    for campo, porcentaje in resultado_relleno.items():
-        print(f"  - {campo}: {porcentaje}%")
-
-
-def evaluar_atributos(obj):
-    """
-    Recorre recursivamente los atributos de un objeto y devuelve un diccionario
-    donde cada clave es un atributo y el valor es 1 si está relleno, 0 si está vacío.
-    """
-    resultado = {}
-
-    # Obtener los atributos del objeto como diccionario
-    atributos = vars(obj)
-
-    for campo, valor in atributos.items():
-        if isinstance(valor, (str, list, dict)):  # Si es cadena, lista o diccionario
-            resultado[campo] = 1 if valor else 0
-        elif isinstance(valor, object) and hasattr(
-            valor, "__dict__"
-        ):  # Si es otro objeto
-            resultado[campo] = evaluar_atributos(valor)  # Llamada recursiva
-        else:
-            resultado[campo] = (
-                1 if valor is not None else 0
-            )  # Para otros tipos de datos
-
-    return resultado
-
-
-def calcular_porcentaje_relleno(lista_objetos):
-    """
-    Recorre una lista de objetos de tipo DatosCargaPublicacion y calcula el
-    porcentaje de atributos rellenos en relación con el total de objetos.
-    """
-    if not lista_objetos:
-        return {}
-
-    total_objetos = len(lista_objetos)
-    conteo_atributos = defaultdict(
-        int
-    )  # Diccionario para contar cuántas veces cada campo está relleno
-
-    # Evaluar cada objeto en la lista
-    for obj in lista_objetos:
-        resultado_objeto = evaluar_atributos(obj)
-        for campo, valor in resultado_objeto.items():
-            if isinstance(valor, dict):  # Si es un atributo anidado, recorrerlo
-                for subcampo, subvalor in valor.items():
-                    clave = f"{campo}.{subcampo}"
-                    conteo_atributos[
-                        clave
-                    ] += subvalor  # Sumar valores (1 si está relleno)
-            else:
-                conteo_atributos[campo] += valor  # Sumar valores (1 si está relleno)
-
-    # Convertir los conteos en porcentajes
-    porcentaje_atributos = {
-        campo: round((conteo / total_objetos) * 100, 2)
-        for campo, conteo in conteo_atributos.items()
-    }
-
-    return porcentaje_atributos
+    estadisticas = estadisticas_datos_publicacion(lista_datos_publicacion)
+    pprint.pp(estadisticas)

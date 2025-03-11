@@ -1,13 +1,18 @@
+import pprint
 from time import sleep
 
 import pytest
 from integration.apis.openalex.openalex import OpenalexAPI
 from routes.carga import consultas_cargas
+from routes.carga.publicacion.carga_publicacion import CargaPublicacion
+from routes.carga.publicacion.datos_carga_publicacion import DatosCargaPublicacion
 from routes.carga.publicacion.openalex.parser import OpenalexParser
 import xml.etree.ElementTree as ET
 import json
 import os
 import time
+
+from tests.integration.utils.utils import estadisticas_datos_publicacion
 
 
 dois_openalex = [
@@ -59,7 +64,10 @@ def test_masivo_por_inves():
             json = parser.datos_carga_publicacion.to_json()
 
 
-@pytest.mark.skip()
+@pytest.mark.skipif(
+    os.path.exists("tests/integration/openalex/json_masivo_openalex.json"),
+    reason="JSON file already exists",
+)
 def test_masivo_guardado_json():
     """Obtiene publicaciones de investigadores activos y guarda en JSON en cada iteración."""
     fuente = "openalex"
@@ -92,7 +100,7 @@ def test_masivo_guardado_json():
         progreso = set()
 
     # Procesar cada investigador
-    for key, value in list(lista_id_inves.items()):
+    for key, value in list(lista_id_inves.items())[:100]:
         if key in progreso:
             print(f"Investigador {key} ya procesado. Saltando...")
             continue
@@ -152,8 +160,7 @@ def test_masivo_guardado_json():
     )
 
 
-@pytest.mark.skip()
-def test_masivo_carga_json():
+def leer_fichero_json_openalex() -> list[DatosCargaPublicacion]:
     fuente = "openalex"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"
 
@@ -161,11 +168,18 @@ def test_masivo_carga_json():
     with open(FILENAME, "r", encoding="utf-8") as file:
         publicaciones = json.load(file)  # Lista de diccionarios
 
-    # Verificar la estructura
-    print(type(publicaciones))  # Debería ser <class 'list'>
-    print(type(publicaciones[0]))  # Cada elemento debería ser <class 'dict'>
+    return publicaciones
+
+
+def test_masivo_carga_json():
+    publicaciones = leer_fichero_json_openalex()
 
     # Imprimir algunas publicaciones
+    lista_datos_publicacion = []
     for publicacion in publicaciones:  # Mostrar las primeras 5
         parser = OpenalexParser(data=publicacion)
-        print(publicacion)  # Cada una es un diccionario
+        datos = parser.datos_carga_publicacion
+        lista_datos_publicacion.append(datos)
+
+    estadisticas = estadisticas_datos_publicacion(lista_datos_publicacion)
+    pprint.pp(estadisticas)
