@@ -116,7 +116,7 @@ def get_quality_rule_p_03(bd: BaseDatos = None) -> dict:
 def get_quality_rule_p_04(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT pa.idPublicacion AS ID_PUBLICACION FROM p_publicacion pp 
                             INNER JOIN p_autor pa ON pa.idPublicacion = pp.idPublicacion 
-                            WHERE pp.eliminado = 0
+                            WHERE pp.eliminado = 0 AND pp.tipo != "Tesis"
                             GROUP BY pp.idPublicacion
                             HAVING COUNT(CASE WHEN pa.idInvestigador = 0 THEN NULL ELSE pa.idInvestigador END) = 0;"""
     try:

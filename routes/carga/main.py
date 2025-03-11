@@ -275,7 +275,7 @@ class p_00(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas_cargas.get_quality_rule_p_00()
-            json = dataframe_to_json(incidencias)
+            json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -303,7 +303,7 @@ class p_01(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas_cargas.get_quality_rule_p_01()
-            json = dataframe_to_json(incidencias)
+            json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -331,7 +331,7 @@ class p_02(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas_cargas.get_quality_rule_p_02()
-            json = dataframe_to_json(incidencias)
+            json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -359,7 +359,7 @@ class p_03(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas_cargas.get_quality_rule_p_03()
-            json = dataframe_to_json(incidencias)
+            json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -387,7 +387,7 @@ class p_04(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas_cargas.get_quality_rule_p_04()
-            json = dataframe_to_json(incidencias)
+            json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
