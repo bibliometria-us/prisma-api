@@ -1,5 +1,6 @@
 from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from routes.carga.publicacion.datos_carga_publicacion import (
+    DatosCargaAccesoAbierto,
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
     DatosCargaEditorial,
@@ -96,8 +97,9 @@ class ScopusParser(Parser):
                 if_aff = aff.get("$")
                 nombre_aff = afiliaciones_publicacion[if_aff]["nombre"]
                 pais_aff = afiliaciones_publicacion[if_aff]["pais"]
+                ciudad_aff = afiliaciones_publicacion[if_aff]["ciudad"]
                 afiliacion_autor = DatosCargaAfiliacionesAutor(
-                    nombre=nombre_aff, pais=pais_aff, ror_id=None
+                    nombre=nombre_aff, pais=pais_aff, ciudad=ciudad_aff, ror_id=None
                 )
                 carga_autor.add_afiliacion(afiliacion_autor)
                 # TODO: difieren aff scopus y wos: que pasa cuando las afiliaciones no son iguales en distintas fuentes
@@ -132,13 +134,13 @@ class ScopusParser(Parser):
     def cargar_fecha_publicacion(self):
         # Fecha pub
         fecha = self.data.get("prism:coverDate")
-        agno = datetime.strptime(fecha, "%Y-%m-%d").year
+        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
         mes = datetime.strptime(fecha, "%Y-%m-%d").month
         mes = f"{mes:02d}"
         if len(str(agno)) != 4 or len(str(mes)) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
-            tipo="publicación", agno=agno, mes=mes
+            tipo="publicacion", agno=agno, mes=mes
         )
         self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
         # # Fecha early access
@@ -167,7 +169,7 @@ class ScopusParser(Parser):
         self.cargar_scopus()
 
     def cargar_volumen(self):
-        valor = self.data.get("prism:volumen")
+        valor = self.data.get("prism:volume")
         if not valor:
             return None
         dato = DatosCargaDatoPublicacion(tipo="volumen", valor=valor)
@@ -181,12 +183,12 @@ class ScopusParser(Parser):
         self.datos_carga_publicacion.add_dato(dato)
 
     # TODO: ver si procede
-    # def cargar_numero_issue(self):
-    #     valor = self.data.get("prism:issueIdentifier")
-    #     if not valor:
-    #         return None
-    #     dato = DatosCargaDatoPublicacion(tipo="numero", valor=valor)
-    #     self.datos_carga_publicacion.add_dato(dato)
+    def cargar_numero_issue(self):
+        valor = self.data.get("prism:issueIdentifier")
+        if not valor:
+            return None
+        dato = DatosCargaDatoPublicacion(tipo="num_articulo", valor=valor)
+        self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_pag_inicio_fin(self):
         rango = self.data.get("prism:pageRange")
@@ -210,6 +212,7 @@ class ScopusParser(Parser):
             return None
         self.cargar_volumen()
         self.cargar_numero()
+        self.cargar_numero_issue()
         self.cargar_pag_inicio_fin()
 
     def cargar_issn(self):
@@ -227,19 +230,17 @@ class ScopusParser(Parser):
         self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
     def cargar_isbn(self):
-        isbn = self.data.get("prism:isbn")
-        if not isbn:
+        isbn_data = self.data.get("prism:isbn")
+        if not isbn_data:
             return None
-        identificador = DatosCargaIdentificadorFuente(valor=isbn, tipo="isbn")
-        self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
-    # TODO: Comprobar si es la etiqueta.
-    # def cargar_eisbn(self):
-    #     eisbn = self.data.get("prism:eIsbn")
-    #     if not eisbn:
-    #         return None
-    #     identificador = DatosCargaIdentificadorFuente(valor=eisbn, tipo="eisbn")
-    #     self.datos_carga_publicacion.fuente.add_identificador(identificador)
+        isbns = list(isbn.strip() for isbn in isbn_data[0]["$"][1:-1].split(","))
+        for isbn in isbns:
+            identificador = DatosCargaIdentificadorFuente(valor=isbn, tipo="isbn")
+            self.datos_carga_publicacion.fuente.add_identificador(identificador)
+
+    def cargar_eisbn(self):
+        pass
 
     def cargar_edicion_fuente(self):
         valor = self.data.get("prism:issueIdentifier")
@@ -270,15 +271,36 @@ class ScopusParser(Parser):
         pass
 
     def carga_acceso_abierto(self):
-        # No viene en la llamada de Scopus
+        free_to_read_label = self.data.get("freetoreadLabel", {}).get("value", {})
+        if any(value.get("$") == "Green" for value in free_to_read_label):
+            acceso_abierto = DatosCargaAccesoAbierto(origen="scopus", valor="green")
+            self.datos_carga_publicacion.add_acceso_abierto(acceso_abierto)
+
+        if any(value.get("$") == "Gold" for value in free_to_read_label):
+            acceso_abierto = DatosCargaAccesoAbierto(origen="scopus", valor="gold")
+            self.datos_carga_publicacion.add_acceso_abierto(acceso_abierto)
+
+        if any(value.get("$") == "Bronze" for value in free_to_read_label):
+            acceso_abierto = DatosCargaAccesoAbierto(origen="scopus", valor="bronze")
+            self.datos_carga_publicacion.add_acceso_abierto(acceso_abierto)
+
+        if any(value.get("$") == "Hybrid Gold" for value in free_to_read_label):
+            acceso_abierto = DatosCargaAccesoAbierto(
+                origen="scopus", valor="hybrid_gold"
+            )
+            self.datos_carga_publicacion.add_acceso_abierto(acceso_abierto)
+
         pass
 
     def cargar_fuente(self):
         self.cargar_issn()
         self.cargar_eissn()
         self.cargar_isbn()
+        self.cargar_eisbn()
         self.cargar_titulo_y_tipo()
         self.carga_editorial()
+        self.carga_acceso_abierto()
+        self.cargar_fecha_publicacion()
         # self.cargar_edicion_fuente()
 
     def cargar_financiacion(self):

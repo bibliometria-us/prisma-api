@@ -1,3 +1,4 @@
+import pprint
 from time import sleep
 
 import pytest
@@ -8,6 +9,8 @@ import xml.etree.ElementTree as ET
 import json
 import os
 import time
+
+from tests.integration.utils.utils import estadisticas_datos_publicacion
 
 
 # ids_wos = ["WOS:000939283900001 ", "WOS:000699599700001"]  # Artículo
@@ -55,7 +58,10 @@ def test_masivo_por_inves():
             json = parser.datos_carga_publicacion.to_json()
 
 
-@pytest.mark.skip()
+@pytest.mark.skipif(
+    os.path.exists("tests/integration/wos/json_masivo_wos.json"),
+    reason="JSON file already exists",
+)
 def test_masivo_guardado_json():
     """Obtiene publicaciones de investigadores activos y guarda en JSON en cada iteración."""
     fuente = "wos"
@@ -88,7 +94,7 @@ def test_masivo_guardado_json():
         progreso = set()
 
     # Procesar cada investigador
-    for key, value in list(lista_id_inves.items()):
+    for key, value in list(lista_id_inves.items())[:3000]:
         if key in progreso:
             print(f"Investigador {key} ya procesado. Saltando...")
             continue
@@ -149,7 +155,6 @@ def test_masivo_guardado_json():
     )
 
 
-@pytest.mark.skip()
 def test_masivo_carga_json():
     fuente = "wos"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"
@@ -162,7 +167,13 @@ def test_masivo_carga_json():
     print(type(publicaciones))  # Debería ser <class 'list'>
     print(type(publicaciones[0]))  # Cada elemento debería ser <class 'dict'>
 
+    lista_datos_publicacion = []
     # Imprimir algunas publicaciones
     for publicacion in publicaciones:  # Mostrar las primeras 5
         parser = WosParser(data=publicacion)
-        print(publicacion)  # Cada una es un diccionario
+        datos = parser.datos_carga_publicacion
+
+        lista_datos_publicacion.append(datos)
+
+    estadisticas = estadisticas_datos_publicacion(lista_datos_publicacion)
+    pprint.pp(estadisticas)

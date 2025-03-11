@@ -154,7 +154,7 @@ class WosAPI(API):
         self, id_inves: str, agno_inicio: str = None, agno_fin: str = None
     ):
         self.route = "/"
-        wos_regex = r"^[A-Z]-\d{4}-(200[8-9]|201\d|202[0-5])$"
+        wos_regex = r"^[A-Z]*-\d{4}-(20[0-9][0-9])$"
         if not re.match(wos_regex, id_inves, re.IGNORECASE):
             raise ValueError(
                 f"'{id_inves}' no tiene un formato válido de identificador ResearcherId."

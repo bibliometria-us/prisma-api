@@ -1,5 +1,6 @@
 from integration.apis.clarivate.wos.wos_api import WosAPI
 from routes.carga.publicacion.datos_carga_publicacion import (
+    DatosCargaAccesoAbierto,
     DatosCargaAutor,
     DatosCargaDatoPublicacion,
     DatosCargaEditorial,
@@ -55,20 +56,14 @@ class WosParser(Parser):
 
         tipos = {
             # TODO: Aclarar tipos pubs - a resolver
-            "ar": "Artículo",
-            "ip": "Artículo",
-            "cp": "Ponencia",
-            "re": "Revisión",
-            "ed": "Editorial",
-            "bk": "Libro",
-            "no": "Nota",
-            "ch": "Capítulo",
-            "sh": "Short Survey",
-            "er": "Corrección",
-            "le": "Letter",
+            "Article": "Artículo",
+            "Meeting Abstract": "Meeting",
+            "News Item": "Otros",
+            "Proceedings Paper": "proceedings",
+            "Review": "Revisión",
         }
 
-        valor = tipos.get(tipo) or "Otros"
+        valor = tipos.get(tipo, "Otros")
 
         self.datos_carga_publicacion.set_tipo(valor)
 
@@ -79,11 +74,23 @@ class WosParser(Parser):
     ):
         # TODO: Autores vacíos json - Controlar que no vengan los autores vacíos
         # Se extraen las afiliaciones de la publicacion
-
-        for autor in self.data["static_data"]["summary"]["names"]["name"]:
+        autores = self.data["static_data"]["summary"]["names"]["name"]
+        if isinstance(autores, dict):
+            autores = [autores]
+        for autor in autores:
             # Se completa el Objeto DatosCargaAutor(Autor)
             firma = autor["display_name"]
             orden = autor["seq_no"]
+
+            roles_autor = {
+                "author": "Autor/a",
+                "book_corp": "Grupo",
+                "corp": "Grupo",
+                "book_editor": "Editor/a",
+            }
+
+            tipo = roles_autor.get(autor["role"], "Autor/a")
+
             # TODO: Aclarar rol autor - en este caso author, comprobar que nombre es en Prisma
             carga_autor = DatosCargaAutor(orden=orden, firma=firma, tipo=tipo)
 
@@ -110,36 +117,30 @@ class WosParser(Parser):
             if isinstance(addresses, dict):
                 addresses = [addresses]
 
-            for aff in addresses:
-                author_in_aff = False
+            address: dict = next(
+                (
+                    addr["address_spec"]
+                    for addr in addresses
+                    if addr["address_spec"]["addr_no"] == autor.get("addr_no", 0)
+                ),
+                None,
+            )
 
-                if "name" in aff:
-                    name = aff["names"].get("name", [])
-
-                    # afiliaciones con 1 autor
-                    if aff["names"]["count"] == 1:
-                        author_in_aff = name["display_name"] == firma
-                    else:  # afiliaciones con varios autores
-                        author_in_aff = any(
-                            aff_name_author["display_name"] == firma
-                            for aff_name_author in name
-                        )
-
-                    if author_in_aff:
-                        pais_aff = aff["address_spec"]["country"]
-
-                        for aff_org in aff["address_spec"]["organizations"].get(
-                            "organization"
-                        ):
-                            if aff_org["pref"] == "Y":
-                                nombre_aff = aff_org["content"]
-                                ror_aff = aff_org.get("ror_id", None)
-
-                                afiliacion_autor = DatosCargaAfiliacionesAutor(
-                                    nombre=nombre_aff, pais=pais_aff, ror_id=ror_aff
-                                )
-
-                                carga_autor.add_afiliacion(afiliacion=afiliacion_autor)
+            if address:
+                nombre = next(
+                    (
+                        org["content"]
+                        for org in address["organizations"]["organization"]
+                        if org.get("pref") == "Y"
+                    ),
+                    address["organizations"]["organization"][0]["content"],
+                )
+                afiliacion = DatosCargaAfiliacionesAutor(
+                    nombre=nombre,
+                    ciudad=address.get("city"),
+                    pais=address.get("country"),
+                )
+                carga_autor.add_afiliacion(afiliacion)
 
             self.datos_carga_publicacion.add_autor(carga_autor)
 
@@ -176,7 +177,7 @@ class WosParser(Parser):
         if len(str(agno)) != 4 or len(str(mes)) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
-            tipo="publicación", agno=agno, mes=mes
+            tipo="publicacion", agno=agno, mes=mes
         )
         self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
@@ -336,12 +337,12 @@ class WosParser(Parser):
         self.carga_editorial()
 
     def cargar_financiacion(self):
-        if "fund_ack" in self.data["static_data"].get(
-            "fullrecord_metadata"
-        ):  # Se comprueba que exista info de financiacion
-            for agencia_obj in self.data["static_data"]["fullrecord_metadata"][
-                "fund_ack"
-            ]["grants"].get("grant", []):
+        fund_ack = self.data["static_data"]["fullrecord_metadata"].get("fund_ack")
+        if fund_ack:  # Se comprueba que exista info de financiacion
+            agencias = fund_ack["grants"].get("grant", [])
+            if isinstance(agencias, dict):
+                agencias = [agencias]
+            for agencia_obj in agencias:
                 if (
                     "grant_ids" in agencia_obj and "grant_agency" in agencia_obj
                 ):  # Se comprueba que para cada entrada haya agencia y proyecto
@@ -361,4 +362,8 @@ class WosParser(Parser):
                         )
 
     def carga_acceso_abierto(self):
-        pass
+        oas = self.data["static_data"]["summary"]["pub_info"]["journal_oas_gold"]
+
+        if oas == "Y":
+            acceso_abierto = DatosCargaAccesoAbierto(valor="gold", origen="wos")
+            self.datos_carga_publicacion.acceso_abierto.append(acceso_abierto)

@@ -48,18 +48,26 @@ class OpenalexParser(Parser):
         tipo = self.data.get("type")
 
         tipos = {
-            # TODO: Aclarar tipos pubs - a resolver
-            "ar": "Artículo",
-            "ip": "Artículo",
-            "cp": "Ponencia",
-            "re": "Revisión",
-            "ed": "Editorial",
-            "bk": "Libro",
-            "no": "Nota",
-            "ch": "Capítulo",
-            "sh": "Short Survey",
-            "er": "Corrección",
-            "le": "Letter",
+            "article": "Artículo",
+            "book-chapter": "Capítulo",
+            "dataset": "Dataset",
+            "preprint": "Preprint",
+            "dissertation": "Tesis",
+            "book": "Libro",
+            "review": "Revisión",
+            "paratext": "Otros",
+            "libguides": "Otros",
+            "letter": "Otros",
+            "other": "Otros",
+            "reference-entry": "Otros",
+            "report": "Reporte",
+            "editorial": "Editorial",
+            "peer-review": "Peer Review",
+            "erratum": "Corrección",
+            "standard": "Otros",
+            "grant": "Otros",
+            "supplementary-materials": "Otros",
+            "retraction": "Otros",
         }
 
         valor = tipos.get(tipo) or "Otros"
@@ -95,8 +103,10 @@ class OpenalexParser(Parser):
 
             for key_id, value_id in identificadores.items():
                 if key_id in tipo_identificadores:
-                    tipo = tipo_identificadores[key_id]
-                    id_autor = DatosCargaIdentificadorAutor(tipo=tipo, valor=value_id)
+                    tipo_identificador = tipo_identificadores[key_id]
+                    id_autor = DatosCargaIdentificadorAutor(
+                        tipo=tipo_identificador, valor=value_id
+                    )
                     carga_autor.add_id(id_autor)
 
             for aff in autor.get("institutions", []):
@@ -167,7 +177,7 @@ class OpenalexParser(Parser):
         if len(agno) != 4 or len(mes) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
-            tipo="publicación", agno=agno, mes=mes
+            tipo="publicacion", agno=agno, mes=mes
         )
         self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
@@ -179,11 +189,11 @@ class OpenalexParser(Parser):
         self.datos_carga_publicacion.add_identificador(identificador_openalex)
 
         # Identificador doi Openalex
-        if "doi" in self.data:
+        if self.data.get("doi"):
             identificador_doi = DatosCargaIdentificadorPublicacion(
                 valor=self.data.get("doi").split("/")[-1], tipo="doi"
             )
-        self.datos_carga_publicacion.add_identificador(identificador_doi)
+            self.datos_carga_publicacion.add_identificador(identificador_doi)
 
     def cargar_volumen(self):
         if self.data.get("biblio").get("volume"):
@@ -228,24 +238,39 @@ class OpenalexParser(Parser):
         self.cargar_pag_inicio_fin()
 
     def cargar_ids_fuente(self):
-        #  TODO: REVISAR
-        if len(self.data.get("primary_location").get("source").get("issn")) > 0:
-            for id in self.data.get("primary_location").get("source").get("issn"):
-                identificador = DatosCargaIdentificadorFuente(valor=id, tipo="issn")
-                self.datos_carga_publicacion.fuente.add_identificador(identificador)
-        #  TODO: REVISAR ISBN
+        primary_location: dict = self.data.get("primary_location") or {}
+
+        source: dict = primary_location.get("source") or {}
+
+        issns: list[str] = source.get("issn") or []
+
+        for issn in issns:
+
+            identificador = DatosCargaIdentificadorFuente(valor=issn, tipo="issn")
+            self.datos_carga_publicacion.fuente.add_identificador(identificador)
+
+        pass
 
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar tipos de fuentes
         tipos_fuente = {
-            "Journal": "Revista",
-            "Conference proceeding": "Conference Proceeding",
-            "Book series": "Book in series",
-            "Book": "Libro",
-            "Trade journal": "Revista",
-            "Undefined": "Desconocido",
+            "ebook platform": "Otros",
+            "journal": "Revista",
+            "conference": "Ponencia",
+            "book series": "Colección",
+            "repository": "Otros",
+            "other": "Otros",
+            "metadata": "Otros",
         }
         # Titulo y tipo
+        primary_location = self.data.get("primary_location")
+        if not primary_location:
+            return None
+
+        source = primary_location.get("source")
+        if not source:
+            return None
+
         if self.data.get("primary_location").get("source"):
             tipo = self.data.get("primary_location").get("source").get("type")
             if tipo in tipos_fuente:

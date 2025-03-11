@@ -65,11 +65,9 @@ class DatosCargaPublicacion(DatosCarga):
         self.fuente_datos = fuente_datos
 
     def set_titulo(self, titulo: str):
-        assert titulo
         self.titulo = titulo
 
     def set_titulo_alternativo(self, titulo_alternativo: str):
-        assert titulo_alternativo
         self.titulo_alternativo = titulo_alternativo
 
     # TODO: varios tit alternativos

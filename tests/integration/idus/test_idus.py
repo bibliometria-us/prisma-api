@@ -1,3 +1,4 @@
+from time import sleep
 from integration.apis.idus.idus import IdusAPIItems, IdusAPISearch
 from routes.carga.publicacion.idus.parser import IdusParser
 import xml.etree.ElementTree as ET
@@ -25,6 +26,7 @@ handles = [
 def test_busqueda_por_handle():
     api = IdusAPISearch()
     for handle in handles:
+        sleep(0.5)
         response = api.get_from_handle(handle)
         assert not response.get("error")
 
@@ -32,6 +34,7 @@ def test_busqueda_por_handle():
 def test_item_por_handle():
     api = IdusAPIItems()
     for handle in handles:
+        sleep(0.5)
         response = api.get_from_handle(handle)
         assert not response.get("error")
 
