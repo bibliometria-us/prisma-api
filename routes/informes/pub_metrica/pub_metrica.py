@@ -61,18 +61,20 @@ def generar_informe(fuentes, año_inicio, año_fin, tipo, filename):
     if tipo == "excel":
         columnas_publicaciones = datos_publicaciones(investigadores, publicaciones)
         jif = consulta_jif(publicaciones)
+        jci = consulta_jci(publicaciones)
         sjr = consulta_sjr(publicaciones)
         idr = consulta_idr(publicaciones)
         citescore = consulta_citescore(publicaciones)
 
         generar_excel(
-            investigadores,
-            columnas_publicaciones,
-            jif,
-            sjr,
-            idr,
-            citescore,
-            filename + ".xlsx",
+            investigadores=investigadores,
+            columnas_publicaciones=columnas_publicaciones,
+            jci=jci,
+            jif=jif,
+            sjr=sjr,
+            idr=idr,
+            citescore=citescore,
+            filename=filename + ".xlsx",
         )
 
     elif tipo == "pdf":
@@ -116,12 +118,13 @@ def generar_informe_email(
 
 # @timer
 def generar_excel(
-    investigadores, columnas_publicaciones, jif, sjr, idr, citescore, filename
+    investigadores, columnas_publicaciones, jif, jci, sjr, idr, citescore, filename
 ):
 
     result_dict = dict_informe(
         investigadores,
         publicaciones=replace_none_values(columnas_publicaciones),
+        jci=replace_none_values(jci),
         jif=replace_none_values(jif),
         sjr=replace_none_values(sjr),
         idr=replace_none_values(idr),
@@ -137,10 +140,11 @@ def generar_excel(
 # A partir de los resultados de las consultas, genera un diccionario con una estructura [pagina][publicacion][columna] para luego transformarlo a Excel
 
 
-def dict_informe(investigadores, publicaciones, jif, sjr, idr, citescore):
+def dict_informe(investigadores, publicaciones, jif, jci, sjr, idr, citescore):
     # Cargar mapeo de indices para cada consulta
     pub_indices = list_index_map(publicaciones[0])
     jif_indices = list_index_map(jif[0])
+    jci_indices = list_index_map(jci[0])
     sjr_indices = list_index_map(sjr[0])
     idr_indices = list_index_map(idr[0])
     citescore_indices = list_index_map(citescore[0])
@@ -172,6 +176,13 @@ def dict_informe(investigadores, publicaciones, jif, sjr, idr, citescore):
                 result["JIF"][dato][index] = publicacion[pub_indices.get(dato)]
             if jif_indices.get(dato):
                 result["JIF"][dato][index] = jif[index + 1][jif_indices.get(dato)]
+
+        # Datos de la página JCI
+        for dato in result["JCI"]:
+            if pub_indices.get(dato):
+                result["JCI"][dato][index] = publicacion[pub_indices.get(dato)]
+            if jci_indices.get(dato):
+                result["JCI"][dato][index] = jci[index + 1][jci_indices.get(dato)]
 
         # Datos de la página SJR
         for dato in result["SJR"]:

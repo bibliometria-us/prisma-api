@@ -74,6 +74,17 @@ dict_plantilla_excel = {
         "Mejor Tercil JIF-SSCI": {},
         "Categorías Mejor Tercil JIF-SSCI": {},
     },
+    "JCI": {
+        "URL Prisma": {},
+        "JCI": {},
+        "Categorías JCI": {},
+        "Mejor Cuartil JCI": {},
+        "Categorías Mejor Cuartil JCI": {},
+        "Mejor Decil JCI": {},
+        "Categorías Mejor Decil JCI": {},
+        "Mejor Tercil JCI": {},
+        "Categorías Mejor Tercil JCI": {},
+    },
     "SJR": {
         "URL Prisma": {},
         "Año de Publicación": {},

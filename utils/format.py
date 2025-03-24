@@ -52,7 +52,7 @@ def dict_from_table(data, selectable_column, base_name="", nested: dict = {}):
             # Separamos el nombre de la clave por _ y nos quedamos con el primer elemento
             suffix = d_data.split("_")[0]
             value = data_dict[d_data]
-            if isinstance(value, (datetime, date)):
+            if isinstance(value, (datetime.date, datetime.datetime)):
                 value = date_to_str(date=value)
             # Si el sufijo está en el diccionario nested, significa que va a pertenecer a un diccionario anidado al principal
             if suffix in nested:
@@ -239,3 +239,9 @@ def dataframe_to_json(df, orient="index", indent=4):
         return df.to_json(orient=orient, indent=indent, force_ascii=False)
     except Exception as e:
         print("Error: ", e)
+
+
+def truncate_string(s: str, length: int) -> str:
+    if len(s) > length:
+        return s[: length - 3] + "..."
+    return s
