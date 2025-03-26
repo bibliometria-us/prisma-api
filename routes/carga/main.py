@@ -1,9 +1,12 @@
+import os
+import tempfile
 from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
+from routes.carga.investigador.investigador.RRHH.carga import CargaInvestigadorRRHH
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.investigador.centros_censo.procesado import procesado_fichero
@@ -402,3 +405,61 @@ class p_04(Resource):
             return {"message": str(e)}, 402
         except Exception as e:
             return {"message": "Error inesperado"}, 500
+
+
+# *************************************
+# ****** CARGA DE INVESTIGADORES ******
+# *************************************
+
+
+# **** CARGA DE INVESTIGADORES ****
+@carga_namespace.route(
+    "/investigador/importar_investigadores_masivo",
+    doc=False,
+    endpoint="importar_investigadores_masivo",
+)
+class ImportarInvestigadoresMasivo(Resource):
+    # TODO: por hacer
+    def post(self):
+        dir_temp = "/app/temp/"
+
+        args = request.args
+        api_key = request.form.get("api_key")
+        files = request.files
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+
+        # Validar que los 4 archivos han sido subidos
+        required_files = ["pdi", "pi", "pdi_ceses", "pi_ceses"]
+        # required_files = ["pdi"]
+        for file_key in required_files:
+            if file_key not in files:
+                return {"message": f"Falta el archivo {file_key}"}, 400
+
+        pdi = files["pdi"]
+        pi = files["pi"]
+        pdi_ceses = files["pdi_ceses"]
+        pi_ceses = files["pi_ceses"]
+
+        temp_files = {}  # Diccionario para almacenar rutas temporales
+        try:
+            # Guardar archivos temporalmente
+            for file_key in required_files:
+                temp = tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".xlsx", dir=dir_temp
+                )
+                files[file_key].save(temp.name)
+                temp_files[file_key] = temp.name  # Guardar la ruta del archivo temporal
+
+            # Leer los archivos como DataFrames de pandas
+            CargaInvestigadorRRHH().cargar_investigador_RRHH(file_paths=temp_files)
+            pass
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+        finally:
+            # Eliminar archivos temporales después de procesarlos
+            for temp_path in temp_files.values():
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
