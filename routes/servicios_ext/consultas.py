@@ -103,7 +103,6 @@ def get_investigadores(bd: BaseDatos = None) -> dict:
                         ii.nombre AS Instituto,
                         iue.idUdExcelencia AS Id_UdExcelencia,
                         iue.nombre AS Ud_Exelencia,
-                        iia.idInvestigador AS Id_Prisma,
                         MAX(CASE WHEN iii.tipo = 'scopus' THEN iii.valor END) AS Id_Scopus,
                         MAX(CASE WHEN iii.tipo = 'researcherId' THEN iii.valor END) AS Id_Wos,
                         MAX(CASE WHEN iii.tipo = 'openalex' THEN iii.valor END) AS Id_Openalex 
