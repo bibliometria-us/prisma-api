@@ -91,6 +91,7 @@ def get_investigadores(bd: BaseDatos = None) -> dict:
     query = """SELECT iia.idInvestigador AS Id_Prisma,
                         iia.nombre AS Nombre,
                         iia.apellidos AS Apellidos,
+                        iia.sexo AS Sexo, 
                         id.idDepartamento AS Id_Departamento,
                         id.nombre AS Departamento,
                         ia.idArea AS Id_Area,
