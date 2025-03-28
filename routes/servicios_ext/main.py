@@ -15,6 +15,31 @@ servicios_ext_namespace = Namespace("servicios_ext", doc=False)
 
 
 # *************************************
+# ******** FUNCIONES TEMPORALES *******
+# *************************************
+# BIBLIOTECAS
+@servicios_ext_namespace.route(
+    "/eliminar_autores_pub",
+    doc=False,
+    endpoint="eliminar_autores_pub",
+)
+class eliminar_autores_pub(Resource):
+    def get(self):
+        args = request.args
+        id_pub = args.get("id_pub")
+        if not es_admin():
+            return {"message": "No autorizado, inicie sesión en Prisma."}, 401
+        try:
+            consultas.eliminar_autores_pub(id_publicacion=id_pub)
+            return {"message": "La acción se ha completado con éxito."}, 200
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# *************************************
 # ************** BASICOS **************
 # *************************************
 # BIBLIOTECAS

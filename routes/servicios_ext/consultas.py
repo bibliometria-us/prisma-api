@@ -3,6 +3,21 @@ from models.investigador import Investigador
 
 
 # ****************************************
+# ******** FUNCIONES TEMPORALES **********
+# ****************************************
+# Obtiene la lista de las bibliotecas
+def eliminar_autores_pub(id_publicacion: int, bd: BaseDatos = None) -> dict:
+    query = "DELETE FROM p_autor WHERE idPublicacion = %s"
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query, (id_publicacion,))
+        return {"message": "Autores eliminados correctamente"}
+    except Exception as e:
+        return {"error": str(e)}, 400
+
+
+# ****************************************
 # *************   BASICO   ***************
 # ****************************************
 # Obtiene la lista de las bibliotecas
