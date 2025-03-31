@@ -242,7 +242,7 @@ def get_quality_rule_p_03(bd: BaseDatos = None) -> dict:
 # Regla de calidad p_04
 # Publicación sin autores US
 def get_quality_rule_p_04(bd: BaseDatos = None) -> dict:
-    query_publicacion = """SELECT pa.idPublicacion AS ID_PUBLICACION FROM p_publicacion pp
+    query_publicacion = """SELECT pp.titulo AS TITULO, pp.agno AS AGNO, pa.idPublicacion AS ID_PUBLICACION FROM p_publicacion pp
                             INNER JOIN p_autor pa ON pa.idPublicacion = pp.idPublicacion
                             WHERE pp.eliminado = 0 AND pp.tipo != "Tesis"
                             GROUP BY pp.idPublicacion
