@@ -61,18 +61,25 @@ def cargar_lineas_investigacion():
         db.ejecutarConsulta(query, params)
 
 
-def cargar_tutores():
-    with open("routes/carga/investigador/doctorado/fuentes/TUTORES.csv", "rb") as file:
+def cargar_directores():
+    with open(
+        "routes/carga/investigador/doctorado/fuentes/DIRECTORES.csv", "rb"
+    ) as file:
         file_storage = FileStorage(
             stream=file,
-            name="TUTORES.csv",
+            name="DIRECTORES.csv",
             content_type="application/octet-stream",
         )
-        tutores = flask_csv_to_df(file_storage)
+        directores = flask_csv_to_df(file_storage)
 
     db = BaseDatos()
+    query = (
+        "TRUNCATE TABLE i_profesor_doctorado;"
+        "TRUNCATE TABLE i_profesor_doctorado_linea_inv;"
+    )
+    db.ejecutarConsulta(query)
 
-    for index, tutor in tutores.iterrows():
+    for index, director in directores.iterrows():
 
         query = """
                 INSERT INTO i_profesor_doctorado (idInvestigador, idDoctorado)
@@ -82,8 +89,8 @@ def cargar_tutores():
                 )
                 """
         params = {
-            "dni": tutor["C_DNI"],
-            "idDoctorado": tutor["CODIGO"],
+            "dni": director["C_DNI"],
+            "idDoctorado": director["CODIGO"],
         }
 
         db.ejecutarConsulta(query, params)
@@ -96,8 +103,8 @@ def cargar_tutores():
                 )
                 """
         params = {
-            "dni": tutor["C_DNI"],
-            "idLineaInvestigacion": tutor["LÍNEA DE INV."],
+            "dni": director["C_DNI"],
+            "idLineaInvestigacion": director["LÍNEA DE INV."],
         }
 
         db.ejecutarConsulta(query, params)
