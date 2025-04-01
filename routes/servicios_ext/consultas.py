@@ -147,6 +147,7 @@ def get_investigadores(bd: BaseDatos = None) -> dict:
 # ****************************************
 # ************ QUALITY RULES *************
 # ****************************************
+# ************** PUBLICACIONES ****************
 # Regla de calidad p_00
 # Últimas 100 publicaciones introducidas
 def get_quality_rule_p_00(bd: BaseDatos = None) -> dict:
@@ -251,6 +252,235 @@ def get_quality_rule_p_04(bd: BaseDatos = None) -> dict:
         if bd is None:
             bd = BaseDatos()
         bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad p_05
+# Publicaciones sin identificadores
+def get_quality_rule_p_05(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT p.idPublicacion AS ID_PUBLICACION, p.titulo AS TITULO, ib.nombre AS BIBLIOTECA
+                    FROM (SELECT idPublicacion,titulo, MAX(idCentro) as idCentro, eliminado FROM publicacionesXcentro GROUP BY idPublicacion) p
+                    LEFT JOIN (SELECT * FROM `p_identificador_publicacion` WHERE eliminado = 0) pi ON pi.idPublicacion = p.idPublicacion 
+                    LEFT JOIN i_centro ic ON ic.idCentro = p.idCentro 
+                    LEFT JOIN i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca 
+                    WHERE p.eliminado = 0 AND pi.idIdentificador IS NULL
+                    GROUP BY p.idPublicacion;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# ************** FUENTES ****************
+# Regla de calidad f_01
+# Fuentes eliminadas con publicaciones asociadas
+def get_quality_rule_f_01(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL, GROUP_CONCAT("Id_Pub: ", pp.idPublicacion SEPARATOR ", ") AS PUBLICACIONES, COUNT(pp.idPublicacion) AS N_PUBLICACIONES
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_publicacion` WHERE eliminado = 0) as pp ON pp.idFuente = pf.idFuente
+            WHERE pf.eliminado = 1
+            GROUP BY pp.idFuente
+            HAVING COUNT(pp.idPublicacion) > 0;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_02
+# Fuentes tipo libro sin ISBN o eISBN
+def get_quality_rule_f_02(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo IN ("isbn", "eisbn")) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND (pf.tipo IN ("Libro", "Books")) AND pif.idIdentificador IS NULL
+            GROUP BY pf.idFuente 
+            HAVING COUNT(pif.idFuente) = 0;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_03
+# Fuentes tipo libro sin ISBN o eISBN
+def get_quality_rule_f_03(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo = "isbn" ) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND (pf.tipo IN ("Libro","Books")) AND pif.idIdentificador IS NOT NULL
+            GROUP BY pf.idFuente 
+            HAVING COUNT(pif.idFuente) > 1 ;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_04
+# Fuentes tipo libro con mas de 1 eISBN
+def get_quality_rule_f_04(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo = "eisbn" ) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND (pf.tipo IN ("Libro","Books")) AND pif.idIdentificador IS NOT NULL
+            GROUP BY pf.idFuente 
+            HAVING COUNT(pif.idFuente) > 1 ;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_05
+# Fuentes tipo revista sin ISSN o eISBN
+def get_quality_rule_f_05(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo IN ("issn", "eissn")) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND (pf.tipo = "Revista") AND pif.idIdentificador IS NULL
+            GROUP BY pf.idFuente 
+            HAVING COUNT(pif.idFuente) = 0;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_06
+# Fuentes tipo revista con mas de 1 ISSN
+def get_quality_rule_f_06(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo = "issn" ) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND (pf.tipo = "Revista") AND pif.idIdentificador IS NOT NULL
+            GROUP BY pf.idFuente 
+            HAVING COUNT(pif.idFuente) > 1 ;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_07
+# Fuentes tipo revista con mas de 1 eISSN
+def get_quality_rule_f_07(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo = "eissn" ) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND (pf.tipo = "Revista") AND pif.idIdentificador IS NOT NULL
+            GROUP BY pf.idFuente 
+            HAVING COUNT(pif.idFuente) > 1 ;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_08
+# Fuentes con ISSN/eISSN con formato incorrecto
+def get_quality_rule_f_08(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL, GROUP_CONCAT("ISSN: ",pif.valor  SEPARATOR ", ") AS PUBLICACIONES
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` WHERE eliminado = 0 AND tipo IN ("issn", "eissn") AND valor NOT REGEXP '^[0-9]{4}-[0-9]{3}[0-9X]$') pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND pif.idIdentificador IS NOT NULL
+            GROUP BY pf.idFuente;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_09
+# Fuentes con ISBN/eISBN con formato incorrecto
+def get_quality_rule_f_09(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL, GROUP_CONCAT("ISBN: ",pif.valor  SEPARATOR ", ") AS IDENTIFICADORES
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` 
+            WHERE eliminado = 0 AND tipo IN ("isbn", "eisbn") AND valor NOT REGEXP '^[0-9][0-9\-]{8,16}[0-9Xx]$' AND
+            NOT(CHAR_LENGTH(REPLACE(valor, '-', '')) = 10 OR CHAR_LENGTH(REPLACE(valor, '-', '')) = 13)) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND pif.idIdentificador IS NOT NULL
+            GROUP BY pf.idFuente;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_10
+# Fuente tipo colección sin ISSN
+def get_quality_rule_f_10(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL
+            FROM p_fuente pf 
+            LEFT JOIN (SELECT * FROM `p_identificador_fuente` 
+            WHERE eliminado = 0 AND tipo IN ("issn", "eissn")) pif ON pif.idFuente  = pf.idFuente 
+            WHERE pf.eliminado = 0 AND pf.tipo = "colección" AND pif.idIdentificador IS NULL
+            GROUP BY pf.idFuente;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad f_11
+# Títulos de fuentes duplicados
+def get_quality_rule_f_11(bd: BaseDatos = None) -> dict:
+    query = """SELECT pf.titulo AS TITULO, GROUP_CONCAT("Id: ",pf.idFuente  SEPARATOR ", ")  AS IDS, GROUP_CONCAT("Título: ",pf.titulo  SEPARATOR ", ")  AS TITULOS, COUNT(pf.idFuente) AS N_FUENTES
+            FROM p_fuente pf 
+            WHERE pf.eliminado = 0
+            GROUP BY LOWER(TRIM(pf.titulo))
+            HAVING COUNT(pf.idFuente)>1;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
         metrica = bd.get_dataframe()
     except Exception as e:
         return {"error": e.message}, 400
