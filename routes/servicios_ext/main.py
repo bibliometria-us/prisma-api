@@ -234,8 +234,11 @@ class investigadores(Resource):
 
 
 # *************************************
-# **** QUALITY RULES PUBLICACIONES ****
+# ********* QUALITY RULES  ************
 # *************************************
+
+
+# ************ FUENTES *****************
 # p_00
 # Publicación con tipo de Datos duplicado
 @servicios_ext_namespace.route(
@@ -402,6 +405,37 @@ class p_05(Resource):
             return {"message": str(e)}, 402
         except Exception as e:
             return {"message": "Error inesperado"}, 500
+
+
+# p_08
+# Publicación tipo capitulo cuya fuente sea tipo colección
+@servicios_ext_namespace.route(
+    "/qr/p_08",
+    doc=False,
+    endpoint="p_08",
+)
+class p_08(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_quality_rule_p_08()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# *************** FUENTES ************************
 
 
 # f_01

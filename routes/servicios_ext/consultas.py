@@ -278,6 +278,26 @@ def get_quality_rule_p_05(bd: BaseDatos = None) -> dict:
     return metrica
 
 
+# Regla de calidad p_08
+# Publicación tipo capitulo cuya fuente sea tipo colección
+def get_quality_rule_p_08(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT p.idPublicacion AS ID_PUBLICACION, p.titulo AS TITULO, ib.nombre AS BIBLIOTECA
+        FROM (SELECT idPublicacion, titulo, MAX(idCentro) as idCentro, idFuente, eliminado FROM publicacionesXcentro  WHERE tipo = 'Capitulo' AND eliminado = 0  GROUP BY idPublicacion) p
+        LEFT JOIN i_centro ic ON ic.idCentro = p.idCentro 
+        LEFT JOIN i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca 
+        LEFT JOIN (SELECT * FROM p_fuente WHERE tipo = "coleccion") pf ON pf.idFuente = p.idFuente
+        WHERE pf.idFuente IS NOT NULL
+        GROUP BY p.idPublicacion;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
 # ************** FUENTES ****************
 # Regla de calidad f_01
 # Fuentes eliminadas con publicaciones asociadas
