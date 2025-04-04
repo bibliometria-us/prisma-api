@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+import copy
 import json
 from db.conexion import BaseDatos
 
-from utils.format import enumerated_dict
+from utils.format import enumerated_dict, truncate_string
 from json import JSONEncoder
 from typing import Any, Type
 
@@ -79,12 +80,6 @@ class DatosCargaPublicacion(DatosCarga):
         assert tipo
         self.tipo = tipo
 
-    def set_revista(self, revista: "DatosCargaFuente"):
-        if self.tipo == "Libro":
-            revista.tipo = "Libro"
-            revista.titulo = self.titulo
-        self.fuente = revista
-
     def es_tesis(self) -> bool:
         return self.tipo == "Tesis"
 
@@ -113,6 +108,15 @@ class DatosCargaPublicacion(DatosCarga):
         if self.tipo == "Libro":
             self.fuente.tipo = "Libro"
             self.fuente.titulo = self.titulo
+
+    def contar_autores_agrupados(self) -> dict[str, int]:
+        autores_agrupados = {}
+        for autor in self.autores:
+            if autor.tipo not in autores_agrupados:
+                autores_agrupados[autor.tipo] = 0
+            autores_agrupados[autor.tipo] += 1
+
+        return dict(sorted(autores_agrupados.items()))
 
     def to_dict(self):
         result = {
@@ -176,12 +180,74 @@ class DatosCargaPublicacion(DatosCarga):
         self.from_dict(self.dict)
         return self
 
+    def es_capitulo(self):
+        tipos = ["Capítulo"]
+        return self.tipo in tipos
+
+    def es_libro(self):
+        tipos = ["Libro"]
+        return self.tipo in tipos
+
+    def normalizar_fuente(self):
+        if not self.fuente.tiene_issn_e_isbn():
+            return None
+        if self.es_libro():
+            self.fuente_a_coleccion()
+            self.libro_como_fuente()
+        if self.es_capitulo():
+            self.fuente.coleccion.identificadores = self.fuente.get_issns()
+            self.fuente.identificadores = self.fuente.get_isbns()
+
+    def fuente_a_coleccion(self):
+        self.fuente.coleccion = copy.deepcopy(self.fuente)
+        # Limpiar isbns
+        self.fuente.coleccion.identificadores = self.fuente.get_issns()
+
+    def libro_como_fuente(self):
+        self.fuente.titulo = self.titulo
+        self.fuente.tipo = self.tipo
+        # Limpiar issns
+        self.fuente.identificadores = self.fuente.get_isbns()
+
+    def sanitize(self):
+        for financiacion in self.financiacion:
+            financiacion.sanitize()
+        for autor in self.autores:
+            autor.sanitize()
+        self.fuente.sanitize()
+        self.sanitize_autores()
+
+    def sanitize_autores(self):
+        # Group authors by their 'tipo'
+        autores_agrupados = {}
+        for autor in self.autores:
+            if autor.tipo not in autores_agrupados:
+                autores_agrupados[autor.tipo] = []
+                autores_agrupados[autor.tipo].append(autor)
+
+        # Sort each group by 'orden' and normalize the 'orden' values
+        for tipo, autores in autores_agrupados.items():
+            autores.sort(key=lambda x: x.orden)
+            for index, autor in enumerate(autores, start=1):
+                autor.orden = index
+
+    def validate(self):
+        if not self.titulo:
+            return False
+        if not self.fuente.validate():
+            return False
+        if not self.tipo or self.tipo == "Tesis":
+            return False
+        if not self.autores:
+            return False
+        return True
+
     def close(self):
-        self.libro_como_fuente()
+        # self.libro_como_fuente()
         self.dict = self.to_dict()
 
     def __eq__(self, value: "DatosCargaPublicacion") -> bool:
-        return (
+        result = (
             self.titulo == value.titulo
             and self.tipo == value.tipo
             and set(self.autores) == set(value.autores)
@@ -192,6 +258,8 @@ class DatosCargaPublicacion(DatosCarga):
             and set(self.financiacion) == set(value.financiacion)
             and set(self.fechas_publicacion) == set(value.fechas_publicacion)
         )
+
+        return result
 
 
 class DatosCargaAutor(DatosCarga):
@@ -213,6 +281,10 @@ class DatosCargaAutor(DatosCarga):
     def set_contacto(self, contacto: str):
         assert contacto in ("S", "N")
         self.contacto = contacto
+
+    def sanitize(self):
+        for afiliacion in self.afiliaciones:
+            afiliacion.sanitize()
 
     def to_dict(self):
         dict = {
@@ -249,15 +321,17 @@ class DatosCargaAutor(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaAutor") -> bool:
-        return (
+        result = (
             self.tipo == value.tipo
             and self.orden == value.orden
             and self.contacto == value.contacto
             and set(self.afiliaciones) == set(value.afiliaciones)
         )
 
+        return result
+
     def __hash__(self) -> int:
-        return hash((self.tipo, self.orden, self.contacto, self.orden))
+        return hash((self.tipo, self.orden, self.contacto))
 
 
 class DatosCargaIdentificadorAutor(DatosCarga):
@@ -305,6 +379,9 @@ class DatosCargaAfiliacionesAutor(DatosCarga):
         }
 
         return dict
+
+    def sanitize(self):
+        self.pais = self.pais or "Desconocido"
 
     def from_dict(self, source: dict):
         self.nombre = source.get("nombre")
@@ -376,13 +453,17 @@ class DatosCargaDatoPublicacion(DatosCarga):
 
 
 class DatosCargaFuente(DatosCarga):
-    def __init__(self) -> None:
+    def __init__(self, coleccion=True) -> None:
         self.id_fuente = 0
         self.titulo = ""
         self.tipo = ""
         self.editoriales: list[DatosCargaEditorial] = list()
         self.identificadores: list[DatosCargaIdentificadorFuente] = list()
         self.datos: list[DatosCargaDatosFuente] = list()
+        if coleccion:
+            self.coleccion: DatosCargaFuente = DatosCargaFuente(coleccion=False)
+        else:
+            self.coleccion = None
 
     def set_titulo(self, titulo: str):
         self.titulo = titulo
@@ -398,6 +479,46 @@ class DatosCargaFuente(DatosCarga):
 
     def add_dato(self, datos: "DatosCargaDatosFuente"):
         self.datos.append(datos)
+
+    def sanitize(self):
+        self.titulo = truncate_string(self.titulo, 800)
+        self.editorial = truncate_string(self.titulo, 200)
+        for editorial in self.editoriales:
+            editorial.sanitize()
+        for identificador in self.identificadores:
+            identificador.sanitize()
+
+    def validate(self):
+        return self.titulo and self.tipo and (self.tiene_issn() or self.tiene_isbn())
+
+    def get_issns(self) -> list["DatosCargaIdentificadorFuente"]:
+        return [
+            identificador
+            for identificador in self.identificadores
+            if identificador.tipo in ("issn", "eissn")
+        ]
+
+    def get_isbns(self) -> list["DatosCargaIdentificadorFuente"]:
+        return [
+            identificador
+            for identificador in self.identificadores
+            if identificador.tipo in ("isbn", "eisbn")
+        ]
+
+    def tiene_issn(self) -> bool:
+        return any(
+            identificador.tipo in ("issn", "eissn")
+            for identificador in self.identificadores
+        )
+
+    def tiene_isbn(self) -> bool:
+        return any(
+            identificador.tipo in ("isbn", "eisbn")
+            for identificador in self.identificadores
+        )
+
+    def tiene_issn_e_isbn(self) -> bool:
+        return self.tiene_issn() and self.tiene_isbn()
 
     def to_dict(self):
         dict = {
@@ -423,13 +544,15 @@ class DatosCargaFuente(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaFuente") -> bool:
-        return (
-            self.titulo == value.titulo
-            and self.tipo == value.tipo
-            and set(self.datos) == set(value.datos)
-            and set(self.editoriales) == set(value.editoriales)
-            and set(self.identificadores) == set(value.identificadores)
-        )
+        result = (
+            any(
+                identificador in value.identificadores
+                for identificador in self.identificadores
+            )
+            or self.identificadores == value.identificadores
+        ) and self.coleccion == value.coleccion
+
+        return result
 
     def __hash__(self):
         return hash((self.titulo, self.tipo, self.editoriales, self.identificadores))
@@ -454,11 +577,20 @@ class DatosCargaIdentificadorFuente(DatosCarga):
 
         return self
 
+    def sanitize(self):
+        self.valor = "".join(filter(str.isdigit, self.valor))
+        if self.tipo in ("issn", "eissn"):
+            if len(self.valor) == 8:
+                self.valor = f"{self.valor[:4]}-{self.valor[4:]}"
+
     def __eq__(self, value: "DatosCargaIdentificadorFuente") -> bool:
         return self.tipo == value.tipo and self.valor == value.valor
 
     def __hash__(self) -> int:
         return hash((self.tipo, self.valor))
+
+    def __str__(self):
+        return f"{self.tipo}: {self.valor}"
 
 
 class DatosCargaDatosFuente(DatosCarga):
@@ -512,6 +644,9 @@ class DatosCargaEditorial(DatosCarga):
         self.url = source.get("url")
 
         return self
+
+    def sanitize(self):
+        self.nombre = truncate_string(self.nombre, 200)
 
     def __eq__(self, value: "DatosCargaEditorial") -> bool:
         return (
@@ -567,13 +702,30 @@ class DatosCargaFinanciacion(DatosCarga):
 
         return self
 
+    def sanitize(self):
+        """
+        Sanitiza el atributo 'proyecto' asegurando que su longitud no exceda los 50 caracteres.
+        Si la longitud de 'proyecto' es mayor a 50 caracteres, divide la cadena en partes
+        y selecciona la parte más larga que tenga 50 caracteres o menos. Si no existe tal parte, trunca
+        'proyecto' a los primeros 50 caracteres.
+        """
+        if self.proyecto and len(self.proyecto) > 50:
+            parts = self.proyecto.split()
+            longest_part = max(parts, key=len) if parts else self.proyecto[:50]
+            self.proyecto = (
+                longest_part if len(longest_part) <= 50 else self.proyecto[:50]
+            )
+
+        if self.agencia:
+            self.agencia = self.agencia[:300]
+
     def __eq__(self, value: "DatosCargaFinanciacion") -> bool:
         return (self.proyecto == value.proyecto and self.agencia == value.agencia) or (
             self.ror == value.ror
         )
 
     def __hash__(self) -> int:
-        return hash((self.proyecto, self.agencia))
+        return hash((self.proyecto))
 
 
 class DatosCargaAccesoAbierto(DatosCarga):
@@ -600,6 +752,9 @@ class DatosCargaAccesoAbierto(DatosCarga):
 
     def __hash__(self) -> int:
         return hash((self.valor, self.origen))
+
+    def __str__(self):
+        return f"{self.valor} ({self.origen})"
 
 
 class DatosCargaFechaPublicacion(DatosCarga):
@@ -643,3 +798,8 @@ class DatosCargaFechaPublicacion(DatosCarga):
 
     def __hash__(self) -> int:
         return hash((self.dia, self.mes, self.agno, self.tipo))
+
+    def __str__(self):
+        str_agno = str(self.agno)
+        str_mes = str(self.mes).zfill(2) if str(self.mes) else ""
+        return f"{str_agno}{'-' + str_mes}"

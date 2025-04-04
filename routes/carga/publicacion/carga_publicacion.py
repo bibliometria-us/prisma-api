@@ -1,9 +1,16 @@
+import copy
 from datetime import datetime
 from typing import Any, Dict
 
 import pandas as pd
 from db.conexion import BaseDatos
-from routes.carga.problema_carga import ProblemaCarga
+from routes.carga.editor.registro_cambios_editor import RegistroCambiosEditorAtributos
+from routes.carga.fuente.registro_cambios_fuente import (
+    RegistroCambiosFuenteAtributos,
+    RegistroCambiosFuenteColeccion,
+    RegistroCambiosFuenteDatos,
+    RegistroCambiosFuenteIdentificadores,
+)
 from routes.carga.publicacion.comparar_autores import (
     ComparacionAutores,
 )
@@ -21,6 +28,17 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaPublicacion,
 )
 from routes.carga.publicacion.idus.parser import IdusParser
+from routes.carga.publicacion.registro_cambios_publicacion import (
+    RegistroCambiosPublicacionAtributos,
+    RegistroCambiosPublicacionCantidadAutores,
+    RegistroCambiosPublicacionDatos,
+    RegistroCambiosPublicacionFecha,
+    RegistroCambiosPublicacionFinanciacion,
+    RegistroCambiosPublicacionFuente,
+    RegistroCambiosPublicacionIdentificadores,
+    RegistroCambiosPublicacionOpenAccess,
+)
+from routes.carga.registro_cambios import ProblemaCarga, RegistroCambios
 
 
 class CargaPublicacion:
@@ -29,7 +47,7 @@ class CargaPublicacion:
     """
 
     def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
-        self.id_carga = id_carga or datetime.now().strftime("%Y%m%d%H%M%S.%f")[:-3]
+        self.id_carga = id_carga or RegistroCambios.generar_id_carga()
         self.datos: DatosCargaPublicacion = None
         self.datos_antiguos: DatosCargaPublicacion = None
         self.auto_commit = auto_commit
@@ -37,10 +55,11 @@ class CargaPublicacion:
         self.id_publicacion = 0
         self.fuente_existente = False
         self.origen = None
-        self.problemas: list[ProblemaCargaPublicacion] = []
+        self.problemas_carga: list[ProblemaCarga] = []
+        self.lista_registros: list[RegistroCambios] = []
 
     def busqueda(func):
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self: "CargaPublicacion", *args, **kwargs):
             if self.datos_antiguos is not None:
                 return func(self, *args, **kwargs)
             else:
@@ -69,7 +88,7 @@ class CargaPublicacion:
         self.db.rollback()
         self.db.closeConnection()
 
-    def close_database(self):
+    def commit_database(self):
         """
         Crea la cierra y persiste cambios en la conexión con la base de datos
         """
@@ -77,80 +96,64 @@ class CargaPublicacion:
             self.db.commit()
             self.db.closeConnection()
 
-    def add_problema(
-        self,
-        mensaje: str,
-        antigua_fuente: str,
-        antiguo_valor: str,
-        nueva_fuente: str,
-        nuevo_valor: str,
-        tipo_problema: str = "Advertencia",
-        tipo_dato_2: str = None,
-        tipo_dato_3: str = None,
-    ):
+    def close_database(self):
         """
-        Añade un elemento que representa un problema en la carga de publicaciones.
+        Cierra la conexión con la base de datos
         """
-
-        problema = ProblemaCargaPublicacion(
-            id_carga=self.id_carga,
-            db=self.db,
-            id_dato=self.id_publicacion,
-            antigua_fuente=antigua_fuente,
-            antiguo_valor=antiguo_valor,
-            nueva_fuente=nueva_fuente,
-            nuevo_valor=nuevo_valor,
-            tipo_dato_2=tipo_dato_2,
-            tipo_dato_3=tipo_dato_3,
-        )
-
-        problema.tipo_dato = "Publicacion"
-        if tipo_problema == "Advertencia":
-            problema.advertencia(mensaje)
-        if tipo_problema == "Error":
-            problema.error(mensaje)
-
-        self.problemas.append(problema)
-
-    def insertar_problemas(self):
-        for problema in self.problemas:
-            problema.insertar()
+        self.db.closeConnection()
 
     def cargar_publicacion(self):
+        if not self.datos.validate():
+            # TODO: Gestionar registro del errror en carga
+            return None
+
+        self.datos.sanitize()
+
         self.insertar_publicacion()
         self.insertar_autores()
         self.insertar_identificadores_publicacion()
         self.insertar_datos_publicacion()
-        self.insertar_fuente()
-        self.insertar_problemas()
+        self.insertar_fuente(tipo="fuente")
+        if self.datos.fuente.coleccion:
+            self.insertar_fuente(tipo="coleccion")
         self.insertar_financiaciones()
         self.insertar_fechas_publicacion()
         self.insertar_valores_acceso_abierto()
-        self.close_database()
+        self.insertar_registros()
+        self.insertar_problemas()
+        self.commit_database()
+
+    def insertar_registros(self):
+        for registro in self.lista_registros:
+            registro.insertar(id_carga=self.id_carga)
+
+    def insertar_problemas(self):
+        for problema in self.problemas_carga:
+            problema.insertar(id_carga=self.id_carga)
 
     def buscar_publicacion(self):
         """
         Comprueba si una publicación está duplicada según criterios establecidos
         """
-        self.datos_antiguos = DatosCargaPublicacion().from_id_publicacion(
-            self.id_publicacion, self.db
-        )
 
-        identificadores = ",".join(
-            f"'{identificador.valor}'" for identificador in self.datos.identificadores
-        )
-        # DUDA: Se comprueba sólo el id y no el tipo de id (o fuente)
-        # Se buscan las publicaciones por el o los identificadores (DOI, ID Scopus, ID WoS...) localizados en la carga
-        query = f"""
-                SELECT p.idPublicacion, p.tipo, p.titulo, p.agno as año_publicacion, p.origen FROM prisma.p_publicacion p
-                LEFT JOIN prisma.p_identificador_publicacion idp ON idp.idPublicacion = p.idPublicacion
-                WHERE idp.valor IN ({identificadores})
-                GROUP BY p.idPublicacion
-                """
-        # params = {"identificadores": identificadores}
+        id_publicacion = None
+        for identificador in self.datos.identificadores:
+            # DUDA: Se comprueba sólo el id y no el tipo de id (o fuente)
+            # Se buscan las publicaciones por el o los identificadores (DOI, ID Scopus, ID WoS...) localizados en la carga
+            query = f"""
+                    SELECT p.idPublicacion, p.tipo, p.titulo, p.agno as año_publicacion, p.origen FROM prisma.p_publicacion p
+                    LEFT JOIN prisma.p_identificador_publicacion idp ON idp.idPublicacion = p.idPublicacion
+                    WHERE idp.valor = %(valor)s AND idp.tipo = %(tipo)s
+                    GROUP BY p.idPublicacion
+                    """
+            params = {"valor": identificador.valor, "tipo": identificador.tipo}
 
-        self.db.ejecutarConsulta(query)
-        id_publicacion = self.db.get_first_cell()
+            self.db.ejecutarConsulta(query, params)
+            id_publicacion = self.db.get_first_cell()
+
+            if id_publicacion:
+                self.id_publicacion = id_publicacion
+                break
 
         datos_publicacion = None
 
@@ -159,31 +162,44 @@ class CargaPublicacion:
             datos_publicacion = self.db.get_dataframe()
             datos_publicacion = datos_publicacion.iloc[0].to_dict()
             self.datos_antiguos = DatosCargaPublicacion().from_id_publicacion(
-                id_publicacion, self.db
+                self.id_publicacion, self.db
             )
+            if not self.datos_antiguos.validate():
+                return None
+
+            self.datos_antiguos.sanitize()
 
         return datos_publicacion
 
-    def comparar_publicacion(self, publicacion_antigua: Dict[str, Any]):
+    def comparar_atributos_publicacion(self, publicacion_antigua):
         """
         Si se ha encontrado una publicación existente con identificadores comunes,
         comparar los atributos entre sí.
         """
 
-        tipos_atributo = ["tipo", "titulo", "año_publicacion"]  # Columnas a comprobar
+        tipos_atributo = ["tipo", "año_publicacion"]  # Columnas a comprobar
 
         for tipo_atributo in tipos_atributo:
-            antiguo_atributo = publicacion_antigua[tipo_atributo]
             nuevo_atributo = getattr(self.datos, tipo_atributo)
-            if not antiguo_atributo == nuevo_atributo:
-                self.add_problema(
-                    mensaje="",
-                    antigua_fuente=publicacion_antigua["origen"],
-                    antiguo_valor=antiguo_atributo,
-                    nueva_fuente=self.origen,
-                    nuevo_valor=nuevo_atributo,
-                    tipo_dato_2=tipo_atributo,
-                )
+
+            registro = RegistroCambiosPublicacionAtributos(
+                id=self.id_publicacion,
+                atributo=tipo_atributo,
+                valor=nuevo_atributo,
+                origen=self.origen,
+                bd=self.db,
+            )
+
+            if not publicacion_antigua:
+                self.lista_registros.append(registro)
+                continue
+
+            antiguo_atributo = publicacion_antigua[tipo_atributo]
+
+            if antiguo_atributo != nuevo_atributo:
+                problema = registro.detectar_conflicto(valor_actual=antiguo_atributo)
+                if problema:
+                    self.problemas_carga.append(problema)
 
     def insertar_publicacion(self):
         """
@@ -191,65 +207,68 @@ class CargaPublicacion:
         DUDA: esto es lo único que se almacena de la publicación en Prisma?
         """
         publicacion_antigua = self.buscar_publicacion()
-        if publicacion_antigua:
-            self.comparar_publicacion(publicacion_antigua=publicacion_antigua)
-            return None
 
-        query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen)
-                    VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s)"""
+        if not publicacion_antigua:
+            query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen)
+                        VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s)"""
 
-        params = {
-            "tipo": self.datos.tipo,
-            "titulo": self.datos.titulo,
-            "agno": self.datos.año_publicacion,
-            "origen": self.origen,
-        }
+            params = {
+                "tipo": self.datos.tipo,
+                "titulo": self.datos.titulo,
+                "agno": self.datos.año_publicacion,
+                "origen": self.origen,
+            }
 
-        self.db.ejecutarConsulta(query, params)
-        self.id_publicacion = self.db.last_id
+            self.db.ejecutarConsulta(query, params)
+            self.id_publicacion = self.db.last_id
 
-    def buscar_autores(self):
-        """
-        Busca los autores en la base de datos para asignarlos a la publicación
-        """
-        query = """SELECT *, rol as tipo FROM prisma.p_autor WHERE idPublicacion = %(idPublicacion)s"""
-        params = {"idPublicacion": self.id_publicacion}
+        self.comparar_atributos_publicacion(publicacion_antigua=publicacion_antigua)
 
-        self.db.ejecutarConsulta(query, params)
-        antiguos_autores = self.db.get_dataframe()
+    @busqueda
+    def comparar_autores(self, registro: RegistroCambiosPublicacionCantidadAutores):
 
-        if len(antiguos_autores) == 0:
-            return False
-        else:
-            nuevos_autores = pd.DataFrame(self.datos.to_dict().get("autores"))
-            comparacion_autores = ComparacionAutores(antiguos_autores, nuevos_autores)
-            count_nuevos, count_antiguos = comparacion_autores.comparar(
-                tipo_comparacion="cantidad"
-            )
+        antiguos_autores = ", ".join(
+            f"{key}: {value}"
+            for key, value in self.datos_antiguos.contar_autores_agrupados().items()
+        )
 
-            if count_nuevos != count_antiguos:
-                self.add_problema(
-                    mensaje="",
-                    antigua_fuente=None,
-                    antiguo_valor=str(count_antiguos),
-                    nueva_fuente=self.origen,
-                    nuevo_valor=str(count_nuevos),
-                    tipo_dato_2="autores",
-                )
+        problema = registro.detectar_conflicto(valor_actual=antiguos_autores)
 
-            return True
+        if problema:
+            self.problemas_carga.append(problema)
+            return problema
+
+        return True
 
     def insertar_autores(self):
         """
         Inserta los autores de una publicación.
         """
-        if self.buscar_autores():
+        nuevos_autores = ", ".join(
+            f"{key}: {value}"
+            for key, value in self.datos.contar_autores_agrupados().items()
+        )
+
+        registro = RegistroCambiosPublicacionCantidadAutores(
+            id=self.id_publicacion,
+            valor=nuevos_autores,
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if self.comparar_autores(registro):
             return None
+
         for autor in self.datos.autores:
             self.insertar_autor(autor)
 
+        self.lista_registros.append(registro)
+
     def buscar_id_investigador(self, autor: DatosCargaAutor):
         # TODO: Plantear que la id de investigador de autor se actualice siempre
+        if not autor.ids:
+            return 0
+
         where = " OR ".join(
             f"(idi.tipo = '{identificador.tipo}' AND idi.valor = '{identificador.valor}')"
             for identificador in autor.ids
@@ -268,6 +287,7 @@ class CargaPublicacion:
 
     ## INSERCIÓN DE AUTORES
     def insertar_autor(self, autor: DatosCargaAutor):
+
         query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador, contacto)
                     VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s, %(contacto)s)
                 """
@@ -329,44 +349,31 @@ class CargaPublicacion:
         for identificador in self.datos.identificadores:
             self.insertar_identificador_publicacion(identificador)
 
+    @busqueda
     def buscar_identificador_publicacion(
-        self, identificador: DatosCargaIdentificadorPublicacion
+        self,
+        identificador: DatosCargaIdentificadorPublicacion,
+        registro: RegistroCambiosPublicacionIdentificadores,
     ) -> bool:
-        query = """
-                SELECT valor, origen FROM prisma.p_identificador_publicacion WHERE idPublicacion = %(idPublicacion)s AND tipo = %(tipo)s
-                """
-        params = {
-            "idPublicacion": self.id_publicacion,
-            "tipo": identificador.tipo,
-        }
-        self.db.ejecutarConsulta(query, params)
-        df = self.db.get_dataframe()
+        problema = registro.detectar_conflicto(valor_actual=identificador.valor)
 
-        if df.empty:
-            return False
-        if df.iloc[0]["valor"] == identificador.valor:
-            # Si el valor es el mismo, se devuelve duplicado a True para no insertarlo
-            return True
-        else:
-            # Si el valor no es el mismo, se devuelve duplicado a True para no insertarlo, y se introduce problema
-            mensaje = f"Publicación {self.id_publicacion}. Identificador '{identificador.tipo}'. Actual ({df.iloc[0]['origen']}): {df.iloc[0]['valor']}, Nuevo: ({self.origen}): {identificador.valor}"
-            kwargs = {
-                "tipo_problema": "Advertencia",
-                "mensaje": mensaje,
-                "antigua_fuente": df.iloc[0]["origen"],
-                "antiguo_valor": df.iloc[0]["valor"],
-                "nueva_fuente": self.origen,
-                "nuevo_valor": identificador.valor,
-                "tipo_dato_2": "Identificador",
-                "tipo_dato_3": identificador.tipo,
-            }
-            self.add_problema(**kwargs)
-            return True
+        if problema:
+            self.problemas_carga.append(problema)
+
+        return True
 
     def insertar_identificador_publicacion(
         self, identificador: DatosCargaIdentificadorPublicacion
     ):
-        if self.buscar_identificador_publicacion(identificador):
+        registro = RegistroCambiosPublicacionIdentificadores(
+            id=self.id_publicacion,
+            tipo_identificador=identificador.tipo,
+            valor=identificador.valor,
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if self.buscar_identificador_publicacion(identificador, registro):
             return None
 
         query = """
@@ -382,40 +389,36 @@ class CargaPublicacion:
 
         self.db.ejecutarConsulta(query, params)
 
+        self.lista_registros.append(registro)
+
     def insertar_datos_publicacion(self):
         for dato in self.datos.datos:
             self.insertar_dato_publicacion(dato)
 
-    def buscar_dato_publicacion(self, dato: DatosCargaDatoPublicacion) -> bool:
-        query = """
-                SELECT * FROM prisma.p_dato_publicacion WHERE idPublicacion = %(idPublicacion)s AND tipo = %(tipo)s
-                """
-        params = {
-            "idPublicacion": self.id_publicacion,
-            "tipo": dato.tipo,
-        }
-        self.db.ejecutarConsulta(query, params)
-        df = self.db.get_dataframe()
-
-        if df.empty:
+    @busqueda
+    def buscar_dato_publicacion(
+        self, dato: DatosCargaDatoPublicacion, registro: RegistroCambiosPublicacionDatos
+    ) -> bool:
+        if dato not in self.datos_antiguos.datos:
             return False
-        else:
-            mensaje = f"Publicación {self.id_publicacion}. Dato '{dato.tipo}'. Actual ({df.iloc[0]['origen']}): {df.iloc[0]['valor']}, Nuevo: ({self.origen}): {dato.valor}"
-            kwargs = {
-                "tipo_problema": "Advertencia",
-                "mensaje": mensaje,
-                "antigua_fuente": df.iloc[0]["origen"],
-                "antiguo_valor": df.iloc[0]["valor"],
-                "nueva_fuente": self.origen,
-                "nuevo_valor": dato.valor,
-                "tipo_dato_2": "Dato",
-                "tipo_dato_3": dato.tipo,
-            }
-            self.add_problema(**kwargs)
-            return True
+
+        problema = registro.detectar_conflicto(valor_actual=dato.valor)
+
+        if problema:
+            self.problemas_carga.append(problema)
+
+        return True
 
     def insertar_dato_publicacion(self, dato: DatosCargaDatoPublicacion):
-        if self.buscar_dato_publicacion(dato):
+        registro = RegistroCambiosPublicacionDatos(
+            id=self.id_publicacion,
+            tipo_dato=dato.tipo,
+            valor=dato.valor,
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if self.buscar_dato_publicacion(dato, registro):
             return None
 
         query = """
@@ -430,69 +433,94 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
+        self.lista_registros.append(registro)
 
-    def buscar_fuente(self) -> int:
-        if not self.datos.fuente.identificadores:
-            return None
+    @busqueda
+    def buscar_fuente(self, tipo: str) -> int:
+        if tipo == "fuente":
+            fuente = self.datos_antiguos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos_antiguos.fuente.coleccion
 
-        where = " OR ".join(
-            f"(idf.tipo = '{identificador.tipo}' AND idf.valor = '{identificador.valor}')"
-            for identificador in self.datos.fuente.identificadores
-        )
+        if fuente.id_fuente:
+            return fuente.id_fuente
 
-        query = f"""
-                SELECT f.idFuente FROM prisma.p_fuente f
-                LEFT JOIN prisma.p_identificador_fuente idf ON idf.idFuente = f.idFuente
-                WHERE {where}
-                """
+        return 0
 
-        self.db.ejecutarConsulta(query)
-        id_fuente = self.db.get_first_cell()
+    def comparar_atributos_fuente(self, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+            fuente_antigua = self.datos_antiguos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+            fuente_antigua = self.datos_antiguos.fuente.coleccion
+        nombres_atributo = ["tipo"]
+        for nombre_atributo in nombres_atributo:
+            atributo = getattr(fuente, nombre_atributo)
+            atributo_antiguo = getattr(fuente_antigua, nombre_atributo)
 
-        if id_fuente:
-            self.fuente_existente = True
-            return id_fuente
-        else:
-            return self.db.last_id
+            registro = RegistroCambiosFuenteAtributos(
+                id=fuente.id_fuente,
+                atributo=nombre_atributo,
+                valor=atributo,
+                origen=self.origen,
+                bd=self.db,
+            )
 
-    def comparar_fuente(self):
-        pass
+            problema = registro.detectar_conflicto(valor_actual=atributo_antiguo)
+            if problema:
+                self.problemas_carga.append(problema)
+                return None
 
-    def insertar_fuente(self) -> int:
-        id_fuente = self.buscar_fuente()
-        if self.fuente_existente:
-            self.comparar_fuente()
-        else:
+            self.lista_registros.append(registro)
 
+    def insertar_fuente(self, tipo: str = "fuente") -> int:
+        id_fuente = self.buscar_fuente(tipo=tipo)
+
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+        if not id_fuente:
             query = """INSERT INTO prisma.p_fuente (tipo, titulo, editorial, origen)
                 VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)"""
 
-            editorial = (
-                self.datos.fuente.editoriales[0].nombre
-                if self.datos.fuente.editoriales
-                else None
-            )
+            editorial = fuente.editoriales[0].nombre if fuente.editoriales else None
 
             params = {
-                "tipo": self.datos.fuente.tipo,
-                "titulo": self.datos.fuente.titulo,
+                "tipo": fuente.tipo,
+                "titulo": fuente.titulo,
                 "editorial": editorial,
                 "origen": self.origen,
             }
 
             self.db.ejecutarConsulta(query, params)
             id_fuente = self.db.last_id
+            fuente.id_fuente = id_fuente
 
-        self.datos.fuente.id_fuente = id_fuente
+            if tipo == "fuente":
+                self.insertar_id_fuente_publicacion()
+            if tipo == "coleccion":
+                self.insertar_coleccion_publicacion()
 
-        self.insertar_id_fuente_publicacion()
-        self.insertar_datos_fuente()
-        self.insertar_identificadores_fuente()
-        self.insertar_editoriales_fuente()
+        else:
+            fuente.id_fuente = id_fuente
+            self.comparar_atributos_fuente(tipo=tipo)
+
+        self.insertar_datos_fuente(tipo=tipo)
+        self.insertar_identificadores_fuente(tipo=tipo)
+        self.insertar_editoriales_fuente(tipo=tipo)
 
         return id_fuente
 
     def insertar_id_fuente_publicacion(self):
+        registro = RegistroCambiosPublicacionFuente(
+            id=self.id_publicacion,
+            valor=self.datos.fuente.id_fuente,
+            origen=self.origen,
+            bd=self.db,
+        )
+
         query_insertar_id_fuente_publicacion = "UPDATE prisma.p_publicacion SET idFuente = %(idFuente)s WHERE idPublicacion = %(idPublicacion)s"
         params_insertar_id_fuente_publicacion = {
             "idFuente": self.datos.fuente.id_fuente,
@@ -503,31 +531,137 @@ class CargaPublicacion:
             query_insertar_id_fuente_publicacion, params_insertar_id_fuente_publicacion
         )
 
-    def insertar_identificadores_fuente(self):
-        for identificador in self.datos.fuente.identificadores:
-            self.insertar_identificador_fuente(identificador)
+        self.lista_registros.append(registro)
+
+    def insertar_coleccion_publicacion(self):
+        registro = RegistroCambiosFuenteColeccion(
+            id=self.id_publicacion,
+            valor=self.datos.fuente.coleccion.id_fuente,
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        query_insertar_coleccion_publicacion = """
+            INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
+            VALUES (%(idFuente)s, 'coleccion', %(idColeccion)s)
+            """
+        params_insertar_coleccion_publicacion = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "idColeccion": self.datos.fuente.coleccion.id_fuente,
+        }
+
+        self.db.ejecutarConsulta(
+            query_insertar_coleccion_publicacion, params_insertar_coleccion_publicacion
+        )
+
+        self.lista_registros.append(registro)
+
+    def insertar_identificadores_fuente(self, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+        for identificador in fuente.identificadores:
+            self.insertar_identificador_fuente(identificador, tipo=tipo)
+
+    @busqueda
+    def buscar_identificador_fuente(
+        self,
+        identificador: DatosCargaIdentificadorFuente,
+        registro: RegistroCambiosFuenteIdentificadores,
+        tipo: str,
+    ):
+        if tipo == "fuente":
+            fuente_antigua = self.datos_antiguos.fuente
+        if tipo == "coleccion":
+            fuente_antigua = self.datos_antiguos.fuente.coleccion
+        for identificador_antiguo in fuente_antigua.identificadores:
+            if str(identificador_antiguo) == str(identificador):
+                problema = registro.detectar_conflicto(valor_actual=str(identificador))
+                if problema:
+                    self.problemas_carga.append(problema)
+                return True
 
     def insertar_identificador_fuente(
-        self, identificador: DatosCargaIdentificadorFuente
+        self, identificador: DatosCargaIdentificadorFuente, tipo: str
     ):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+
+        registro = RegistroCambiosFuenteIdentificadores(
+            id=fuente.id_fuente,
+            tipo_identificador=identificador.tipo,
+            valor=str(identificador),
+            origen=self.origen,
+            bd=self.db,
+        )
+        if self.buscar_identificador_fuente(identificador, registro, tipo=tipo):
+            return None
+
         query = """
                 REPLACE INTO prisma.p_identificador_fuente (idFuente, tipo, valor, origen)
                 VALUES (%(idFuente)s, %(tipo)s, %(valor)s, %(origen)s)
                 """
         params = {
-            "idFuente": self.datos.fuente.id_fuente,
+            "idFuente": fuente.id_fuente,
             "tipo": identificador.tipo,
             "valor": identificador.valor,
             "origen": self.origen,
         }
 
         self.db.ejecutarConsulta(query, params)
+        self.lista_registros.append(registro)
 
-    def insertar_datos_fuente(self):
-        for dato in self.datos.fuente.datos:
-            self.insertar_dato_fuente(dato)
+    def insertar_datos_fuente(self, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
 
-    def insertar_dato_fuente(self, dato: DatosCargaDatosFuente):
+        for dato in fuente.datos:
+            self.insertar_dato_fuente(dato, tipo=tipo)
+
+    @busqueda
+    def buscar_dato_fuente(self, dato: DatosCargaDatosFuente, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+        for dato_antiguo in fuente.datos:
+            if dato_antiguo.tipo == dato.tipo:
+                return dato_antiguo
+
+        return None
+
+    def comparar_dato_fuente(
+        self, dato: DatosCargaDatosFuente, registro: RegistroCambiosFuenteDatos
+    ):
+        problema = registro.detectar_conflicto(valor_actual=dato.valor)
+        if problema:
+            self.problemas_carga.append(problema)
+
+    def insertar_dato_fuente(self, dato: DatosCargaDatosFuente, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+
+        dato_antiguo = self.buscar_dato_fuente(dato, tipo=tipo)
+
+        registro = RegistroCambiosFuenteDatos(
+            id=fuente.id_fuente,
+            tipo_dato=dato.tipo,
+            valor=dato.valor,
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if dato_antiguo:
+            self.comparar_dato_fuente(dato, registro)
+            return None
+
         query = """
                 INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
                 VALUES (%(idFuente)s, %(tipo)s, %(valor)s)
@@ -539,13 +673,38 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
+        self.lista_registros.append(registro)
 
-    def insertar_editoriales_fuente(self):
-        for editorial in self.datos.fuente.editoriales:
-            self.insertar_editorial_fuente(editorial)
+    def insertar_editoriales_fuente(self, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+        for editorial in fuente.editoriales:
+            self.insertar_editorial_fuente(editorial, tipo=tipo)
 
-    def insertar_editorial_fuente(self, editorial: DatosCargaEditorial):
-        editorial_antigua = self.buscar_editorial(editorial)
+    @busqueda
+    def buscar_editorial(
+        self, editorial: DatosCargaEditorial, tipo: str
+    ) -> DatosCargaEditorial:
+        if tipo == "fuente":
+            fuente_antigua = self.datos_antiguos.fuente
+        if tipo == "coleccion":
+            fuente_antigua = self.datos_antiguos.fuente.coleccion
+
+        for editorial_antigua in fuente_antigua.editoriales:
+            if editorial_antigua.nombre == editorial.nombre:
+                return editorial_antigua
+
+        return None
+
+    def insertar_editorial_fuente(self, editorial: DatosCargaEditorial, tipo: str):
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+
+        editorial_antigua = self.buscar_editorial(editorial, tipo=tipo)
 
         if not editorial_antigua:
             query = """
@@ -562,12 +721,25 @@ class CargaPublicacion:
             self.db.ejecutarConsulta(query, params)
             id_editor = self.db.last_id
 
+            for atributo, valor in params.items():
+                registro = RegistroCambiosEditorAtributos(
+                    id=id_editor,
+                    atributo=atributo,
+                    valor=valor,
+                    origen=self.origen,
+                    bd=self.db,
+                )
+                self.lista_registros.append(registro)
+
         else:
             id_editor = editorial_antigua.id_editor
 
-        query_insertar_editorial_fuente = """ INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor) VALUES (%(idFuente)s, 'editorial', %(idEditor)s)"""
+        query_insertar_editorial_fuente = """
+                        INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
+                        VALUES (%(idFuente)s, 'editorial', %(idEditor)s)
+                        """
         params_insertar_editorial_fuente = {
-            "idFuente": self.datos.fuente.id_fuente,
+            "idFuente": fuente.id_fuente,
             "idEditor": id_editor,
         }
 
@@ -575,30 +747,67 @@ class CargaPublicacion:
             query_insertar_editorial_fuente, params_insertar_editorial_fuente
         )
 
-    @busqueda
-    def buscar_editorial(self, editorial: DatosCargaEditorial) -> DatosCargaEditorial:
-        if not self.datos_antiguos:
+    def insertar_coleccion(self):
+        if not self.datos.fuente.coleccion:
             return None
 
-        for editorial_antigua in self.datos_antiguos.fuente.editoriales:
-            if editorial_antigua.nombre == editorial.nombre:
-                return editorial_antigua
+        copia_fuente = copy.deepcopy(self.datos.fuente)
+        self.datos.fuente = self.datos.fuente.coleccion
 
-        return None
+        id_coleccion = self.insertar_fuente()
+
+        self.datos.fuente = copia_fuente
+
+        if id_coleccion:
+            self.vincular_coleccion(id_coleccion)
+
+    def vincular_coleccion(self, id_coleccion: int):
+        query = """
+                INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
+                VALUES (%(idFuente)s, 'coleccion', %(idColeccion)s)
+                """
+        params = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "idColeccion": id_coleccion,
+        }
+        self.db.ejecutarConsulta(query, params)
 
     def insertar_fechas_publicacion(self):
         for fecha in self.datos.fechas_publicacion:
             self.insertar_fecha_publicacion(fecha)
 
     @busqueda
-    def buscar_fecha_publicacion(self, fecha: DatosCargaFechaPublicacion):
-        if fecha in self.datos_antiguos.fechas_publicacion:
+    def buscar_fecha_publicacion(
+        self,
+        fecha: DatosCargaFechaPublicacion,
+        registro: RegistroCambiosPublicacionFecha,
+    ):
+        fecha_antigua = next(
+            (
+                fecha_antigua
+                for fecha_antigua in self.datos_antiguos.fechas_publicacion
+                if fecha_antigua.tipo == fecha.tipo
+            ),
+            None,
+        )
+
+        if fecha_antigua:
+            problema = registro.detectar_conflicto(valor_actual=str(fecha_antigua))
+            if problema:
+                self.problemas_carga.append(problema)
             return True
 
-        return False
-
     def insertar_fecha_publicacion(self, fecha: DatosCargaFechaPublicacion):
-        if self.buscar_fecha_publicacion(fecha):
+
+        registro = RegistroCambiosPublicacionFecha(
+            id=self.id_publicacion,
+            tipo_fecha=fecha.tipo,
+            valor=str(fecha),
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if self.buscar_fecha_publicacion(fecha, registro):
             return None
 
         query = """
@@ -613,20 +822,42 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
+        self.lista_registros.append(registro)
 
     def insertar_financiaciones(self):
         for financiacion in self.datos.financiacion:
             self.insertar_financiacion(financiacion)
 
     @busqueda
-    def buscar_financiacion(self, financiacion):
+    def buscar_financiacion(
+        self,
+        financiacion: DatosCargaFinanciacion,
+        registro: RegistroCambiosPublicacionFinanciacion,
+    ):
         if financiacion in self.datos_antiguos.financiacion:
+            self.comparar_financiacion(registro, financiacion)
             return True
 
         return False
 
+    def comparar_financiacion(
+        self,
+        registro: RegistroCambiosPublicacionFinanciacion,
+        financiacion: DatosCargaFinanciacion,
+    ):
+        problema = registro.detectar_conflicto(valor_actual=financiacion.proyecto)
+        if problema:
+            self.problemas_carga.append(problema)
+
     def insertar_financiacion(self, financiacion: DatosCargaFinanciacion):
-        if self.buscar_financiacion(financiacion):
+        registro = RegistroCambiosPublicacionFinanciacion(
+            id=self.id_publicacion,
+            financiacion=financiacion.proyecto,
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if self.buscar_financiacion(financiacion, registro):
             return None
 
         query = """
@@ -640,20 +871,45 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
+        self.lista_registros.append(registro)
 
     def insertar_valores_acceso_abierto(self):
         for acceso_abierto in self.datos.acceso_abierto:
             self.insertar_acceso_abierto(acceso_abierto)
 
     @busqueda
-    def buscar_acceso_abierto(self, acceso_abierto: DatosCargaAccesoAbierto):
-        if acceso_abierto in self.datos_antiguos.acceso_abierto:
+    def buscar_acceso_abierto(
+        self,
+        acceso_abierto: DatosCargaAccesoAbierto,
+        registro: RegistroCambiosPublicacionOpenAccess,
+    ):
+        acceso_abierto_antiguo = next(
+            (
+                acceso_abierto_antiguo
+                for acceso_abierto_antiguo in self.datos_antiguos.acceso_abierto
+                if str(acceso_abierto_antiguo) == str(acceso_abierto)
+            ),
+            None,
+        )
+
+        if acceso_abierto_antiguo:
+            problema = registro.detectar_conflicto(
+                valor_actual=str(acceso_abierto_antiguo)
+            )
+            if problema:
+                self.problemas_carga.append(problema)
             return True
 
-        return False
-
     def insertar_acceso_abierto(self, acceso_abierto: DatosCargaAccesoAbierto):
-        if self.buscar_acceso_abierto(acceso_abierto):
+        registro = RegistroCambiosPublicacionOpenAccess(
+            id=self.id_publicacion,
+            tipo=acceso_abierto.origen,
+            valor=str(acceso_abierto),
+            origen=self.origen,
+            bd=self.db,
+        )
+
+        if self.buscar_acceso_abierto(acceso_abierto, registro):
             return None
 
         query = """
@@ -667,30 +923,4 @@ class CargaPublicacion:
         }
 
         self.db.ejecutarConsulta(query, params)
-
-
-class ProblemaCargaPublicacion(ProblemaCarga):
-    def __init__(
-        self,
-        id_carga,
-        db,
-        id_dato,
-        antigua_fuente,
-        antiguo_valor,
-        nueva_fuente,
-        nuevo_valor,
-        tipo_dato_2=None,
-        tipo_dato_3=None,
-    ):
-        super().__init__(
-            id_carga,
-            db,
-            id_dato,
-            antigua_fuente,
-            antiguo_valor,
-            nueva_fuente,
-            nuevo_valor,
-            tipo_dato_2,
-            tipo_dato_3,
-        )
-        self.tipo_dato = "Publicación"
+        self.lista_registros.append(registro)

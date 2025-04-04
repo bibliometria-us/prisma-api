@@ -1,3 +1,4 @@
+import copy
 from db.conexion import BaseDatos
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAccesoAbierto,
@@ -28,7 +29,7 @@ def busqueda_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPubl
     df = db.get_dataframe()
 
     if df.empty:
-        return None
+        return datos_carga_publicacion
 
     publicacion = df.iloc[0]
 
@@ -43,10 +44,22 @@ def busqueda_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPubl
     buscar_datos_publicacion(id_publicacion, db, datos_carga_publicacion)
 
     id_fuente = int(publicacion["idFuente"])
-    buscar_fuente_publicacion(id_fuente, db, datos_carga_publicacion)
-    buscar_editoriales_fuente(id_fuente, db, datos_carga_publicacion)
-    buscar_datos_fuente(id_fuente, db, datos_carga_publicacion)
-    buscar_identificadores_fuente(id_fuente, db, datos_carga_publicacion)
+    datos_carga_fuente = datos_carga_publicacion.fuente
+
+    buscar_fuente_publicacion(id_fuente, db, datos_carga_fuente)
+    buscar_editoriales_fuente(id_fuente, db, datos_carga_fuente)
+    buscar_datos_fuente(id_fuente, db, datos_carga_fuente)
+    buscar_identificadores_fuente(id_fuente, db, datos_carga_fuente)
+
+    id_coleccion = buscar_coleccion_fuente(id_fuente, db)
+    datos_carga_coleccion = datos_carga_publicacion.fuente.coleccion
+    if id_coleccion is not None:
+        datos_carga_fuente.coleccion.id_fuente = id_coleccion
+        buscar_fuente_publicacion(id_coleccion, db, datos_carga_coleccion)
+        buscar_editoriales_fuente(id_coleccion, db, datos_carga_coleccion)
+        buscar_datos_fuente(id_coleccion, db, datos_carga_coleccion)
+        buscar_identificadores_fuente(id_coleccion, db, datos_carga_coleccion)
+
     buscar_financiacion(id_publicacion, db, datos_carga_publicacion)
     buscar_fechas_publicacion(id_publicacion, db, datos_carga_publicacion)
     buscar_acceso_abierto(id_publicacion, db, datos_carga_publicacion)
@@ -156,28 +169,31 @@ def buscar_datos_publicacion(
 
 
 def buscar_fuente_publicacion(
-    id_fuente, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+    id_fuente,
+    db: BaseDatos,
+    datos_carga_fuente: DatosCargaFuente,
 ):
     # Buscar e insertar fuente
 
-    datos_carga_fuente = DatosCargaFuente()
     datos_carga_fuente.id_fuente = int(id_fuente)
 
     query_fuente = "SELECT * FROM prisma.p_fuente WHERE idFuente = %(idFuente)s"
     params_query_fuente = {"idFuente": datos_carga_fuente.id_fuente}
 
     db.ejecutarConsulta(query_fuente, params_query_fuente)
-    datos_fuente = db.get_dataframe().iloc[0]
+
+    df = db.get_dataframe()
+
+    if df.empty:
+        return None
+
+    datos_fuente = df.iloc[0]
 
     datos_carga_fuente.titulo = datos_fuente["titulo"]
     datos_carga_fuente.tipo = datos_fuente["tipo"]
 
-    datos_carga_publicacion.fuente = datos_carga_fuente
 
-
-def buscar_datos_fuente(
-    id_fuente, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
-):
+def buscar_datos_fuente(id_fuente, db: BaseDatos, datos_carga_fuente: DatosCargaFuente):
     # Buscar e insertar datos de fuente
 
     lista_datos_dato_fuente: list[DatosCargaDatoPublicacion] = []
@@ -197,11 +213,11 @@ def buscar_datos_fuente(
 
             lista_datos_dato_fuente.append(datos_carga_dato_fuente)
 
-    datos_carga_publicacion.fuente.datos = lista_datos_dato_fuente
+    datos_carga_fuente.datos = lista_datos_dato_fuente
 
 
 def buscar_editoriales_fuente(
-    id_fuente, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+    id_fuente, db: BaseDatos, datos_carga_fuente: DatosCargaFuente
 ):
     # Buscar e insertar editoriales de fuente
 
@@ -230,19 +246,19 @@ def buscar_editoriales_fuente(
 
             lista_datos_carga_editorial.append(datos_carga_editorial)
 
-    datos_carga_publicacion.fuente.editoriales = lista_datos_carga_editorial
+    datos_carga_fuente.editoriales = lista_datos_carga_editorial
 
 
 def buscar_identificadores_fuente(
-    id_fuente, db: BaseDatos, datos_carga_publicacion: DatosCargaPublicacion
+    id_fuente, db: BaseDatos, datos_carga_fuente: DatosCargaFuente
 ):
     # Buscar e insertar identificadores de fuente
 
     lista_datos_identificador_fuente: list[DatosCargaIdentificadorFuente] = []
 
-    query_identificadores_fuente = (
-        "SELECT * FROM prisma.p_identificador_fuente WHERE idFuente = %(idFuente)s"
-    )
+    query_identificadores_fuente = """SELECT * FROM prisma.p_identificador_fuente idf WHERE idf.idFuente = %(idFuente)s
+        GROUP BY idf.valor, idf.tipo
+        """
     params_query_identificadores_fuente = {"idFuente": id_fuente}
 
     db.ejecutarConsulta(
@@ -259,7 +275,17 @@ def buscar_identificadores_fuente(
 
             lista_datos_identificador_fuente.append(datos_carga_identificador_fuente)
 
-    datos_carga_publicacion.fuente.identificadores = lista_datos_identificador_fuente
+    datos_carga_fuente.identificadores = lista_datos_identificador_fuente
+
+
+def buscar_coleccion_fuente(id_fuente, db: BaseDatos):
+    # Buscar e insertar coleccion de fuente
+
+    query_coleccion = "SELECT valor FROM prisma.p_dato_fuente WHERE idFuente = %(idFuente)s AND tipo = 'coleccion'"
+    params_query_coleccion = {"idFuente": id_fuente}
+
+    db.ejecutarConsulta(query_coleccion, params_query_coleccion)
+    return db.get_first_cell()
 
 
 def buscar_fechas_publicacion(

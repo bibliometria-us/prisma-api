@@ -117,12 +117,8 @@ class IdusParser(Parser):
         )
         agno = fecha.year
         mes = fecha.month
-        mes = f"{mes:02d}"
-        dia = fecha.day
-        dia = f"{dia:02d}"
-
         fecha_insercion = DatosCargaFechaPublicacion(
-            tipo="publicacion", agno=agno, mes=mes, dia=dia
+            tipo="publicacion", agno=agno, mes=mes
         )
 
         self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)

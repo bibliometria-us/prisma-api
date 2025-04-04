@@ -66,3 +66,111 @@ ALTER TABLE prisma.a_problemas MODIFY COLUMN nuevo_valor text CHARACTER SET utf8
 
 
 ALTER TABLE prisma.p_dato_publicacion ADD origen varchar(100) NULL;
+
+
+-- Tablas de registro y problemas
+
+CREATE TABLE prisma.a_registro_cambios_publicacion (
+	id INT NOT NULL,
+  id_carga varchar(40) NOT NULL,
+	tipo_dato varchar(100) NULL,
+	tipo_dato_2 varchar(100) NULL,
+	tipo_dato_3 varchar(100) NULL,
+	origen varchar(100) NULL,
+	valor TEXT NULL,
+	fecha DATETIME NOT NULL,
+  comentario TEXT NOT NULL
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_spanish_ci;
+CREATE INDEX a_registro_cambios_publicacion_id_IDX USING BTREE ON prisma.a_registro_cambios_publicacion (id,tipo_dato,tipo_dato_2,tipo_dato_3);
+
+CREATE TABLE prisma.a_registro_problemas_publicacion (
+	id INT NOT NULL,
+  id_carga varchar(40) NOT NULL,
+	tipo_dato varchar(100) NOT NULL,
+	tipo_dato_2 varchar(100) NULL,
+	tipo_dato_3 varchar(100) NULL,
+	origen varchar(100) NOT NULL,
+	valor TEXT NOT NULL,
+  origen_antiguo varchar(100) NOT NULL,
+	valor_antiguo TEXT NOT NULL,
+	fecha DATETIME NOT NULL,
+  comentario TEXT NOT NULL
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_spanish_ci;
+CREATE UNIQUE INDEX a_registro_problemas_publicacion_id_IDX USING BTREE ON prisma.a_registro_problemas_publicacion (id,tipo_dato,tipo_dato_2,tipo_dato_3);
+
+
+
+CREATE TABLE prisma.a_registro_cambios_fuente (
+	id INT NOT NULL,
+  id_carga varchar(40) NOT NULL,
+	tipo_dato varchar(100) NULL,
+	tipo_dato_2 varchar(100) NULL,
+	tipo_dato_3 varchar(100) NULL,
+	origen varchar(100) NULL,
+	valor TEXT NULL,
+	fecha DATETIME NOT NULL,
+  comentario TEXT NOT NULL
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_spanish_ci;
+CREATE INDEX a_registro_cambios_fuente_id_IDX USING BTREE ON prisma.a_registro_cambios_fuente (id,tipo_dato,tipo_dato_2,tipo_dato_3);
+
+CREATE TABLE prisma.a_registro_problemas_fuente (
+	id INT NOT NULL,
+  id_carga varchar(40) NOT NULL,
+	tipo_dato varchar(100) NOT NULL,
+	tipo_dato_2 varchar(100) NULL,
+	tipo_dato_3 varchar(100) NULL,
+	origen varchar(100) NOT NULL,
+	valor TEXT NOT NULL,
+  origen_antiguo varchar(100) NOT NULL,
+	valor_antiguo TEXT NOT NULL,
+	fecha DATETIME NOT NULL,
+  comentario TEXT NOT NULL
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_spanish_ci;
+CREATE UNIQUE INDEX a_registro_problemas_fuente_id_IDX USING BTREE ON prisma.a_registro_problemas_fuente (id,tipo_dato,tipo_dato_2,tipo_dato_3);
+
+
+CREATE TABLE prisma.a_registro_cambios_editor (
+	id INT NOT NULL,
+  id_carga varchar(40) NOT NULL,
+	tipo_dato varchar(100) NULL,
+	tipo_dato_2 varchar(100) NULL,
+	tipo_dato_3 varchar(100) NULL,
+	origen varchar(100) NULL,
+	valor TEXT NULL,
+	fecha DATETIME NOT NULL,
+  comentario TEXT NOT NULL
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_spanish_ci;
+CREATE INDEX a_registro_cambios_editor_id_IDX USING BTREE ON prisma.a_registro_cambios_editor (id,tipo_dato,tipo_dato_2,tipo_dato_3);
+
+CREATE TABLE prisma.a_registro_problemas_editor (
+	id INT NOT NULL,
+  id_carga varchar(40) NOT NULL,
+	tipo_dato varchar(100) NOT NULL,
+	tipo_dato_2 varchar(100) NULL,
+	tipo_dato_3 varchar(100) NULL,
+	origen varchar(100) NOT NULL,
+	valor TEXT NOT NULL,
+  origen_antiguo varchar(100) NOT NULL,
+	valor_antiguo TEXT NOT NULL,
+	fecha DATETIME NOT NULL,
+  comentario TEXT NOT NULL
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_spanish_ci;
+CREATE UNIQUE INDEX a_registro_problemas_editor_id_IDX USING BTREE ON prisma.a_registro_problemas_editor (id,tipo_dato,tipo_dato_2,tipo_dato_3);

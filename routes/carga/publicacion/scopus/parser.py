@@ -83,7 +83,7 @@ class ScopusParser(Parser):
         for autor in self.data.get(attr_name, []):
             # Se completa el Objeto DatosCargaAutor(Autor)
             firma = autor.get("authname")
-            orden = autor.get("@seq")
+            orden = int(autor.get("@seq"))
             carga_autor = DatosCargaAutor(orden=orden, firma=firma, tipo=tipo)
 
             # Se completa el Objeto DatosCargaIdentificadorAutor(Identificador del Autor)
@@ -95,9 +95,9 @@ class ScopusParser(Parser):
             # Se completa las el Objeto DatosCargaAfiliacionesAutor(Afiliaciones del Autor)
             for aff in autor.get("afid", []):
                 if_aff = aff.get("$")
-                nombre_aff = afiliaciones_publicacion[if_aff]["nombre"]
-                pais_aff = afiliaciones_publicacion[if_aff]["pais"]
-                ciudad_aff = afiliaciones_publicacion[if_aff]["ciudad"]
+                nombre_aff = afiliaciones_publicacion[if_aff].get("nombre")
+                pais_aff = afiliaciones_publicacion[if_aff].get("pais")
+                ciudad_aff = afiliaciones_publicacion[if_aff].get("ciudad")
                 afiliacion_autor = DatosCargaAfiliacionesAutor(
                     nombre=nombre_aff, pais=pais_aff, ciudad=ciudad_aff, ror_id=None
                 )
@@ -120,9 +120,9 @@ class ScopusParser(Parser):
 
     # cargar fecha en fechas_publicion (usar metodo general)
     def cargar_año_publicacion(self):
-        año = datetime.strptime(self.data.get("prism:coverDate"), "%Y-%m-%d").year
+        año = str(datetime.strptime(self.data.get("prism:coverDate"), "%Y-%m-%d").year)
         # TODO: Control Excep - esto se debería recoger en un nivel superior
-        if len(str(año)) != 4:
+        if len(año) != 4:
             raise TypeError("El año no tiene el formato correcto")
 
         self.datos_carga_publicacion.set_agno_publicacion(año)
@@ -134,10 +134,11 @@ class ScopusParser(Parser):
     def cargar_fecha_publicacion(self):
         # Fecha pub
         fecha = self.data.get("prism:coverDate")
-        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
+        agno = datetime.strptime(fecha, "%Y-%m-%d").year
+        str_agno = str(agno)
         mes = datetime.strptime(fecha, "%Y-%m-%d").month
-        mes = f"{mes:02d}"
-        if len(str(agno)) != 4 or len(str(mes)) != 2:
+        str_mes = f"{mes:02d}"
+        if len(str_agno) != 4 or len(str_mes) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
             tipo="publicacion", agno=agno, mes=mes

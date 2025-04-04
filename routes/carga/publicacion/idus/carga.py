@@ -27,9 +27,9 @@ class CargaPublicacionIdus(CargaPublicacion):
             )
             carga.cargar_publicacion_por_handle(handle)
             if not batch:
-                carga.close_database()
+                carga.commit_database()
         if batch:
-            self.close_database()
+            self.commit_database()
 
     def cargar_publicaciones_por_dict(self, data_list: list[dict], batch=True):
         """Para cada diccionario, instanciamos un nuevo objeto de carga y le pasamos los datos"""
@@ -39,6 +39,6 @@ class CargaPublicacionIdus(CargaPublicacion):
             )
             carga.cargar_publicacion_por_dict(data)
             if not batch:
-                carga.close_database()
+                carga.commit_database()
         if batch:
-            self.close_database()
+            self.commit_database()

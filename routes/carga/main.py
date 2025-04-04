@@ -117,7 +117,7 @@ class CargaWosJournals(Resource):
 @carga_namespace.route(
     "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
 )
-class CargaPublicacionIdus(Resource):
+class CargarPublicacionIdus(Resource):
     def get(self):
         args = request.args
 
@@ -172,13 +172,14 @@ class CargaPublicacionImportar(Resource):
     def get(self):
 
         args = request.args
-        tipo = args.get("tipo", None).strip()
-        id = args.get("id", None).strip()
+        tipo = args.get("tipo", "").strip()
+        id = args.get("id", "").strip()
         api_key = args.get("api_key")
 
         if not es_admin(api_key=api_key):
             return {"message": "No autorizado"}, 401
         try:
+            # TODO: Implementar recursividad para hacer una búsqueda general si se encuentra un DOI
             match tipo:
                 case "scopus_id":
                     CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
@@ -195,7 +196,6 @@ class CargaPublicacionImportar(Resource):
                     CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
                     CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
                     CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
-                # TODO: QUEDA IDUS
                 case "handle_idus":
                     CargaPublicacionIdus().cargar_publicacion_por_handle(id)
 

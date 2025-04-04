@@ -23,13 +23,22 @@ def test_carga_publicacion(database: BaseDatos, seed: dict[str, dict]):
     pass
 
 
-def comparar_publicacion(database: BaseDatos, datos_carga: DatosCargaPublicacion):
+def comparar_publicacion(
+    database: BaseDatos, datos_carga: DatosCargaPublicacion, origen=None
+):
     carga = CargaPublicacion(db=database)
     carga.datos = datos_carga
-    carga.origen = "idUS"
+    carga.origen = origen or "idUS"
 
     carga.cargar_publicacion()
+    if carga.datos_antiguos:
+        return None
 
+    carga.lista_registros = []
+    carga.problemas_carga = []
     carga.cargar_publicacion()
 
-    assert datos_carga == carga.datos_antiguos
+    if carga.datos_antiguos:
+        assert datos_carga == carga.datos_antiguos
+    else:
+        assert not carga.datos.validate()

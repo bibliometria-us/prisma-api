@@ -109,11 +109,14 @@ class API:
                 request_method=request_method, id=id, timeout=timeout, kwargs=kwargs
             )
             return None
+        if response.status_code != 200:
+            return None
+
         result = function(response)
 
         return result
 
-    def get_json_response(self, response) -> dict:
+    def get_json_response(self, response: requests.Response) -> dict:
 
         result = response.json()
         self.response = result

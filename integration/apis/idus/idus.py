@@ -51,6 +51,8 @@ class IdusAPISearch(IdusAPI):
         return self.response
 
     def get_uuid(self, index: int = 0):
+        if not self.response["_embedded"]["searchResult"]["_embedded"]["objects"]:
+            return None
         return self.response["_embedded"]["searchResult"]["_embedded"]["objects"][
             index
         ]["_embedded"]["indexableObject"]["uuid"]
@@ -75,6 +77,9 @@ class IdusAPIItems(IdusAPI):
         search.get_from_handle(handle)
 
         uuid = search.get_uuid()
+        if not uuid:
+            return None
+
         self.get_from_uuid(uuid)
 
         return self.response
