@@ -121,7 +121,7 @@ class OpenalexParser(Parser):
                 ):
                     pais = country_codes.country_codes[aff.get("country_code")]
                 else:
-                    pais = None
+                    pais = None or "Desconocido"
                 afiliacion_autor = DatosCargaAfiliacionesAutor(
                     nombre=nombre, pais=pais, ror_id=ror_id
                 )
@@ -171,10 +171,11 @@ class OpenalexParser(Parser):
         ):
             return None
         fecha = datetime.strptime(self.data.get("publication_date"), "%Y-%m-%d")
-        agno = str(fecha.year)
+        agno = fecha.year
+        agno_str = f"{agno:04d}"
         mes = fecha.month
-        mes = f"{mes:02d}"
-        if len(agno) != 4 or len(mes) != 2:
+        mes_str = f"{mes:02d}"
+        if len(agno_str) != 4 or len(mes_str) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
             tipo="publicacion", agno=agno, mes=mes
@@ -191,7 +192,7 @@ class OpenalexParser(Parser):
         # Identificador doi Openalex
         if self.data.get("doi"):
             identificador_doi = DatosCargaIdentificadorPublicacion(
-                valor=self.data.get("doi").split("/")[-1], tipo="doi"
+                valor=self.data.get("doi").replace("https://doi.org/", ""), tipo="doi"
             )
             self.datos_carga_publicacion.add_identificador(identificador_doi)
 
@@ -303,6 +304,7 @@ class OpenalexParser(Parser):
 
     def cargar_financiacion(self):
         # TODO: revisar donde viene la financiacion (grant)
+
         for grant in self.data.get("grants", []):
             entidad = grant.get("funder_display_name")
             proyecto = grant.get("award_id")

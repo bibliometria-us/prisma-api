@@ -171,10 +171,11 @@ class WosParser(Parser):
     def cargar_fecha_publicacion(self):
         # Fecha pub
         fecha = self.data["static_data"]["summary"]["pub_info"]["sortdate"]
-        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
+        agno = datetime.strptime(fecha, "%Y-%m-%d").year
+        agno_str = str(agno)
         mes = datetime.strptime(fecha, "%Y-%m-%d").month
-        mes = f"{mes:02d}"
-        if len(str(agno)) != 4 or len(str(mes)) != 2:
+        mes_str = f"{mes:02d}"
+        if len(agno_str) != 4 or len(mes_str) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
             tipo="publicacion", agno=agno, mes=mes
@@ -212,7 +213,7 @@ class WosParser(Parser):
         valor = self.data["static_data"]["summary"]["pub_info"].get("vol")
         if not valor:
             return None
-        dato = DatosCargaDatoPublicacion(tipo="volumen", valor=valor)
+        dato = DatosCargaDatoPublicacion(tipo="volumen", valor=str(valor))
         self.datos_carga_publicacion.add_dato(dato)
 
     # TODO: Revisar bien la diferencia entre número y número de artículo
@@ -220,7 +221,7 @@ class WosParser(Parser):
         valor = self.data["static_data"]["summary"]["pub_info"].get("issue")
         if not valor:
             return None
-        dato = DatosCargaDatoPublicacion(tipo="numero", valor=valor)
+        dato = DatosCargaDatoPublicacion(tipo="numero", valor=str(valor))
         self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_numero_art(self):

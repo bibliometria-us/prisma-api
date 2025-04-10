@@ -98,22 +98,24 @@ class CrossrefParser(Parser):
         pass
 
     def cargar_año_publicacion(self):
-        año = self.data["published"]["date-parts"][0][0]
+        if "published" in self.data:
+            año = str(self.data["published"]["date-parts"][0][0])
+        else:
+            return None
         # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-        assert len(str(año)) == 4
+        assert len(año) == 4
 
         self.datos_carga_publicacion.set_agno_publicacion(año)
 
     def cargar_fecha_publicacion(self):
-        date = (
-            self.data.get("published").get("date-parts")[0]
-            if self.data.get("published").get("date-parts")[0]
-            else None
-        )
+        if "published" in self.data:
+            date = self.data["published"]["date-parts"][0]
+        else:
+            return None
+
         if len(date) == 3:
-            agno = date[0]
-            mes = date[1]
-            mes = f"{mes:02d}"
+            agno = int(date[0])
+            mes = int(date[1])
             fecha_insercion = DatosCargaFechaPublicacion(
                 tipo="publicación", agno=agno, mes=mes
             )
@@ -204,16 +206,16 @@ class CrossrefParser(Parser):
         # Titulo
         titulo = (
             self.data.get("container-title")[0]
-            if self.data.get("container-title")[0]
+            if self.data.get("container-title")
             else None
         )
         # Necesario crear los identificadores previamente
         tipo_fuente = None
         identificadores = self.datos_carga_publicacion.fuente.identificadores
-        if any(obj.tipo == "isbn" or obj.tipo == "eisbn" for obj in identificadores):
-            tipo_fuente = tipos_fuente["Libro"]
         if any(obj.tipo == "issn" or obj.tipo == "eissn" for obj in identificadores):
             tipo_fuente = tipos_fuente["Revista"]
+        if any(obj.tipo == "isbn" or obj.tipo == "eisbn" for obj in identificadores):
+            tipo_fuente = tipos_fuente["Libro"]
 
         if tipo_fuente:
             self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)

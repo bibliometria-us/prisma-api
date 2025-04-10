@@ -76,5 +76,5 @@ class Parser(ABC):
         self.cargar_financiacion()
         self.cargar_fuente()
         self.carga_acceso_abierto()
-
+        self.datos_carga_publicacion.normalizar_fuente()
         self.datos_carga_publicacion.close()

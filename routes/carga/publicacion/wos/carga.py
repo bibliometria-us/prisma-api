@@ -19,7 +19,7 @@ class CargaPublicacionWos(CargaPublicacion):
         }
         funcion = funciones.get(tipo)
         if funcion:
-            funcion(id)
+            return funcion(id)
         else:
             raise ValueError(f"El tipo {tipo} no está soportado.")
 
@@ -27,25 +27,25 @@ class CargaPublicacionWos(CargaPublicacion):
         api = WosAPI()
         records = api.get_publicaciones_por_id(id=id)
         if len(records) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+            return None
         for publicacion in records.get("REC", []):
             parser = WosParser(data=publicacion)
             self.datos = parser.datos_carga_publicacion
             self.cargar_publicacion()
 
-        return None
+        return self.id_publicacion
 
     def cargar_publicacion_por_doi(self, id: str):
         api = WosAPI()
         records = api.get_publicaciones_por_doi(id=id)
         if len(records) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+            return None
         for publicacion in records:
             parser = WosParser(data=publicacion)
             self.datos = parser.datos_carga_publicacion
             self.cargar_publicacion()
 
-        return None
+        return self.id_publicacion
 
     def cargar_publicaciones_por_investigador(
         self, id_investigador: str, agno_inicio: str = None, agno_fin: str = None
