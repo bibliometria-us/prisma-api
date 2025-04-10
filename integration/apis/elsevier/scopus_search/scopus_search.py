@@ -60,11 +60,14 @@ class ScopusSearch(API):
             self.args["cursor"] = f"{next_cursor}"
             self.get_respose()
 
+            if not self.response:
+                return []
+
             search_results: dict = self.response.get("search-results", {})
             total_results = int(search_results.get("opensearch:totalResults", 0))
 
             if total_results == 0:
-                raise ValueError("No se encontraron resultados.")
+                return []
 
             self.results.extend(search_results.get("entry", []))
 

@@ -90,7 +90,7 @@ class API:
                 headers=self.headers,
                 params=self.args,
                 json=json,
-                timeout=timeout or (3, 3),
+                timeout=timeout or (5, 5),
                 proxies=proxy_list,
                 **kwargs,
             )

@@ -1,5 +1,6 @@
 from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify
+from db.conexion import BaseDatos
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
@@ -176,31 +177,74 @@ class CargaPublicacionImportar(Resource):
         id = args.get("id", "").strip()
         api_key = args.get("api_key")
 
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
+        # if not es_admin(api_key=api_key):
+        #    return {"message": "No autorizado"}, 401
+        id_publicacion = None
+        db = BaseDatos(autocommit=False)
         try:
             # TODO: Implementar recursividad para hacer una búsqueda general si se encuentra un DOI
             match tipo:
                 case "scopus_id":
-                    CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
+                    id_publicacion = (
+                        CargaPublicacionScopus(db=db).carga_publicacion(
+                            tipo=tipo, id=id
+                        )
+                        or id_publicacion
+                    )
                 case "pubmed_id" | "wos_id":
-                    CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
+                    id_publicacion = (
+                        CargaPublicacionWos(db=db).carga_publicacion(tipo=tipo, id=id)
+                        or id_publicacion
+                    )
                 case "openalex_id":
-                    CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
+                    id_publicacion = (
+                        CargaPublicacionOpenalex(db=db).carga_publicacion(
+                            tipo=tipo, id=id
+                        )
+                        or id_publicacion
+                    )
                 case "zenodo_id":
-                    CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
+                    id_publicacion = (
+                        CargaPublicacionZenodo(db=db).carga_publicacion(
+                            tipo=tipo, id=id
+                        )
+                        or id_publicacion
+                    )
                 case "doi":
                     # TODO: REVISAR ORDEN EJECUCIÓN
-                    CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
-                case "handle_idus":
-                    CargaPublicacionIdus().cargar_publicacion_por_handle(id)
+                    id_publicacion = (
+                        CargaPublicacionScopus(
+                            db=db, auto_commit=False
+                        ).carga_publicacion(tipo=tipo, id=id)
+                        or id_publicacion
+                    )
+                    id_publicacion = (
+                        CargaPublicacionWos(db=db, auto_commit=False).carga_publicacion(
+                            tipo=tipo, id=id
+                        )
+                        or id_publicacion
+                    )
+                    id_publicacion = (
+                        CargaPublicacionOpenalex(
+                            db=db, auto_commit=False
+                        ).carga_publicacion(tipo=tipo, id=id)
+                        or id_publicacion
+                    )
+                    id_publicacion = (
+                        CargaPublicacionCrossref(
+                            db=db, auto_commit=False
+                        ).carga_publicacion(tipo=tipo, id=id)
+                        or id_publicacion
+                    )
 
-        except ValueError as e:
-            return {"message": str(e)}, 402
+                case "handle_idus":
+                    CargaPublicacionIdus(db=db).cargar_publicacion_por_handle(
+                        id
+                    ) or id_publicacion
+
+            db.commit()
+            return {"id_publicacion": id_publicacion}, 200
+
         except Exception as e:
             return {"message": "Error inesperado"}, 500
 

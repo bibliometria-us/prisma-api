@@ -17,7 +17,7 @@ class CargaPublicacionCrossref(CargaPublicacion):
         }
         funcion = funciones.get(tipo)
         if funcion:
-            funcion(id)
+            return funcion(id)
         else:
             raise ValueError(f"El tipo {tipo} no está soportado.")
 
@@ -25,13 +25,13 @@ class CargaPublicacionCrossref(CargaPublicacion):
         api = CrossrefAPI()
         record = api.get_publicaciones_por_doi(id=id)
         if len(record) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+            return None
 
         parser = CrossrefParser(data=record)
         self.datos = parser.datos_carga_publicacion
         self.cargar_publicacion()
 
-        return None
+        return self.id_publicacion
 
     def cargar_publicaciones_por_investigador(id_investigador: str):
         pass

@@ -209,14 +209,15 @@ class CargaPublicacion:
         publicacion_antigua = self.buscar_publicacion()
 
         if not publicacion_antigua:
-            query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen)
-                        VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s)"""
+            query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen, validado)
+                        VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s, %(validado)s)"""
 
             params = {
                 "tipo": self.datos.tipo,
                 "titulo": self.datos.titulo,
                 "agno": self.datos.año_publicacion,
                 "origen": self.origen,
+                "validado": 3,
             }
 
             self.db.ejecutarConsulta(query, params)
@@ -773,6 +774,11 @@ class CargaPublicacion:
         self.db.ejecutarConsulta(query, params)
 
     def insertar_fechas_publicacion(self):
+        # Insertar fecha de inserción como fecha actual
+        fecha_insercion = DatosCargaFechaPublicacion(
+            agno=datetime.now().year, mes=datetime.now().month, tipo="insercion"
+        )
+        self.datos.fechas_publicacion.append(fecha_insercion)
         for fecha in self.datos.fechas_publicacion:
             self.insertar_fecha_publicacion(fecha)
 
@@ -782,6 +788,9 @@ class CargaPublicacion:
         fecha: DatosCargaFechaPublicacion,
         registro: RegistroCambiosPublicacionFecha,
     ):
+        if fecha.tipo == "insercion":
+            return False
+
         fecha_antigua = next(
             (
                 fecha_antigua
