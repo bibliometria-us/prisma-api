@@ -13,7 +13,7 @@ class CargaPublicacionOpenalex(CargaPublicacion):
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
-            "openalex_id": self.cargar_publicacion_por_id,
+            "openalex": self.cargar_publicacion_por_id,
             "doi": self.cargar_publicacion_por_doi,
         }
         funcion = funciones.get(tipo)

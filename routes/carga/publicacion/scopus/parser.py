@@ -161,6 +161,7 @@ class ScopusParser(Parser):
 
     def cargar_scopus(self):
         valor = self.data.get("eid")
+        valor = valor.removeprefix("2-s2.0-")
         identificador = DatosCargaIdentificadorPublicacion(valor=valor, tipo="scopus")
         if valor:
             self.datos_carga_publicacion.add_identificador(identificador)

@@ -204,8 +204,9 @@ class WosParser(Parser):
                     )
                     self.datos_carga_publicacion.add_identificador(identificador)
                 case "pmid":
+                    valor = id["value"].removeprefix("MEDLINE:")
                     identificador = DatosCargaIdentificadorPublicacion(
-                        valor=id["value"], tipo="pubmed"
+                        valor=valor, tipo="pubmed"
                     )
                     self.datos_carga_publicacion.add_identificador(identificador)
 
@@ -353,14 +354,19 @@ class WosParser(Parser):
                         proyectos = agencia_obj["grant_ids"].get("grant_id", [])
                         for proyecto_obj in proyectos:
                             financiacion = DatosCargaFinanciacion(
-                                entidad_financiadora=agencia, proyecto=proyecto_obj
+                                agencia=agencia,
+                                entidad_financiadora=agencia,
+                                proyecto=proyecto_obj,
                             )
                             self.datos_carga_publicacion.add_financiacion(financiacion)
                     elif n_proyectos == 1:
                         proyecto = agencia_obj["grant_ids"].get("grant_id")
                         financiacion = DatosCargaFinanciacion(
-                            entidad_financiadora=agencia, proyecto=proyecto
+                            agencia=agencia,
+                            entidad_financiadora=agencia,
+                            proyecto=proyecto,
                         )
+                        self.datos_carga_publicacion.add_financiacion(financiacion)
 
     def carga_acceso_abierto(self):
         oas = self.data["static_data"]["summary"]["pub_info"]["journal_oas_gold"]

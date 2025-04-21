@@ -52,6 +52,7 @@ CORS(
     expose_headers=["Content-Disposition", "ETag", "Date", "EMAIL"],
 )
 
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SECRET_KEY"] = "onelogindemopytoolkit"
 app.config["SAML_PATH"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "saml"

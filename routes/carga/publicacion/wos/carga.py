@@ -14,7 +14,7 @@ class CargaPublicacionWos(CargaPublicacion):
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
-            "wos_id": self.cargar_publicacion_por_id,
+            "wos": self.cargar_publicacion_por_id,
             "doi": self.cargar_publicacion_por_doi,
         }
         funcion = funciones.get(tipo)
@@ -28,10 +28,10 @@ class CargaPublicacionWos(CargaPublicacion):
         records = api.get_publicaciones_por_id(id=id)
         if len(records) == 0:
             return None
-        for publicacion in records.get("REC", []):
-            parser = WosParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
-            self.cargar_publicacion()
+
+        parser = WosParser(data=records[0])
+        self.datos = parser.datos_carga_publicacion
+        self.cargar_publicacion()
 
         return self.id_publicacion
 
@@ -40,10 +40,10 @@ class CargaPublicacionWos(CargaPublicacion):
         records = api.get_publicaciones_por_doi(id=id)
         if len(records) == 0:
             return None
-        for publicacion in records:
-            parser = WosParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
-            self.cargar_publicacion()
+
+        parser = WosParser(data=records[0])
+        self.datos = parser.datos_carga_publicacion
+        self.cargar_publicacion()
 
         return self.id_publicacion
 

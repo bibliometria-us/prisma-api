@@ -151,19 +151,40 @@ def get_investigadores(bd: BaseDatos = None) -> dict:
 # Regla de calidad p_00
 # Últimas 100 publicaciones introducidas
 def get_quality_rule_p_00(bd: BaseDatos = None) -> dict:
-    query_publicacion = """SELECT pxc.idPublicacion AS ID_PUBLICACION,
-                            ib.idBiblioteca AS idBiblioteca,
-                            ib.nombre AS BIBLIOTECA,
-                            CONCAT(pf.agno,"-", pf.mes) AS FECHA_INCLUSION
-                            FROM publicacionesXcentro pxc
-                            LEFT JOIN i_centro ic ON ic.idCentro = pxc.idCentro
-                            LEFT JOIN i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
-                            LEFT JOIN p_fecha_publicacion pf ON pf.idPublicacion = pxc.idPublicacion
-                            WHERE pxc.eliminado = 0 AND pf.tipo = "creacion"
-                            GROUP BY pxc.idPublicacion
-                            HAVING COUNT(DISTINCT pxc.idCentro) > 1
-                            ORDER BY pf.agno, pf.mes
-                            DESC LIMIT 100;"""
+    query_publicacion = """SELECT pxc.idPublicacion AS ID_PUBLICACION, pxc.titulo AS TITULO, pxc.tipo AS TIPO,
+(CASE WHEN pip.tipo = 'doi' THEN pip.valor END) AS DOI,
+(CASE WHEN pip.tipo = 'scopus' THEN pip.valor END) AS ID_SCOPUS,
+(CASE WHEN pip.tipo = 'wos' THEN pip.valor END) AS ID_WOS,
+(CASE WHEN pip.tipo = 'openalex' THEN pip.valor END) AS ID_OPENALEX,
+(CASE WHEN pip.tipo = 'idus' THEN pip.valor END) AS ID_IDUS,
+(CASE WHEN pdp.tipo = 'volumen' THEN pdp.valor END) AS VOLUMEN,
+(CASE WHEN pdp.tipo = 'numero' THEN pdp.valor END) AS NUMERO,
+(CASE WHEN pdp.tipo = 'pag_inicio' THEN pdp.valor END) AS P_INICIO,
+(CASE WHEN pdp.tipo = 'pag_fin' THEN pdp.valor END) AS P_FIN,
+pf2.titulo AS FUENTE,
+pf2.tipo AS TIPO_FUENTE,
+(CASE WHEN pif.tipo = 'issn' THEN pif.valor END) AS ISSN,
+(CASE WHEN pif.tipo = 'eissn' THEN pif.valor END) AS EISSN,
+(CASE WHEN pif.tipo = 'isbn' THEN pif.valor END) AS ISBN,
+(CASE WHEN pif.tipo = 'eisbn' THEN pif.valor END) AS EISBN,
+ib.idBiblioteca AS idBiblioteca,
+ib.nombre AS BIBLIOTECA,
+CONCAT(pf.agno,"-", pf.mes) AS FECHA_INCLUSION
+FROM publicacionesXcentro pxc
+LEFT JOIN p_dato_publicacion pdp ON pdp.idPublicacion = pxc.idPublicacion
+LEFT JOIN p_identificador_publicacion pip ON pip.idPublicacion = pxc.idPublicacion
+LEFT JOIN p_autor pa ON pa.idPublicacion = pxc.idPublicacion
+LEFT JOIN p_fuente pf2 ON pf2.idFuente = pxc.idFuente
+LEFT JOIN p_dato_fuente pdf ON pdf.idFuente = pf2.idFuente
+LEFT JOIN p_identificador_fuente pif  ON pif.idFuente = pf2.idFuente
+LEFT JOIN i_centro ic ON ic.idCentro = pxc.idCentro
+LEFT JOIN i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+LEFT JOIN p_fecha_publicacion pf ON pf.idPublicacion = pxc.idPublicacion
+WHERE pxc.eliminado = 0 AND pf.tipo = "creacion"
+GROUP BY pxc.idPublicacion
+HAVING COUNT(DISTINCT pxc.idCentro) > 1
+ORDER BY pf.agno, pf.mes
+DESC LIMIT 500;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -497,6 +518,50 @@ def get_quality_rule_f_11(bd: BaseDatos = None) -> dict:
             WHERE pf.eliminado = 0
             GROUP BY LOWER(TRIM(pf.titulo))
             HAVING COUNT(pf.idFuente)>1;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# ****************************************
+# ************ INVESTIGADORES *************
+# ****************************************
+
+
+# Regla de calidad i_02
+# Últimos 50 investigadores
+def get_quality_rule_i_02(bd: BaseDatos = None) -> dict:
+    query = """SELECT iia.nombre AS Nombre, iia.apellidos AS Apellidos,
+            CASE WHEN iia.sexo = 1 THEN 'Hombre'
+            WHEN iia.sexo = 0 THEN 'Mujer'
+            ELSE 'Desconocido'END AS Genero,
+            id.nombre AS Departamento,
+            ig.nombre AS Grupo,
+            ic.nombre AS Centro,
+            ii.nombre AS Instituto,
+            iue.nombre AS Ud_Exelencia,
+            iia.idInvestigador AS Id_Prisma,
+            MAX(CASE WHEN iii.tipo = 'scopus' THEN iii.valor END) AS Id_Scopus,
+            MAX(CASE WHEN iii.tipo = 'researcherId' THEN iii.valor END) AS Id_Wos,
+            MAX(CASE WHEN iii.tipo = 'openalex' THEN iii.valor END) AS Id_Openalex
+            FROM i_investigador_activo iia
+            LEFT JOIN i_departamento id ON id.idDepartamento = iia.idDepartamento
+            LEFT JOIN i_grupo_investigador igi ON igi.idInvestigador = iia.idInvestigador
+            LEFT JOIN i_grupo ig ON ig.idGrupo = igi.idGrupo
+            LEFT JOIN i_centro ic ON ic.idCentro = iia.idCentro
+            LEFT JOIN i_miembro_instituto imi ON imi.idInvestigador = iia.idInvestigador
+            LEFT JOIN i_instituto ii ON ii.idInstituto = imi.idInstituto
+            LEFT JOIN i_miembro_unidad_excelencia imue ON imue.idInvestigador = iia.idInvestigador
+            LEFT JOIN i_unidad_excelencia iue ON iue.idUdExcelencia = imue.idUdExcelencia
+            LEFT JOIN i_identificador_investigador iii ON iii.idInvestigador = iia.idInvestigador
+            LEFT JOIN (SELECT * FROM m_informes WHERE ambito = "investigador" ) mi ON mi.identificadorInt = iia.idInvestigador
+            GROUP BY iia.idInvestigador
+            ORDER BY iia.idInvestigador DESC LIMIT 50"""
     try:
         if bd is None:
             bd = BaseDatos()

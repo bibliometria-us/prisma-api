@@ -254,7 +254,7 @@ class p_00(Resource):
         if not es_visor(api_key=api_key):
             return {"message": "No autorizado"}, 401
         try:
-            incidencias = consultas.get_quality_rule_p_01()
+            incidencias = consultas.get_quality_rule_p_00()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
@@ -734,6 +734,37 @@ class f_11(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_quality_rule_f_11()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# *************************************
+# ****** INVESTIGADORES ***************
+# *************************************
+# i_02
+# 50 ultimos investigadores
+@servicios_ext_namespace.route(
+    "/qr/i_02",
+    doc=False,
+    endpoint="i_02",
+)
+class f_11(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_quality_rule_i_02()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"

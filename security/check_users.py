@@ -19,9 +19,8 @@ def tiene_rol(rol, api_key=None):
     db = BaseDatos("api")
 
     if not api_key:
-        usuario = (
-            session.get("samlUserdata", {}).get("mail", [""])[0].split("@")[0] or None
-        )
+        saml_user_data = session.get("samlUserdata", {})
+        usuario = saml_user_data.get("mail", [""])[0].split("@")[0] or None
     else:
         usuario = get_user_from_api_key(api_key)
 

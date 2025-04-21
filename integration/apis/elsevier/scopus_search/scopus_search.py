@@ -83,7 +83,7 @@ class ScopusSearch(API):
         """
         Método para obtener las publicaciones por id de Scopus.
         """
-        scopus_regex = r"^2-s2\.0-\d{11}$"
+        scopus_regex = r"^\d{11,12}$"
         if not re.match(scopus_regex, id_pub, re.IGNORECASE):
             raise ValueError(
                 f"'{id_pub}' no tiene un formato válido de identificador Scopus."
@@ -92,7 +92,7 @@ class ScopusSearch(API):
         self.set_headers_key()
         self.set_complete_view(True)
 
-        query = f"EID({id_pub})"
+        query = f"EID({f'2-s2.0-{id_pub}'})"
         self.args["query"] = query
 
         return self.search_pag()

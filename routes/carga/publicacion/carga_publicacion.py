@@ -104,8 +104,7 @@ class CargaPublicacion:
 
     def cargar_publicacion(self):
         if not self.datos.validate():
-            # TODO: Gestionar registro del errror en carga
-            return None
+            raise ValueError
 
         self.datos.sanitize()
 
@@ -423,14 +422,13 @@ class CargaPublicacion:
             return None
 
         query = """
-                INSERT INTO prisma.p_dato_publicacion (idPublicacion, tipo, valor, origen)
-                VALUES (%(idPublicacion)s, %(tipo)s, %(valor)s, %(origen)s)
+                INSERT INTO prisma.p_dato_publicacion (idPublicacion, tipo, valor)
+                VALUES (%(idPublicacion)s, %(tipo)s, %(valor)s)
                 """
         params = {
             "idPublicacion": self.id_publicacion,
             "tipo": dato.tipo,
             "valor": dato.valor,
-            "origen": self.origen,
         }
 
         self.db.ejecutarConsulta(query, params)
@@ -775,10 +773,12 @@ class CargaPublicacion:
 
     def insertar_fechas_publicacion(self):
         # Insertar fecha de inserción como fecha actual
-        fecha_insercion = DatosCargaFechaPublicacion(
-            agno=datetime.now().year, mes=datetime.now().month, tipo="insercion"
-        )
-        self.datos.fechas_publicacion.append(fecha_insercion)
+        if not self.datos_antiguos:
+            fecha_insercion = DatosCargaFechaPublicacion(
+                agno=datetime.now().year, mes=datetime.now().month, tipo="insercion"
+            )
+            self.datos.fechas_publicacion.append(fecha_insercion)
+
         for fecha in self.datos.fechas_publicacion:
             self.insertar_fecha_publicacion(fecha)
 
