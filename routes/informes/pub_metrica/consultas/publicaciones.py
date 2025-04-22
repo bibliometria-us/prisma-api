@@ -48,12 +48,13 @@ select = [
     "GROUP_CONCAT(DISTINCT afiliacion.afiliacion SEPARATOR ';') AS 'Afiliaciones'",
     "CASE WHEN COUNT(DISTINCT CASE WHEN afiliacion.pais != 'Spain' THEN afiliacion.afiliacion ELSE NULL END) > 0 THEN 'Sí' ELSE 'No' END AS 'Afiliaciones Internacionales Sí/No'",
     "GROUP_CONCAT(DISTINCT CASE WHEN afiliacion.pais != 'Spain' THEN afiliacion.afiliacion ELSE NULL END SEPARATOR ';') AS 'Afiliaciones Internacionales'",
-    # Identificadores
+    # Identificadores Publicacion
     "MAX(CASE WHEN idpub.tipo = 'doi' THEN idpub.valor ELSE NULL END) AS 'DOI'",
     "MAX(CASE WHEN idpub.tipo = 'wos' THEN idpub.valor ELSE NULL END) AS 'Cód. WOS'",
     "MAX(CASE WHEN idpub.tipo = 'scopus' THEN idpub.valor ELSE NULL END) AS 'Cód. Scopus'",
     "MAX(CASE WHEN idpub.tipo = 'pubmed' THEN idpub.valor ELSE NULL END) AS 'Cód. PubMed'",
     "MAX(CASE WHEN idpub.tipo = 'idus' THEN idpub.valor ELSE NULL END) AS 'Id. idUS'",
+    "MAX(CASE WHEN idpub.tipo = 'openalex' THEN idpub.valor ELSE NULL END) AS 'Id. Openalex'",
     "MAX(CASE WHEN idpub.tipo = 'dialnet' THEN idpub.valor ELSE NULL END) AS 'Cód. Dialnet'",
     # Acceso abierto
     "MAX(CASE WHEN acceso_abierto.origen = 'dialnet' THEN 'Texto completo' ELSE NULL END) AS 'Dialnet'",

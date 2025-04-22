@@ -27,6 +27,7 @@ dict_plantilla_excel = {
         "Cód. Scopus": {},
         "Cód. PubMed": {},
         "Id. idUS": {},
+        "Id. Openalex": {},
         "Cód. Dialnet": {},
         "Vía Acceso": {},
         "Dialnet": {},
