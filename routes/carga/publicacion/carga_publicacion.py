@@ -103,7 +103,11 @@ class CargaPublicacion:
         self.db.closeConnection()
 
     def cargar_publicacion(self):
-        if not self.datos.validate():
+        datos_validados = self.datos.validate()
+        datos_antiguos_validados = (
+            self.datos_antiguos.validate() if self.datos_antiguos else True
+        )
+        if not (datos_validados or datos_antiguos_validados):
             raise ValueError
 
         self.datos.sanitize()
