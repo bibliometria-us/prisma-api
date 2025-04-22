@@ -302,7 +302,6 @@ class ScopusParser(Parser):
         self.cargar_titulo_y_tipo()
         self.carga_editorial()
         self.carga_acceso_abierto()
-        self.cargar_fecha_publicacion()
         # self.cargar_edicion_fuente()
 
     def cargar_financiacion(self):

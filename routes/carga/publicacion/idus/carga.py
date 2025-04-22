@@ -1,5 +1,5 @@
 from db.conexion import BaseDatos
-from integration.apis.idus.idus import IdusAPI, IdusAPISearch
+from integration.apis.idus.idus import IdusAPI, IdusAPIItems, IdusAPISearch
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
 from routes.carga.publicacion.idus.parser import IdusParser
 
@@ -11,9 +11,9 @@ class CargaPublicacionIdus(CargaPublicacion):
         self.origen = "idUS"
 
     def cargar_publicacion_por_handle(self, handle):
-        api = IdusAPISearch()
+        api = IdusAPIItems()
         record = api.get_from_handle(handle=handle)
-        if len(api.result) == 0:
+        if len(record) == 0:
             return None
         parser = IdusParser(data=record)
         self.datos = parser.datos_carga_publicacion

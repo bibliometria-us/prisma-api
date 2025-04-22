@@ -117,7 +117,7 @@ class CrossrefParser(Parser):
             agno = int(date[0])
             mes = int(date[1])
             fecha_insercion = DatosCargaFechaPublicacion(
-                tipo="publicación", agno=agno, mes=mes
+                tipo="publicacion", agno=agno, mes=mes
             )
             self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 

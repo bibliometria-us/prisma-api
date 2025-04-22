@@ -113,7 +113,7 @@ class CargaPublicacion:
         self.insertar_identificadores_publicacion()
         self.insertar_datos_publicacion()
         self.insertar_fuente(tipo="fuente")
-        if self.datos.fuente.coleccion:
+        if self.datos.fuente.coleccion.validate():
             self.insertar_fuente(tipo="coleccion")
         self.insertar_financiaciones()
         self.insertar_fechas_publicacion()
@@ -355,6 +355,9 @@ class CargaPublicacion:
         identificador: DatosCargaIdentificadorPublicacion,
         registro: RegistroCambiosPublicacionIdentificadores,
     ) -> bool:
+        if identificador not in self.datos_antiguos.identificadores:
+            return False
+
         problema = registro.detectar_conflicto(valor_actual=identificador.valor)
 
         if problema:
@@ -774,8 +777,12 @@ class CargaPublicacion:
     def insertar_fechas_publicacion(self):
         # Insertar fecha de inserción como fecha actual
         if not self.datos_antiguos:
+            fecha_actual = datetime.now()
             fecha_insercion = DatosCargaFechaPublicacion(
-                agno=datetime.now().year, mes=datetime.now().month, tipo="insercion"
+                agno=fecha_actual.year,
+                mes=fecha_actual.month,
+                dia=fecha_actual.day,
+                tipo="insercion",
             )
             self.datos.fechas_publicacion.append(fecha_insercion)
 
@@ -789,7 +796,7 @@ class CargaPublicacion:
         registro: RegistroCambiosPublicacionFecha,
     ):
         if fecha.tipo == "insercion":
-            return False
+            return True
 
         fecha_antigua = next(
             (
@@ -806,6 +813,8 @@ class CargaPublicacion:
                 self.problemas_carga.append(problema)
             return True
 
+        return False
+
     def insertar_fecha_publicacion(self, fecha: DatosCargaFechaPublicacion):
 
         registro = RegistroCambiosPublicacionFecha(
@@ -820,12 +829,13 @@ class CargaPublicacion:
             return None
 
         query = """
-                INSERT INTO prisma.p_fecha_publicacion (idPublicacion, tipo, mes, agno)
-                VALUES (%(idPublicacion)s, %(tipo)s, %(mes)s, %(agno)s)
+                INSERT INTO prisma.p_fecha_publicacion (idPublicacion, tipo, dia, mes, agno)
+                VALUES (%(idPublicacion)s, %(tipo)s, %(dia)s, %(mes)s, %(agno)s)
                 """
         params = {
             "idPublicacion": self.id_publicacion,
             "tipo": fecha.tipo,
+            "dia": fecha.dia,
             "mes": fecha.mes,
             "agno": fecha.agno,
         }

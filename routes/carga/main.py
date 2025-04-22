@@ -223,9 +223,10 @@ class CargaPublicacionImportar(Resource):
                     )
 
                 case "idus":
-                    CargaPublicacionIdus().cargar_publicacion_por_handle(
-                        id
-                    ) or id_publicacion
+                    id_publicacion = (
+                        CargaPublicacionIdus().cargar_publicacion_por_handle(id)
+                        or id_publicacion
+                    )
 
             id_publicacion = id_publicacion or 0
             return {"id_publicacion": id_publicacion}, 200

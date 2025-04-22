@@ -91,8 +91,11 @@ class WosParser(Parser):
 
             tipo = roles_autor.get(autor["role"], "Autor/a")
 
-            # TODO: Aclarar rol autor - en este caso author, comprobar que nombre es en Prisma
             carga_autor = DatosCargaAutor(orden=orden, firma=firma, tipo=tipo)
+
+            # Comprobar si es autor de correspondencia
+            if autor.get("reprint") == "Y":
+                carga_autor.contacto = "S"
 
             # Se completa el Objeto DatosCargaIdentificadorAutor(Identificador del Autor ResearcherId)
             if "r_id" in autor:

@@ -142,3 +142,5 @@ ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_spanish_ci;
 CREATE UNIQUE INDEX a_registro_problemas_editor_id_IDX USING BTREE ON prisma.a_registro_problemas_editor (id,tipo_dato,tipo_dato_2,tipo_dato_3);
+
+ALTER TABLE prisma.p_fecha_publicacion ADD dia INT DEFAULT NULL NULL;

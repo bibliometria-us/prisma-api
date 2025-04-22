@@ -293,7 +293,7 @@ def buscar_fechas_publicacion(
 ):
     # Buscar e insertar fechas de publicación
 
-    query_fechas_publicacion = "SELECT tipo, mes, agno FROM prisma.p_fecha_publicacion WHERE idPublicacion = %(idPublicacion)s"
+    query_fechas_publicacion = "SELECT tipo, mes, agno, dia FROM prisma.p_fecha_publicacion WHERE idPublicacion = %(idPublicacion)s"
     params_fechas_publicacion = {"idPublicacion": id_publicacion}
 
     db.ejecutarConsulta(query_fechas_publicacion, params_fechas_publicacion)
@@ -309,6 +309,7 @@ def buscar_fechas_publicacion(
         fecha.tipo = fecha_publicacion["tipo"]
         fecha.mes = fecha_publicacion["mes"]
         fecha.agno = fecha_publicacion["agno"]
+        fecha.dia = fecha_publicacion["dia"]
 
         datos_carga_publicacion.fechas_publicacion.append(fecha)
 
