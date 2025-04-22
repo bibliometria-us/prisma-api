@@ -577,11 +577,9 @@ class CargaPublicacion:
             fuente_antigua = self.datos_antiguos.fuente
         if tipo == "coleccion":
             fuente_antigua = self.datos_antiguos.fuente.coleccion
+
         for identificador_antiguo in fuente_antigua.identificadores:
-            if str(identificador_antiguo) == str(identificador):
-                problema = registro.detectar_conflicto(valor_actual=str(identificador))
-                if problema:
-                    self.problemas_carga.append(problema)
+            if identificador_antiguo.valor == identificador.valor:
                 return True
 
     def insertar_identificador_fuente(
