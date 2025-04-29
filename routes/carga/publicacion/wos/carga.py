@@ -30,6 +30,8 @@ class CargaPublicacionWos(CargaPublicacion):
             return None
 
         parser = WosParser(data=records[0])
+        # Se limpia "records" por problema de contaminacion de variables.
+        records.clear()
         self.datos = parser.datos_carga_publicacion
         self.cargar_publicacion()
 
