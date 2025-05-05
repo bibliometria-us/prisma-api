@@ -83,7 +83,7 @@ class ScopusSearch(API):
         """
         Método para obtener las publicaciones por id de Scopus.
         """
-        scopus_regex = r"^\d{11,12}$"
+        scopus_regex = r"^\d{10,12}$"
         if not re.match(scopus_regex, id_pub, re.IGNORECASE):
             raise ValueError(
                 f"'{id_pub}' no tiene un formato válido de identificador Scopus."
