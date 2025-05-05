@@ -528,6 +528,21 @@ def get_quality_rule_f_11(bd: BaseDatos = None) -> dict:
     return metrica
 
 
+# Regla de calidad f_16
+# Títulos de fuentes duplicados
+def get_quality_rule_f_16(bd: BaseDatos = None) -> dict:
+    query = """SELECT idFuente AS ID, tipo AS TIPO, origen AS ORIGEN FROM prisma.p_fuente AS pf
+            WHERE titulo= "" AND eliminado ="0";"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
 # ****************************************
 # ************ INVESTIGADORES *************
 # ****************************************
