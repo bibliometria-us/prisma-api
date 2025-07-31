@@ -19,6 +19,7 @@ from routes.carga.main import carga_namespace
 from routes.colectivo.main import colectivo_namespace
 from routes.publicacion.main import publicacion_namespace
 from routes.servicios_ext.main import servicios_ext_namespace
+from routes.carga.investigador.erasmus_plus import carga
 import os
 import os
 from flask import (
