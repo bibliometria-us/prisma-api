@@ -40,6 +40,9 @@ from utils.format import dataframe_to_json
 carga_namespace = Namespace("carga", doc=False)
 
 
+# ********************************
+# **** CARGA DE GRUPOS DE INVESTIGACIÓN ****
+# ********************************
 @carga_namespace.route("/investigador/grupos", doc=False, endpoint="carga_grupos")
 class CargaGrupos(Resource):
     def post(self):
@@ -60,6 +63,9 @@ class CargaGrupos(Resource):
         return None
 
 
+# ********************************
+# **** CARGA DE CENTROS DE CENSO ****
+# ********************************
 @carga_namespace.route(
     "/investigador/centros_censo/", doc=False, endpoint="carga_centros_censo"
 )
@@ -96,6 +102,9 @@ class CargaCentrosCenso(Resource):
             print(f"Ocurrió un error: {e}")
 
 
+# ********************************
+# **** CARGA DE INVESTIGADORES ERASMUS+ ****
+# ********************************
 @carga_namespace.route(
     "/investigador/erasmus_plus/", doc=False, endpoint="carga_erasmus_plus"
 )
@@ -156,6 +165,9 @@ class CargaErasmusPlus(Resource):
             return {"error": "Error inesperado en el servidor"}, 500
 
 
+# ********************************
+# **** CARGA DE FUENTES DE DATOS ****
+# ********************************
 @carga_namespace.route(
     "/fuente/wos_journals/", doc=False, endpoint="carga_wos_journals"
 )
@@ -181,6 +193,9 @@ class CargaWosJournals(Resource):
         return {"message": result}, 200
 
 
+# ********************************
+# **** CARGA DE PUBLICACIONES IDUS ****
+# ********************************
 @carga_namespace.route(
     "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
 )
