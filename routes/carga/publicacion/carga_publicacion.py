@@ -58,6 +58,7 @@ class CargaPublicacion:
         self.problemas_carga: list[ProblemaCarga] = []
         self.lista_registros: list[RegistroCambios] = []
 
+    # Decorador
     def busqueda(func):
         def wrapper(self: "CargaPublicacion", *args, **kwargs):
             if self.datos_antiguos is not None:

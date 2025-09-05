@@ -106,8 +106,6 @@ def handle_invalid_accept_header(error):
 
 
 # SAML
-
-
 def init_saml_auth(req):
     auth = OneLogin_Saml2_Auth(req, custom_base_path=app.config["SAML_PATH"])
     return auth
