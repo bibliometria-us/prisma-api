@@ -282,13 +282,49 @@ def get_quality_rule_p_04(bd: BaseDatos = None) -> dict:
 # Regla de calidad p_05
 # Publicaciones sin identificadores
 def get_quality_rule_p_05(bd: BaseDatos = None) -> dict:
-    query_publicacion = """SELECT p.idPublicacion AS ID_PUBLICACION, p.titulo AS TITULO, ib.nombre AS BIBLIOTECA
-                    FROM (SELECT idPublicacion,titulo, MAX(idCentro) as idCentro, eliminado FROM publicacionesXcentro GROUP BY idPublicacion) p
+    query_publicacion = """SELECT p.idPublicacion AS ID_PUBLICACION, p.titulo AS TITULO, ib.nombre AS BIBLIOTECA, p.agno AS AGNO
+                    FROM (SELECT idPublicacion,titulo, MAX(idCentro) as idCentro, eliminado, agno  FROM publicacionesXcentro GROUP BY idPublicacion) p
                     LEFT JOIN (SELECT * FROM `p_identificador_publicacion` WHERE eliminado = 0) pi ON pi.idPublicacion = p.idPublicacion 
                     LEFT JOIN i_centro ic ON ic.idCentro = p.idCentro 
                     LEFT JOIN i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca 
                     WHERE p.eliminado = 0 AND pi.idIdentificador IS NULL
                     GROUP BY p.idPublicacion;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad p_06
+# Publicación duplicada por título y año
+def get_quality_rule_p_06(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pf.titulo AS TITULO, GROUP_CONCAT("Id: ",pf.idPublicacion  SEPARATOR ", ")  AS IDS, GROUP_CONCAT("Título: ",pf.titulo  SEPARATOR ", ")  AS TITULOS, COUNT(pf.idPublicacion) AS N_PUBS
+                        FROM p_publicacion pf 
+                        WHERE pf.eliminado = 0 AND pf.titulo NOT IN ("Preface", "Introducción", "Presentación", "Prólogo", "Editorial", "Foreword", "Discussion", "Introduction", "Prefacio")
+                        GROUP BY LOWER(TRIM(pf.titulo)), pf.agno
+                        HAVING COUNT(pf.idPublicacion )>1 ORDER BY N_PUBS DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad p_07
+# Publicación duplicada por título, año, tipo y fuente
+def get_quality_rule_p_06(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pf.titulo AS TITULO, GROUP_CONCAT("Id: ",pf.idPublicacion  SEPARATOR ", ")  AS IDS, GROUP_CONCAT("Título: ",pf.titulo  SEPARATOR ", ")  AS TITULOS, COUNT(pf.idPublicacion) AS N_PUBS
+                        FROM p_publicacion pf 
+                        WHERE pf.eliminado = 0 AND pf.titulo NOT IN ("Preface", "Introducción", "Presentación", "Prólogo", "Editorial", "Foreword", "Discussion", "Introduction", "Prefacio")
+                        GROUP BY LOWER(TRIM(pf.titulo)), pf.agno, pf.tipo, pf.idFuente
+                        HAVING COUNT(pf.idPublicacion )>1 ORDER BY N_PUBS DESC;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -309,6 +345,39 @@ def get_quality_rule_p_08(bd: BaseDatos = None) -> dict:
         LEFT JOIN (SELECT * FROM p_fuente WHERE tipo = "coleccion") pf ON pf.idFuente = p.idFuente
         WHERE pf.idFuente IS NOT NULL
         GROUP BY p.idPublicacion;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad p_15
+# Últimas 100 publicaciones insertadas
+def get_quality_rule_p_15(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT * FROM p_publicacion WHERE eliminado = 0 ORDER BY idPublicacion DESC LIMIT 200;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Regla de calidad p_16
+# Publicación duplicada por título, año, tipo y fuente
+def get_quality_rule_p_16(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pf.titulo AS TITULO, GROUP_CONCAT("Id: ",pf.idPublicacion  SEPARATOR ", ") AS IDS, pf2.titulo AS TITULO_FUENTE, COUNT(pf.idPublicacion) AS N_PUBS
+        FROM p_publicacion pf 
+        INNER JOIN p_fuente pf2 ON pf2.idFuente = pf.idFuente
+        WHERE pf.eliminado = 0 AND pf.titulo NOT IN ("Preface", "Introducción", "Presentación", "Prólogo", "Editorial", "Foreword", "Discussion", "Introduction", "Prefacio") AND pf.tipo != "Tesis"
+        GROUP BY LOWER(TRIM(pf.titulo)), pf.agno, LOWER(TRIM(pf2.titulo))
+        HAVING COUNT(pf.idPublicacion )>1 ORDER BY N_PUBS DESC;"""
     try:
         if bd is None:
             bd = BaseDatos()

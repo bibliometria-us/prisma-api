@@ -238,7 +238,7 @@ class investigadores(Resource):
 # *************************************
 
 
-# ************ FUENTES *****************
+# ************ PUBLICACIONES *****************
 # p_00
 # Publicación con tipo de Datos duplicado
 @servicios_ext_namespace.route(
@@ -407,6 +407,62 @@ class p_05(Resource):
             return {"message": "Error inesperado"}, 500
 
 
+# p_06
+# Publicación tipo capitulo cuya fuente sea tipo colección
+@servicios_ext_namespace.route(
+    "/qr/p_06",
+    doc=False,
+    endpoint="p_06",
+)
+class p_06(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_quality_rule_p_06()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_07
+# Publicación tipo capitulo cuya fuente sea tipo colección
+@servicios_ext_namespace.route(
+    "/qr/p_07",
+    doc=False,
+    endpoint="p_07",
+)
+class p_07(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_quality_rule_p_07()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
 # p_08
 # Publicación tipo capitulo cuya fuente sea tipo colección
 @servicios_ext_namespace.route(
@@ -423,6 +479,62 @@ class p_08(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_quality_rule_p_08()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_15
+# Últimas 100 publicaciones insertadas
+@servicios_ext_namespace.route(
+    "/qr/p_15",
+    doc=False,
+    endpoint="p_15",
+)
+class p_15(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_quality_rule_p_15()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# p_16
+# Publicación duplicada por título, año, tipo y fuente
+@servicios_ext_namespace.route(
+    "/qr/p_16",
+    doc=False,
+    endpoint="p_16",
+)
+class p_16(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_quality_rule_p_16()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
