@@ -129,7 +129,7 @@ class BaseDatos:
         """
         Obtiene la primera celda si existe en el resultado de la consulta.
         """
-        if not (self.result and len(self.result)) > 1:
+        if not (self.result and len(self.result) > 1):
             return None
 
         return self.result[1][0]

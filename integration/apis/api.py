@@ -50,7 +50,7 @@ class API:
         self.api_key_index += 1
         if self.api_key_index >= len(self.api_keys) - 1:
             if self.retries > 0:
-                retries = retries - 1
+                self.retries = self.retries - 1
                 self.api_key_index = 0
         self.set_api_key()
 
@@ -97,18 +97,23 @@ class API:
         except Exception as e:
             if tryouts > 0:
                 tryouts -= 1
-                self.get_respose(
+                return self.get_respose(
                     request_method, id, timeout, proxies, tryouts, **kwargs
                 )
+            else:
+                return None
         if response.status_code == 200:
             pass
         if response.status_code in [401, 429] and self.api_keys:
             self.roll_api_key()
             sleep(1)
-            self.get_respose(
-                request_method=request_method, id=id, timeout=timeout, kwargs=kwargs
+            return self.get_respose(
+                request_method=request_method,
+                id=id,
+                timeout=timeout,
+                proxies=proxies,
+                **kwargs,
             )
-            return None
         if response.status_code != 200:
             return None
 

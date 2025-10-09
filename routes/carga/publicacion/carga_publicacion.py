@@ -1,6 +1,7 @@
 import copy
 from datetime import datetime
 from typing import Any, Dict
+import sys
 
 import pandas as pd
 from db.conexion import BaseDatos
@@ -118,8 +119,10 @@ class CargaPublicacion:
         self.insertar_identificadores_publicacion()
         self.insertar_datos_publicacion()
         self.insertar_fuente(tipo="fuente")
+
         if self.datos.fuente.coleccion.validate():
             self.insertar_fuente(tipo="coleccion")
+
         self.insertar_financiaciones()
         self.insertar_fechas_publicacion()
         self.insertar_valores_acceso_abierto()
@@ -249,9 +252,9 @@ class CargaPublicacion:
         """
         Inserta los autores de una publicación.
         """
+        autores_agrupados = self.datos.contar_autores_agrupados()
         nuevos_autores = ", ".join(
-            f"{key}: {value}"
-            for key, value in self.datos.contar_autores_agrupados().items()
+            f"{key}: {value}" for key, value in autores_agrupados.items()
         )
 
         registro = RegistroCambiosPublicacionCantidadAutores(
@@ -261,10 +264,14 @@ class CargaPublicacion:
             bd=self.db,
         )
 
-        if self.comparar_autores(registro):
+        resultado_comparacion = self.comparar_autores(registro)
+
+        # Si resultado_comparacion es None (publicación nueva) o True (sin conflictos), insertar autores
+        # Solo hacer early return si hay un problema de conflicto
+        if resultado_comparacion is not None and resultado_comparacion is not True:
             return None
 
-        for autor in self.datos.autores:
+        for i, autor in enumerate(self.datos.autores):
             self.insertar_autor(autor)
 
         self.lista_registros.append(registro)
@@ -443,7 +450,8 @@ class CargaPublicacion:
         self.lista_registros.append(registro)
 
     @busqueda
-    def buscar_fuente(self, tipo: str) -> int:
+    def buscar_fuente_en_datos_antiguos(self, tipo: str) -> int:
+        """Busca la fuente en los datos antiguos de la publicación"""
         if tipo == "fuente":
             fuente = self.datos_antiguos.fuente
         if tipo == "coleccion":
@@ -451,8 +459,80 @@ class CargaPublicacion:
 
         if fuente.id_fuente:
             return fuente.id_fuente
+        return 0
+
+    def buscar_fuente_en_bd(self, tipo: str) -> int:
+        """Busca una fuente existente en la base de datos por sus identificadores"""
+        if tipo == "fuente":
+            fuente = self.datos.fuente
+        if tipo == "coleccion":
+            fuente = self.datos.fuente.coleccion
+
+        # Buscar por identificadores únicos (ISSN, ISBN, etc.)
+        # Los identificadores son únicos, por lo que si coinciden, es la misma fuente
+        for identificador in fuente.identificadores:
+            # Normalizar identificador: quitar guiones y espacios, convertir a mayúsculas
+            valor_normalizado = (
+                identificador.valor.replace("-", "").replace(" ", "").upper()
+            )
+
+            # Para ISSN/eISSN e ISBN/eISBN, buscar ambos tipos ya que representan la misma fuente
+            tipos_busqueda = []
+            if identificador.tipo.lower() in ["issn", "eissn"]:
+                tipos_busqueda = ["issn", "eissn"]
+            elif identificador.tipo.lower() in ["isbn", "eisbn"]:
+                tipos_busqueda = ["isbn", "eisbn"]
+            else:
+                tipos_busqueda = [identificador.tipo]
+
+            # Crear placeholders para la cláusula IN usando nombres
+            placeholders = ", ".join(
+                [f"%(tipo_{i})s" for i in range(len(tipos_busqueda))]
+            )
+
+            # Búsqueda principal: por identificador normalizado y tipos equivalentes
+            query = f"""
+                SELECT f.idFuente 
+                FROM prisma.p_fuente f
+                INNER JOIN prisma.p_identificador_fuente idf ON idf.idFuente = f.idFuente
+                WHERE REPLACE(REPLACE(UPPER(idf.valor), '-', ''), ' ', '') = %(valor_normalizado)s
+                AND idf.tipo IN ({placeholders})
+                AND f.tipo = %(tipo_fuente)s
+                LIMIT 1
+            """
+
+            # Construir diccionario de parámetros
+            params = {
+                "valor_normalizado": valor_normalizado,
+                "tipo_fuente": fuente.tipo,
+            }
+
+            # Agregar tipos de búsqueda al diccionario
+            for i, tipo in enumerate(tipos_busqueda):
+                params[f"tipo_{i}"] = tipo
+
+            self.db.ejecutarConsulta(query, params)
+            id_fuente = self.db.get_first_cell()
+
+            if id_fuente:
+                return id_fuente
 
         return 0
+
+    def buscar_fuente(self, tipo: str) -> int:
+        """
+        Busca una fuente existente:
+        1. Primero en datos antiguos (si existen)
+        2. Después en la base de datos por identificadores
+        """
+        # Intentar buscar en datos antiguos primero
+        id_fuente = self.buscar_fuente_en_datos_antiguos(tipo)
+        if id_fuente:
+            return id_fuente
+
+        # Si no se encuentra en datos antiguos, buscar en BD
+        id_fuente = self.buscar_fuente_en_bd(tipo)
+        return id_fuente
 
     def comparar_atributos_fuente(self, tipo: str):
         if tipo == "fuente":
@@ -477,7 +557,6 @@ class CargaPublicacion:
             problema = registro.detectar_conflicto(valor_actual=atributo_antiguo)
             if problema:
                 self.problemas_carga.append(problema)
-                return None
 
             self.lista_registros.append(registro)
 
@@ -488,7 +567,12 @@ class CargaPublicacion:
             fuente = self.datos.fuente
         if tipo == "coleccion":
             fuente = self.datos.fuente.coleccion
+
+        # Validar coherencia entre tipo de fuente e identificadores
+        self.validar_coherencia_fuente_identificadores(fuente, tipo)
+
         if not id_fuente:
+            # La fuente no existe, crearla
             query = """INSERT INTO prisma.p_fuente (tipo, titulo, editorial, origen)
                 VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)"""
 
@@ -509,16 +593,84 @@ class CargaPublicacion:
                 self.insertar_id_fuente_publicacion()
             if tipo == "coleccion":
                 self.insertar_coleccion_publicacion()
-
         else:
+            # La fuente ya existe, usar el ID encontrado
             fuente.id_fuente = id_fuente
-            self.comparar_atributos_fuente(tipo=tipo)
+
+            # IMPORTANTE: Vincular la fuente existente a la publicación
+            if tipo == "fuente":
+                self.insertar_id_fuente_publicacion()
+            if tipo == "coleccion":
+                self.insertar_coleccion_publicacion()
+
+            # Solo comparar atributos si hay datos antiguos
+            if self.datos_antiguos:
+                self.comparar_atributos_fuente(tipo=tipo)
 
         self.insertar_datos_fuente(tipo=tipo)
         self.insertar_identificadores_fuente(tipo=tipo)
         self.insertar_editoriales_fuente(tipo=tipo)
 
         return id_fuente
+
+    def validar_coherencia_fuente_identificadores(self, fuente, tipo_contexto: str):
+        """
+        Valida que el tipo de fuente sea coherente con sus identificadores
+        y reporta problemas si hay inconsistencias
+        """
+        problemas_detectados = []
+
+        # Verificar coherencia específica por tipo
+        if fuente.tipo == "libro":
+            if not fuente.tiene_isbn():
+                problema = ProblemaCarga(
+                    elemento=f"Fuente {tipo_contexto}",
+                    elemento_id=self.id_publicacion,
+                    descripcion=f"Fuente tipo 'libro' sin identificadores ISBN/eISBN. "
+                    f"Título: {fuente.titulo}. "
+                    f"Identificadores encontrados: {[f'{id.tipo}:{id.valor}' for id in fuente.identificadores]}",
+                    origen=self.origen,
+                    bd=self.db,
+                )
+                self.problemas_carga.append(problema)
+
+        elif fuente.tipo == "coleccion":
+            if not fuente.tiene_issn():
+                problema = ProblemaCarga(
+                    elemento=f"Fuente {tipo_contexto}",
+                    elemento_id=self.id_publicacion,
+                    descripcion=f"Fuente tipo 'colección' sin identificadores ISSN/eISSN. "
+                    f"Título: {fuente.titulo}. "
+                    f"Identificadores encontrados: {[f'{id.tipo}:{id.valor}' for id in fuente.identificadores]}",
+                    origen=self.origen,
+                    bd=self.db,
+                )
+                self.problemas_carga.append(problema)
+
+        # Verificar identificadores inapropiados
+        if fuente.tipo == "libro" and fuente.tiene_issn():
+            problema = ProblemaCarga(
+                elemento=f"Fuente {tipo_contexto}",
+                elemento_id=self.id_publicacion,
+                descripcion=f"Fuente tipo 'libro' tiene identificadores ISSN/eISSN inapropiados. "
+                f"Título: {fuente.titulo}. "
+                f"ISSNs encontrados: {[f'{id.tipo}:{id.valor}' for id in fuente.get_issns()]}",
+                origen=self.origen,
+                bd=self.db,
+            )
+            self.problemas_carga.append(problema)
+
+        elif fuente.tipo == "coleccion" and fuente.tiene_isbn():
+            problema = ProblemaCarga(
+                elemento=f"Fuente {tipo_contexto}",
+                elemento_id=self.id_publicacion,
+                descripcion=f"Fuente tipo 'colección' tiene identificadores ISBN/eISBN inapropiados. "
+                f"Título: {fuente.titulo}. "
+                f"ISBNs encontrados: {[f'{id.tipo}:{id.valor}' for id in fuente.get_isbns()]}",
+                origen=self.origen,
+                bd=self.db,
+            )
+            self.problemas_carga.append(problema)
 
     def insertar_id_fuente_publicacion(self):
         registro = RegistroCambiosPublicacionFuente(
@@ -547,6 +699,22 @@ class CargaPublicacion:
             origen=self.origen,
             bd=self.db,
         )
+
+        # Check if collection is already linked to this source
+        query_check = """
+            SELECT COUNT(*) as count 
+            FROM prisma.p_dato_fuente 
+            WHERE idFuente = %(idFuente)s AND tipo = 'coleccion' AND valor = %(idColeccion)s
+        """
+        params_check = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "idColeccion": self.datos.fuente.coleccion.id_fuente,
+        }
+
+        result = self.db.ejecutarConsulta(query_check, params_check)
+        if result and result[0]["count"] > 0:
+            # Collection association already exists, skip insertion
+            return
 
         query_insertar_coleccion_publicacion = """
             INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
@@ -583,9 +751,37 @@ class CargaPublicacion:
         if tipo == "coleccion":
             fuente_antigua = self.datos_antiguos.fuente.coleccion
 
+        # Normalizar identificador: quitar guiones y espacios, convertir a mayúsculas
+        valor_normalizado = (
+            identificador.valor.replace("-", "").replace(" ", "").upper()
+        )
+
+        # Para ISSN/eISSN e ISBN/eISBN, buscar ambos tipos ya que representan la misma fuente
+        tipos_busqueda = []
+        if identificador.tipo.lower() in ["issn", "eissn"]:
+            tipos_busqueda = ["issn", "eissn"]
+        elif identificador.tipo.lower() in ["isbn", "eisbn"]:
+            tipos_busqueda = ["isbn", "eisbn"]
+        else:
+            tipos_busqueda = [identificador.tipo]
+
         for identificador_antiguo in fuente_antigua.identificadores:
-            if identificador_antiguo.valor == identificador.valor:
+            # Normalizar identificador antiguo
+            valor_antiguo_normalizado = (
+                identificador_antiguo.valor.replace("-", "").replace(" ", "").upper()
+            )
+
+            # Comparar valores normalizados y tipos equivalentes
+            if (
+                valor_normalizado == valor_antiguo_normalizado
+                and identificador_antiguo.tipo.lower()
+                in [t.lower() for t in tipos_busqueda]
+            ):
+                # El identificador YA EXISTE en los datos antiguos
                 return True
+
+        # El identificador NO EXISTE en los datos antiguos, se puede agregar
+        return False
 
     def insertar_identificador_fuente(
         self, identificador: DatosCargaIdentificadorFuente, tipo: str
@@ -602,11 +798,65 @@ class CargaPublicacion:
             origen=self.origen,
             bd=self.db,
         )
-        if self.buscar_identificador_fuente(identificador, registro, tipo=tipo):
+
+        # Verificar si el identificador ya existe en los datos antiguos
+        existe_en_antiguos = self.buscar_identificador_fuente(
+            identificador, registro, tipo=tipo
+        )
+
+        # Si buscar_identificador_fuente devuelve None (decorador @busqueda), significa que no hay datos antiguos
+        # En ese caso, verificar en BD y luego insertar si no existe
+        # Si devuelve True, significa que ya existe en datos antiguos, no insertar
+        # Si devuelve False, significa que no existe en datos antiguos, verificar BD y luego insertar
+        if existe_en_antiguos is True:
             return None
 
+        # Verificar si ya existe en la base de datos (independientemente de datos antiguos)
+        # Normalizar para búsqueda equivalente
+        valor_normalizado = (
+            identificador.valor.replace("-", "").replace(" ", "").upper()
+        )
+
+        # Para ISSN/eISSN e ISBN/eISBN, buscar ambos tipos
+        tipos_busqueda = []
+        if identificador.tipo.lower() in ["issn", "eissn"]:
+            tipos_busqueda = ["issn", "eissn"]
+        elif identificador.tipo.lower() in ["isbn", "eisbn"]:
+            tipos_busqueda = ["isbn", "eisbn"]
+        else:
+            tipos_busqueda = [identificador.tipo]
+
+        # Crear placeholders para la cláusula IN
+        placeholders = ", ".join([f"%(tipo_{i})s" for i in range(len(tipos_busqueda))])
+
+        query_verificar = f"""
+            SELECT COUNT(*) as count 
+            FROM prisma.p_identificador_fuente 
+            WHERE idFuente = %(idFuente)s 
+            AND REPLACE(REPLACE(UPPER(valor), '-', ''), ' ', '') = %(valor_normalizado)s
+            AND tipo IN ({placeholders})
+            AND eliminado = 0
+        """
+
+        params_verificar = {
+            "idFuente": fuente.id_fuente,
+            "valor_normalizado": valor_normalizado,
+        }
+
+        # Agregar tipos de búsqueda al diccionario
+        for i, tipo_busq in enumerate(tipos_busqueda):
+            params_verificar[f"tipo_{i}"] = tipo_busq
+
+        self.db.ejecutarConsulta(query_verificar, params_verificar)
+        resultado = self.db.consultaUna(query_verificar, params_verificar)
+
+        if resultado and resultado["count"] > 0:
+            # Ya existe en la BD, no insertar
+            return None
+
+        # No existe, insertar nuevo identificador
         query = """
-                REPLACE INTO prisma.p_identificador_fuente (idFuente, tipo, valor, origen)
+                INSERT INTO prisma.p_identificador_fuente (idFuente, tipo, valor, origen)
                 VALUES (%(idFuente)s, %(tipo)s, %(valor)s, %(origen)s)
                 """
         params = {
@@ -685,8 +935,50 @@ class CargaPublicacion:
             fuente = self.datos.fuente
         if tipo == "coleccion":
             fuente = self.datos.fuente.coleccion
+
         for editorial in fuente.editoriales:
             self.insertar_editorial_fuente(editorial, tipo=tipo)
+
+    def buscar_editorial_en_bd(self, editorial: DatosCargaEditorial) -> int:
+        """
+        Busca una editorial en la base de datos por nombre
+        Retorna el id si existe, 0 si no existe
+        """
+        query = """
+            SELECT id 
+            FROM prisma.p_editor 
+            WHERE nombre = %(nombre)s
+            LIMIT 1
+        """
+        params = {"nombre": editorial.nombre}
+
+        self.db.ejecutarConsulta(query, params)
+        id_editor = self.db.get_first_cell()
+
+        return id_editor or 0
+
+    def buscar_editorial_asociada_fuente(
+        self, fuente_id: int, nombre_editorial: str
+    ) -> int:
+        """
+        Busca si ya existe una editorial con el mismo nombre asociada a esta fuente
+        Retorna el id si existe la asociación, 0 si no existe
+        """
+        query = """
+            SELECT pdf.valor as id_editor
+            FROM prisma.p_dato_fuente pdf
+            JOIN prisma.p_editor pe ON pe.id = pdf.valor
+            WHERE pdf.idFuente = %(idFuente)s 
+            AND pdf.tipo = 'editorial' 
+            AND pe.nombre = %(nombre)s
+            LIMIT 1
+        """
+        params = {"idFuente": fuente_id, "nombre": nombre_editorial}
+
+        self.db.ejecutarConsulta(query, params)
+        id_editor = self.db.get_first_cell()
+
+        return id_editor or 0
 
     @busqueda
     def buscar_editorial(
@@ -709,9 +1001,19 @@ class CargaPublicacion:
         if tipo == "coleccion":
             fuente = self.datos.fuente.coleccion
 
-        editorial_antigua = self.buscar_editorial(editorial, tipo=tipo)
+        # Primero: verificar si ya existe una editorial con este nombre asociada a esta fuente
+        id_editor_asociado = self.buscar_editorial_asociada_fuente(
+            fuente.id_fuente, editorial.nombre
+        )
+        if id_editor_asociado:
+            # Ya existe una editorial con el mismo nombre asociada a esta fuente, no hacer nada
+            return
 
-        if not editorial_antigua:
+        # Segundo: buscar si la editorial existe en la base de datos
+        id_editor = self.buscar_editorial_en_bd(editorial)
+
+        if not id_editor:
+            # La editorial no existe, crearla
             query = """
                     INSERT INTO prisma.p_editor (nombre, url, pais, tipo)
                     VALUES (%(nombre)s, %(url)s, %(pais)s, %(tipo)s)
@@ -736,9 +1038,24 @@ class CargaPublicacion:
                 )
                 self.lista_registros.append(registro)
 
-        else:
-            id_editor = editorial_antigua.id_editor
+        # Tercero: verificar explícitamente si ya existe esta asociación editorial-fuente
+        query_verificar = """
+            SELECT COUNT(*) as count 
+            FROM prisma.p_dato_fuente pdf
+            JOIN prisma.p_editor pe ON pe.id = pdf.valor
+            WHERE pdf.idFuente = %(idFuente)s 
+            AND pdf.tipo = 'editorial' 
+            AND pe.nombre = %(nombre)s
+        """
+        params_verificar = {"idFuente": fuente.id_fuente, "nombre": editorial.nombre}
 
+        resultado = self.db.consultaUna(query_verificar, params_verificar)
+
+        if resultado and resultado["count"] > 0:
+            # Ya existe una editorial con este nombre asociada a esta fuente
+            return
+
+        # Cuarto: asociar la editorial con la fuente (solo si no existe)
         query_insertar_editorial_fuente = """
                         INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
                         VALUES (%(idFuente)s, 'editorial', %(idEditor)s)
@@ -767,6 +1084,22 @@ class CargaPublicacion:
             self.vincular_coleccion(id_coleccion)
 
     def vincular_coleccion(self, id_coleccion: int):
+        # Check if collection is already linked to this source
+        query_check = """
+            SELECT COUNT(*) as count 
+            FROM prisma.p_dato_fuente 
+            WHERE idFuente = %(idFuente)s AND tipo = 'coleccion' AND valor = %(idColeccion)s
+        """
+        params_check = {
+            "idFuente": self.datos.fuente.id_fuente,
+            "idColeccion": id_coleccion,
+        }
+
+        result = self.db.ejecutarConsulta(query_check, params_check)
+        if result and result[0]["count"] > 0:
+            # Collection association already exists, skip insertion
+            return
+
         query = """
                 INSERT INTO prisma.p_dato_fuente (idFuente, tipo, valor)
                 VALUES (%(idFuente)s, 'coleccion', %(idColeccion)s)
