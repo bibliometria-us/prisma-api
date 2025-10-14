@@ -46,7 +46,11 @@ carga_namespace = Namespace("carga", doc=False)
 @carga_namespace.route("/investigador/grupos", doc=False, endpoint="carga_grupos")
 class CargaGrupos(Resource):
     def post(self):
-        if not es_admin():
+        # Extraer api_key como en los otros endpoints
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
             return {"message": "No autorizado"}, 401
         if "files[]" not in request.files:
             return {"error": "No se han encontrado archivos en la petición"}, 400
