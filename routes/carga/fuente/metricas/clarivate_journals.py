@@ -38,7 +38,7 @@ def obtener_lista_de_fuentes(fuentes: str) -> list:
 
     if fuentes == "todas":
         pass
-    if "a" in fuentes:
+    elif "a" in fuentes:
 
         lista_fuentes = list(
             map(str, range(int(fuentes.split("a")[0]), int(fuentes.split("a")[1])))
