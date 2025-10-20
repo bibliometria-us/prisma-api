@@ -129,7 +129,7 @@ class BaseDatos:
         """
         Obtiene la primera celda si existe en el resultado de la consulta.
         """
-        if not (self.result and len(self.result)) > 1:
+        if not (self.result and len(self.result) > 1):
             return None
 
         return self.result[1][0]
@@ -142,3 +142,19 @@ class BaseDatos:
             return DataFrame()
 
         return table_to_pandas(self.result)
+
+    def consultaUna(self, consulta: str, params: tuple = ()):
+        """
+        Ejecuta una consulta y devuelve la primera fila como un diccionario
+        con claves = nombres de columnas y valores = datos.
+        Si no hay resultados, devuelve None.
+        """
+        resultado = self.ejecutarConsulta(consulta, params)
+
+        if self.rowcount == 0 or not resultado or len(resultado) < 2:
+            return None
+
+        columnas = resultado[0]  # Primera fila: nombres de columna
+        valores = resultado[1]  # Segunda fila: primer registro de datos
+
+        return dict(zip(columnas, valores))

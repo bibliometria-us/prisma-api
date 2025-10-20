@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from integration.apis.idus.idus import IdusAPIItems
 from routes.carga.publicacion.datos_carga_publicacion import (
@@ -90,7 +91,7 @@ class IdusParser(Parser):
     def cargar_autores(self):
         self._cargar_autores(
             tipo="Autor/a",
-            attr_name="dc.creator",
+            attr_name="dc.contributor.author",
         )
 
     def cargar_editores(self):
@@ -128,8 +129,18 @@ class IdusParser(Parser):
         if not doi:
             return None
 
-        valor = doi[0]["value"]
-        identificador = DatosCargaIdentificadorPublicacion(valor=valor, tipo="doi")
+        valor_crudo = doi[0]["value"]
+
+        # Expresión regular para extraer el DOI limpio
+        match = re.search(r"10\.\d{4,9}/[-._;()/:A-Z0-9]+", valor_crudo, re.IGNORECASE)
+
+        if not match:
+            return None
+
+        valor_limpio = match.group(0)
+        identificador = DatosCargaIdentificadorPublicacion(
+            valor=valor_limpio, tipo="doi"
+        )
         self.datos_carga_publicacion.add_identificador(identificador)
 
     def cargar_idus(self):
@@ -193,16 +204,19 @@ class IdusParser(Parser):
         titulo_revista = self.metadata.get("dc.journaltitle")
         titulo_libro = self.metadata.get("dc.relation.ispartof")
         titulo_congreso = self.metadata.get("dc.eventtitle")
-
-        if titulo_revista:
+        # titulo_congreso = self.metadata.get("dc.eventtitle")
+        # Establece título y tipo para libro y congreso en base a los metadatos del tipo de publicación
+        tipo_publicacion = self.datos_carga_publicacion.tipo
+        if tipo_publicacion == "Artículo" and titulo_revista:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_revista[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Revista")
-        if titulo_libro:
+        if tipo_publicacion == "Libro" and titulo_libro:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_libro[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Libro")
-        if titulo_congreso:
+        if tipo_publicacion == "Ponencia" and titulo_congreso:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_congreso[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Congreso")
+        return None
 
     def carga_editorial(self):
         valor = self.metadata.get("dc.publisher")

@@ -46,13 +46,23 @@ class WosParser(Parser):
         pass
 
     def cargar_tipo(self):
-        tipo = self.data["static_data"]["summary"]["doctypes"]["doctype"]
+        doctypes = self.data["static_data"]["summary"]["doctypes"]
 
-        if self.data["static_data"]["summary"]["doctypes"]["count"] > 1:
+        # Verificar que hay tipos de documento
+        if doctypes["count"] == 0:
+            self.datos_carga_publicacion.set_tipo("Otros")
+            return
+
+        tipo = doctypes["doctype"]
+
+        if doctypes["count"] > 1:
             if "Article" in tipo:
                 tipo = "Article"
             else:
-                valor = tipo[0]
+                tipo = tipo[0]
+        else:
+            # Si solo hay un tipo, extraerlo de la lista
+            tipo = tipo[0] if isinstance(tipo, list) else tipo
 
         tipos = {
             # TODO: Aclarar tipos pubs - a resolver
@@ -64,7 +74,6 @@ class WosParser(Parser):
         }
 
         valor = tipos.get(tipo, "Otros")
-
         self.datos_carga_publicacion.set_tipo(valor)
 
     def _cargar_autores(
@@ -72,11 +81,16 @@ class WosParser(Parser):
         tipo: str,
         attr_name: str,
     ):
-        # TODO: Autores vacíos json - Controlar que no vengan los autores vacíos
-        # Se extraen las afiliaciones de la publicacion
-        autores = self.data["static_data"]["summary"]["names"]["name"]
+        names_data = self.data["static_data"]["summary"]["names"]
+
+        # Verificar que hay autores
+        if names_data["count"] == 0:
+            return
+
+        autores = names_data["name"]
         if isinstance(autores, dict):
             autores = [autores]
+
         for autor in autores:
             # Se completa el Objeto DatosCargaAutor(Autor)
             firma = autor["display_name"]
@@ -113,37 +127,64 @@ class WosParser(Parser):
             # Se completa las el Objeto DatosCargaAfiliacion(Afiliaciones del Autor)
 
             # Esto se hace porque a veces addresses es un diccionario y a veces una lista
-            addresses = self.data["static_data"]["fullrecord_metadata"][
+            addresses_data = self.data["static_data"]["fullrecord_metadata"][
                 "addresses"
-            ].get("address_name", [])
+            ]
 
-            if isinstance(addresses, dict):
-                addresses = [addresses]
+            # Verificar que hay direcciones
+            if addresses_data["count"] == 0:
+                self.datos_carga_publicacion.add_autor(carga_autor)
+                continue
 
-            address: dict = next(
-                (
-                    addr["address_spec"]
-                    for addr in addresses
-                    if addr["address_spec"]["addr_no"] == autor.get("addr_no", 0)
-                ),
-                None,
+            address_name = addresses_data.get("address_name")
+
+            # Verificar que address_name no está vacío
+            if not address_name or address_name == {}:
+                self.datos_carga_publicacion.add_autor(carga_autor)
+                continue
+
+            addresses = (
+                address_name if isinstance(address_name, list) else [address_name]
             )
 
-            if address:
-                nombre = next(
+            # Manejar addr_no como lista o entero
+            autor_addr_no = autor.get("addr_no", [])
+            if isinstance(autor_addr_no, int):
+                autor_addr_no = [autor_addr_no]
+            elif not autor_addr_no:
+                self.datos_carga_publicacion.add_autor(carga_autor)
+                continue
+
+            for addr_no in autor_addr_no:
+                address = next(
                     (
-                        org["content"]
-                        for org in address["organizations"]["organization"]
-                        if org.get("pref") == "Y"
+                        addr["address_spec"]
+                        for addr in addresses
+                        if addr.get("address_spec", {}).get("addr_no") == addr_no
                     ),
-                    address["organizations"]["organization"][0]["content"],
+                    None,
                 )
-                afiliacion = DatosCargaAfiliacionesAutor(
-                    nombre=nombre,
-                    ciudad=address.get("city"),
-                    pais=address.get("country"),
-                )
-                carga_autor.add_afiliacion(afiliacion)
+
+                if address and "organizations" in address:
+                    organizations = address["organizations"].get("organization", [])
+                    if isinstance(organizations, dict):
+                        organizations = [organizations]
+
+                    if organizations:
+                        nombre = next(
+                            (
+                                org["content"]
+                                for org in organizations
+                                if org.get("pref") == "Y"
+                            ),
+                            organizations[0]["content"] if organizations else "",
+                        )
+                        afiliacion = DatosCargaAfiliacionesAutor(
+                            nombre=nombre,
+                            ciudad=address.get("city"),
+                            pais=address.get("country"),
+                        )
+                        carga_autor.add_afiliacion(afiliacion)
 
             self.datos_carga_publicacion.add_autor(carga_autor)
 
@@ -232,22 +273,31 @@ class WosParser(Parser):
         identifier = self.data["dynamic_data"]["cluster_related"]["identifiers"].get(
             "identifier", []
         )
-        # Si es un diccionario, lo convertimos en una lista para evitar errores
         if isinstance(identifier, dict):
             identifier = [identifier]
 
         for id in identifier:
-            match id["type"]:
-                # Esto es una excepcion, pero se guarda en IDs en el JSON
-                case "art_no":
-                    identificador = DatosCargaIdentificadorPublicacion(
-                        valor=id["value"], tipo="num_articulo"
-                    )
-                    self.datos_carga_publicacion.add_dato(identificador)
+            if id["type"] == "art_no":
+                # Corregido: usar DatosCargaDatoPublicacion
+                dato = DatosCargaDatoPublicacion(tipo="num_articulo", valor=id["value"])
+                self.datos_carga_publicacion.add_dato(dato)
 
     # TODO: No P.Ini y P.fin - viene el numero de paginas totales
     def cargar_pag_inicio_fin(self):
-        pass
+        page_info = self.data["static_data"]["summary"]["pub_info"].get("page")
+        if page_info:
+            inicio = page_info.get("begin")
+            fin = page_info.get("end")
+
+            if inicio:
+                dato_inicio = DatosCargaDatoPublicacion(
+                    tipo="pag_inicio", valor=str(inicio)
+                )
+                self.datos_carga_publicacion.add_dato(dato_inicio)
+
+            if fin:
+                dato_fin = DatosCargaDatoPublicacion(tipo="pag_fin", valor=str(fin))
+                self.datos_carga_publicacion.add_dato(dato_fin)
 
     def cargar_datos(self):
         if self.datos_carga_publicacion.es_tesis():
@@ -315,25 +365,23 @@ class WosParser(Parser):
         self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
 
     def carga_editorial(self):
-        # TODO: 2 Editoriales - puede darse el caso ?
-        if (
-            self.data["static_data"]["summary"]["publishers"]["publisher"]["names"][
-                "count"
-            ]
-            == 1
-        ):
-            editorial = DatosCargaEditorial(
-                self.data["static_data"]["summary"]["publishers"]["publisher"]["names"][
-                    "name"
-                ]["display_name"]
-            )
-            # TODO: pais Editorial
+        publisher_data = self.data["static_data"]["summary"]["publishers"]["publisher"]
+        names_data = publisher_data["names"]
+
+        # Verificar que hay editores
+        if names_data["count"] == 0:
+            return
+
+        if names_data["count"] == 1:
+            name_info = names_data["name"]
+            editorial = DatosCargaEditorial(name_info["display_name"])
             self.datos_carga_publicacion.fuente.add_editorial(editorial)
-        else:  # afiliaciones con varios autores
-            for ed in self.data["static_data"]["summary"]["publishers"]["publisher"][
-                "names"
-            ].get("name", []):
-                editorial = DatosCargaEditorial(ed["display_name"])
+        else:
+            names = names_data.get("name", [])
+            if isinstance(names, dict):
+                names = [names]
+            for name_info in names:
+                editorial = DatosCargaEditorial(name_info["display_name"])
                 self.datos_carga_publicacion.fuente.add_editorial(editorial)
 
     def cargar_fuente(self):
@@ -343,33 +391,42 @@ class WosParser(Parser):
 
     def cargar_financiacion(self):
         fund_ack = self.data["static_data"]["fullrecord_metadata"].get("fund_ack")
-        if fund_ack:  # Se comprueba que exista info de financiacion
-            agencias = fund_ack["grants"].get("grant", [])
-            if isinstance(agencias, dict):
-                agencias = [agencias]
-            for agencia_obj in agencias:
-                if (
-                    "grant_ids" in agencia_obj and "grant_agency" in agencia_obj
-                ):  # Se comprueba que para cada entrada haya agencia y proyecto
-                    agencia = agencia_obj.get("grant_agency")
-                    n_proyectos = agencia_obj["grant_ids"].get("count", [])
-                    if n_proyectos > 1:
-                        proyectos = agencia_obj["grant_ids"].get("grant_id", [])
-                        for proyecto_obj in proyectos:
-                            financiacion = DatosCargaFinanciacion(
-                                agencia=agencia,
-                                entidad_financiadora=agencia,
-                                proyecto=proyecto_obj,
-                            )
-                            self.datos_carga_publicacion.add_financiacion(financiacion)
-                    elif n_proyectos == 1:
-                        proyecto = agencia_obj["grant_ids"].get("grant_id")
+        if not fund_ack:
+            return
+
+        grants_data = fund_ack.get("grants", {})
+        if grants_data.get("count", 0) == 0:
+            return
+
+        agencias = grants_data.get("grant", [])
+        if isinstance(agencias, dict):
+            agencias = [agencias]
+
+        for agencia_obj in agencias:
+            if "grant_ids" in agencia_obj and "grant_agency" in agencia_obj:
+                agencia = agencia_obj.get("grant_agency")
+                grant_ids_data = agencia_obj["grant_ids"]
+                n_proyectos = grant_ids_data.get("count", 0)
+
+                if n_proyectos > 1:
+                    proyectos = grant_ids_data.get("grant_id", [])
+                    if isinstance(proyectos, str):
+                        proyectos = [proyectos]
+                    for proyecto_obj in proyectos:
                         financiacion = DatosCargaFinanciacion(
                             agencia=agencia,
                             entidad_financiadora=agencia,
-                            proyecto=proyecto,
+                            proyecto=proyecto_obj,
                         )
                         self.datos_carga_publicacion.add_financiacion(financiacion)
+                elif n_proyectos == 1:
+                    proyecto = grant_ids_data.get("grant_id")
+                    financiacion = DatosCargaFinanciacion(
+                        agencia=agencia,
+                        entidad_financiadora=agencia,
+                        proyecto=proyecto,
+                    )
+                    self.datos_carga_publicacion.add_financiacion(financiacion)
 
     def carga_acceso_abierto(self):
         oas = self.data["static_data"]["summary"]["pub_info"]["journal_oas_gold"]
