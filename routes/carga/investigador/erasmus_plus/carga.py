@@ -1,9 +1,10 @@
 import pandas as pd
-import os
+from datetime import datetime
 from db.conexion import BaseDatos
 from integration.email.email import enviar_correo
 from logger.async_request import AsyncRequest
 from celery import shared_task
+import os  # <-- añadido (se usa en os.remove)
 
 
 @shared_task(
@@ -41,6 +42,34 @@ def task_carga_erasmus_plus(request_id: str):
         os.remove(ruta_fichero)
 
 
+def normalizar_valor(v):
+    if v is None:
+        return None
+    if isinstance(v, float) and pd.isna(v):
+        return None
+    s = str(v).strip()
+    if s == "" or s.lower() in ("nan", "nat", "none"):
+        return None
+    return s
+
+
+def normalizar_fecha(v):
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return None
+    if isinstance(v, (datetime, pd.Timestamp)):
+        return v.strftime("%Y-%m-%d")
+    s = str(v).strip()
+    if s == "" or s.lower() in ("nan", "nat", "none"):
+        return None
+    try:
+        dt = pd.to_datetime(s, dayfirst=True, errors="coerce")
+        if pd.isna(dt):
+            return None
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def carga_erasmus_plus(ruta_fichero: str, db: BaseDatos = None):
     # Por defecto, BaseDatos se conecta a la base de datos prisma, por lo que hay que cambiarla a prisma_erasmus_plus
     # (tanto instancia como nueva conexión)
@@ -64,201 +93,158 @@ def carga_erasmus_plus(ruta_fichero: str, db: BaseDatos = None):
     df_instituciones = xls.parse("Instituciones")
     df_instituciones.columns = df_instituciones.columns.str.strip()
 
-    procesar_proyectos(df_proyectos, db)
-    procesar_participantes(df_participantes, db)
-    procesar_instituciones(df_instituciones, db)
+    # Mostrar número de filas en cada DataFrame
+    print(
+        "Filas en DataFrames: "
+        f"proyectos={len(df_proyectos)}, "
+        f"participantes={len(df_participantes)}, "
+        f"instituciones={len(df_instituciones)}"
+    )
+    crear_respaldos_tablas(db)
+    procesar_proyectos_sustituye(df_proyectos, db)
+    procesar_participantes_sustituye(df_participantes, db)
+    procesar_instituciones_sustituye(df_instituciones, db)
 
 
-def procesar_proyectos(df: pd.DataFrame, db: BaseDatos):
-    for index, row in df.iterrows():
+def crear_respaldos_tablas(db: BaseDatos):
+    """Crea respaldos de las tablas con sufijo de fecha actual (YYYYMMDD)"""
+    fecha_actual = datetime.now().strftime("%Y%m%d")
+    tablas_respaldo = [
+        ("erasmus_proyectos", f"erasmus_proyectos_{fecha_actual}"),
+        ("erasmus_participantes", f"erasmus_participantes_{fecha_actual}"),
+        ("erasmus_instituciones", f"erasmus_instituciones_{fecha_actual}"),
+    ]
+
+    for tabla_original, tabla_respaldo in tablas_respaldo:
         try:
-            referencia = str(row["Referencia"]).strip()
-
-            # 1. Consulta si ya existe
-            consulta = "SELECT * FROM erasmus_proyectos WHERE referencia = %s"
-            resultado = db.ejecutarConsulta(consulta, (referencia,))
-            existe = db.rowcount > 0
-
-            # 2. Construir diccionario de valores
-            valores = {
-                "denominacion": str(row["Denominación"]).strip(),
-                "acronimo": str(row["Acrónimo"]).strip(),
-                "fecha_inicio": str(row["Fecha inicio"]).strip(),
-                "fecha_fin": str(row["Fecha Fin"]).strip(),
-                "entidad_financiadora": str(row["Entidad financiadora:"]).strip(),
-                "programa_financiador": str(row["Programa financiador:"]).strip(),
-                "convocatoria": str(row["Convocatoria"]).strip(),
-                "iniciativa": str(row["Iniciativa / Acción"]).strip(),
-                "importe_total_concedido": str(row["Importe Total Concedido"]).strip(),
-                "importe_asignado_us": str(row["Importe Asignado US"]).strip(),
-                "referencia": referencia,
-                "web": str(row["Web"]).strip(),
-                "descripcion": str(row["Breve descripción / Objetivo"]).strip(),
-                "convocatoria_competitiva": str(
-                    row["Convocatoria competitiva (s/n)"]
-                ).strip(),
-                "innovacion_docente": str(
-                    row["Proyecto de innovacion docente"]
-                ).strip(),
-            }
-
-            if not existe:
-                # 3. INSERT si no existe
-                columnas = ", ".join(valores.keys())
-                placeholders = ", ".join(["%s"] * len(valores))
-                sql_insert = f"INSERT INTO erasmus_proyectos ({columnas}) VALUES ({placeholders})"
-                db.ejecutarConsulta(sql_insert, list(valores.values()))
-
-            else:
-                # 4. Comparar si hay diferencias
-                columnas_resultado = resultado[0]
-                fila_resultado = dict(zip(columnas_resultado, resultado[1]))
-
-                hay_cambios = any(
-                    str(valores[k]) != str(fila_resultado.get(k, "")).strip()
-                    for k in valores
-                )
-
-                if hay_cambios:
-                    # 5. UPDATE si hay diferencias
-                    set_clause = ", ".join(
-                        [f"{k} = %s" for k in valores if k != "referencia"]
-                    )
-                    sql_update = f"""
-                        UPDATE erasmus_proyectos
-                        SET {set_clause}
-                        WHERE referencia = %s
-                    """
-                    params = [valores[k] for k in valores if k != "referencia"] + [
-                        referencia
-                    ]
-                    db.ejecutarConsulta(sql_update, params)
-        except Exception as e:
-            raise Exception(
-                f"Error procesando fila {index+1} con referencia {row.get('Referencia', '')}: {str(e)}"
+            db.ejecutarConsulta(f"DROP TABLE IF EXISTS {tabla_respaldo}")
+            db.ejecutarConsulta(f"CREATE TABLE {tabla_respaldo} LIKE {tabla_original}")
+            db.ejecutarConsulta(
+                f"INSERT INTO {tabla_respaldo} SELECT * FROM {tabla_original}"
             )
+            print(f"Respaldo creado: {tabla_respaldo}")
+        except Exception as e:
+            print(f"Error creando respaldo de {tabla_original}: {e}")
 
 
-def procesar_participantes(df: pd.DataFrame, db: BaseDatos):
+def procesar_proyectos_sustituye(df: pd.DataFrame, db: BaseDatos):
+    db.ejecutarConsulta("DELETE FROM erasmus_proyectos")
+    try:
+        db.ejecutarConsulta("ALTER TABLE erasmus_proyectos AUTO_INCREMENT = 1")
+    except Exception:
+        pass
+    errores = []
     for index, row in df.iterrows():
         try:
-            referencia = str(row["Referencia"]).strip()
-            dni = str(row["DNI"]).strip()
+            referencia = normalizar_valor(row.get("Referencia"))
+            valores = {
+                "denominacion": normalizar_valor(row.get("Denominación")),
+                "acronimo": normalizar_valor(row.get("Acrónimo")),
+                "fecha_inicio": normalizar_fecha(row.get("Fecha inicio")),
+                "fecha_fin": normalizar_fecha(row.get("Fecha Fin")),
+                "entidad_financiadora": normalizar_valor(
+                    row.get("Entidad financiadora:")
+                ),
+                "programa_financiador": normalizar_valor(
+                    row.get("Programa financiador:")
+                ),
+                "convocatoria": normalizar_valor(row.get("Convocatoria")),
+                "iniciativa": normalizar_valor(row.get("Iniciativa / Acción")),
+                "importe_total_concedido": normalizar_valor(
+                    row.get("Importe Total Concedido")
+                ),
+                "importe_asignado_us": normalizar_valor(row.get("Importe Asignado US")),
+                "referencia": referencia,
+                "web": normalizar_valor(row.get("Web")),
+                "descripcion": normalizar_valor(
+                    row.get("Breve descripción / Objetivo")
+                ),
+                "convocatoria_competitiva": normalizar_valor(
+                    row.get("Convocatoria competitiva (s/n)")
+                ),
+                "innovacion_docente": normalizar_valor(
+                    row.get("Proyecto de innovacion docente")
+                ),
+            }
+            columnas = ", ".join(valores.keys())
+            placeholders = ", ".join(["%s"] * len(valores))
+            sql_insert = (
+                f"INSERT INTO erasmus_proyectos ({columnas}) VALUES ({placeholders})"
+            )
+            db.ejecutarConsulta(sql_insert, list(valores.values()))
+        except Exception as e:
+            errores.append(f"fila {index+1} ref={row.get('Referencia','')}: {e}")
+    if errores:
+        print(f"[PROYECTOS] filas con error: {len(errores)}")
+        for e in errores[:10]:
+            print("  ", e)  # muestra primeras 10
+        # opcional: levantar excepción agregada
+        # raise Exception("Errores en proyectos: " + "; ".join(errores))
 
-            # 1. Consulta si ya existe
-            sql_select = """
-                SELECT * FROM erasmus_participantes
-                WHERE referencia = %s AND dni = %s
-            """
-            resultado = db.ejecutarConsulta(sql_select, (referencia, dni))
-            existe = db.rowcount > 0
 
-            # 2. Diccionario de valores
+def procesar_participantes_sustituye(df: pd.DataFrame, db: BaseDatos):
+    db.ejecutarConsulta("DELETE FROM erasmus_participantes")
+    try:
+        db.ejecutarConsulta("ALTER TABLE erasmus_participantes AUTO_INCREMENT = 1")
+    except Exception:
+        pass
+    errores = []
+    for index, row in df.iterrows():
+        try:
+            referencia = normalizar_valor(row.get("Referencia"))
+            dni = normalizar_valor(row.get("DNI"))
             valores = {
                 "referencia": referencia,
-                "nombre": str(row["Nombre"]).strip(),
-                "apellido": str(row["Apellido"]).strip(),
+                "nombre": normalizar_valor(row.get("Nombre")),
+                "apellido": normalizar_valor(row.get("Apellido")),
                 "dni": dni,
-                "rol": str(row["Rol"]).strip(),
+                "rol": normalizar_valor(row.get("Rol")),
             }
-
-            if not existe:
-                # 3. INSERT si no existe
-                columnas = ", ".join(valores.keys())
-                placeholders = ", ".join(["%s"] * len(valores))
-                sql_insert = f"INSERT INTO erasmus_participantes ({columnas}) VALUES ({placeholders})"
-                db.ejecutarConsulta(sql_insert, list(valores.values()))
-            else:
-                # 4. Comparar y UPDATE si hay diferencias
-                columnas_resultado = resultado[0]
-                fila_resultado = dict(zip(columnas_resultado, resultado[1]))
-
-                hay_cambios = any(
-                    str(valores[k]) != str(fila_resultado.get(k, "")).strip()
-                    for k in valores
-                )
-
-                if hay_cambios:
-                    set_clause = ", ".join(
-                        [f"{k} = %s" for k in valores if k not in ("referencia", "dni")]
-                    )
-                    sql_update = f"""
-                        UPDATE erasmus_participantes
-                        SET {set_clause}
-                        WHERE referencia = %s AND dni = %s
-                    """
-                    params = [
-                        valores[k] for k in valores if k not in ("referencia", "dni")
-                    ] + [referencia, dni]
-                    db.ejecutarConsulta(sql_update, params)
+            columnas = ", ".join(valores.keys())
+            placeholders = ", ".join(["%s"] * len(valores))
+            sql_insert = f"INSERT INTO erasmus_participantes ({columnas}) VALUES ({placeholders})"
+            db.ejecutarConsulta(sql_insert, list(valores.values()))
         except Exception as e:
-            raise Exception(
-                f"Error procesando fila {index+1} con referencia {row.get('Referencia', '')}: {str(e)}"
+            errores.append(
+                f"fila {index+1} ref={row.get('Referencia','')} dni={row.get('DNI','')}: {e}"
             )
+    if errores:
+        print(f"[PARTICIPANTES] filas con error: {len(errores)}")
+        for e in errores[:10]:
+            print("  ", e)
 
 
-def procesar_instituciones(df: pd.DataFrame, db: BaseDatos):
+def procesar_instituciones_sustituye(df: pd.DataFrame, db: BaseDatos):
+    db.ejecutarConsulta("DELETE FROM erasmus_instituciones")
+    try:
+        db.ejecutarConsulta("ALTER TABLE erasmus_instituciones AUTO_INCREMENT = 1")
+    except Exception:
+        pass
+    # normaliza columna País antes (si existe)
+    if "País" in df.columns:
+        df["País"] = df["País"].astype(str).str.strip()
+    errores = []
     for index, row in df.iterrows():
         try:
-            referencia = str(row["Referencia"]).strip()
-            institucion = str(row["Instituciones"]).strip()
-            pais = str(row["País"]).strip()
-            rol = str(row["Rol"]).strip()
-
-            # 1. Consulta si ya existe
-            sql_select = """
-                SELECT * FROM erasmus_instituciones
-                WHERE referencia = %s AND institucion = %s AND pais = %s AND rol = %s
-            """
-            resultado = db.ejecutarConsulta(
-                sql_select, (referencia, institucion, pais, rol)
-            )
-            existe = db.rowcount > 0
-
-            # 2. Diccionario de valores
+            referencia = normalizar_valor(row.get("Referencia"))
+            institucion = normalizar_valor(row.get("Instituciones"))
+            pais = normalizar_valor(row.get("País"))
+            rol = normalizar_valor(row.get("Rol"))
             valores = {
                 "referencia": referencia,
                 "institucion": institucion,
                 "pais": pais,
                 "rol": rol,
             }
-
-            if not existe:
-                # 3. INSERT si no existe
-                columnas = ", ".join(valores.keys())
-                placeholders = ", ".join(["%s"] * len(valores))
-                sql_insert = f"INSERT INTO erasmus_instituciones ({columnas}) VALUES ({placeholders})"
-                db.ejecutarConsulta(sql_insert, list(valores.values()))
-            else:
-                # 4. Comparar y UPDATE si hay diferencias
-                columnas_resultado = resultado[0]
-                fila_resultado = dict(zip(columnas_resultado, resultado[1]))
-
-                hay_cambios = any(
-                    str(valores[k]) != str(fila_resultado.get(k, "")).strip()
-                    for k in valores
-                )
-
-                if hay_cambios:
-                    set_clause = ", ".join(
-                        [
-                            f"{k} = %s"
-                            for k in valores
-                            if k not in ("referencia", "institucion", "pais", "rol")
-                        ]
-                    )
-                    sql_update = f"""
-                        UPDATE erasmus_instituciones
-                        SET {set_clause}
-                        WHERE referencia = %s AND institucion = %s AND pais = %s AND rol = %s
-                    """
-                    params = [
-                        valores[k]
-                        for k in valores
-                        if k not in ("referencia", "institucion", "pais", "rol")
-                    ] + [referencia, institucion, pais, rol]
-                    db.ejecutarConsulta(sql_update, params)
+            columnas = ", ".join(valores.keys())
+            placeholders = ", ".join(["%s"] * len(valores))
+            sql_insert = f"INSERT INTO erasmus_instituciones ({columnas}) VALUES ({placeholders})"
+            db.ejecutarConsulta(sql_insert, list(valores.values()))
         except Exception as e:
-            raise Exception(
-                f"Error procesando fila {index+1} con referencia {row.get('Referencia', '')}: {str(e)}"
+            errores.append(
+                f"fila {index+1} ref={row.get('Referencia','')} inst={row.get('Instituciones','')}: {e}"
             )
+    if errores:
+        print(f"[INSTITUCIONES] filas con error: {len(errores)}")
+        for e in errores[:10]:
+            print("  ", e)
