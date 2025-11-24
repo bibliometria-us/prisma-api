@@ -129,8 +129,13 @@ def crear_respaldos_tablas(db: BaseDatos):
 
 def procesar_proyectos_sustituye(df: pd.DataFrame, db: BaseDatos):
     db.ejecutarConsulta("DELETE FROM erasmus_proyectos")
+    # Forzar commit tras DELETE (crítico en producción)
+    if hasattr(db, 'commit'):
+        db.commit()
     try:
         db.ejecutarConsulta("ALTER TABLE erasmus_proyectos AUTO_INCREMENT = 1")
+        if hasattr(db, 'commit'):
+            db.commit()
     except Exception:
         pass
     errores = []
@@ -142,50 +147,41 @@ def procesar_proyectos_sustituye(df: pd.DataFrame, db: BaseDatos):
                 "acronimo": normalizar_valor(row.get("Acrónimo")),
                 "fecha_inicio": normalizar_fecha(row.get("Fecha inicio")),
                 "fecha_fin": normalizar_fecha(row.get("Fecha Fin")),
-                "entidad_financiadora": normalizar_valor(
-                    row.get("Entidad financiadora:")
-                ),
-                "programa_financiador": normalizar_valor(
-                    row.get("Programa financiador:")
-                ),
+                "entidad_financiadora": normalizar_valor(row.get("Entidad financiadora:")),
+                "programa_financiador": normalizar_valor(row.get("Programa financiador:")),
                 "convocatoria": normalizar_valor(row.get("Convocatoria")),
                 "iniciativa": normalizar_valor(row.get("Iniciativa / Acción")),
-                "importe_total_concedido": normalizar_valor(
-                    row.get("Importe Total Concedido")
-                ),
+                "importe_total_concedido": normalizar_valor(row.get("Importe Total Concedido")),
                 "importe_asignado_us": normalizar_valor(row.get("Importe Asignado US")),
                 "referencia": referencia,
                 "web": normalizar_valor(row.get("Web")),
-                "descripcion": normalizar_valor(
-                    row.get("Breve descripción / Objetivo")
-                ),
-                "convocatoria_competitiva": normalizar_valor(
-                    row.get("Convocatoria competitiva (s/n)")
-                ),
-                "innovacion_docente": normalizar_valor(
-                    row.get("Proyecto de innovacion docente")
-                ),
+                "descripcion": normalizar_valor(row.get("Breve descripción / Objetivo")),
+                "convocatoria_competitiva": normalizar_valor(row.get("Convocatoria competitiva (s/n)")),
+                "innovacion_docente": normalizar_valor(row.get("Proyecto de innovacion docente")),
             }
             columnas = ", ".join(valores.keys())
             placeholders = ", ".join(["%s"] * len(valores))
-            sql_insert = (
-                f"INSERT INTO erasmus_proyectos ({columnas}) VALUES ({placeholders})"
-            )
+            sql_insert = f"INSERT INTO erasmus_proyectos ({columnas}) VALUES ({placeholders})"
             db.ejecutarConsulta(sql_insert, list(valores.values()))
         except Exception as e:
             errores.append(f"fila {index+1} ref={row.get('Referencia','')}: {e}")
+    # Commit final tras todos los INSERTs
+    if hasattr(db, 'commit'):
+        db.commit()
     if errores:
         print(f"[PROYECTOS] filas con error: {len(errores)}")
         for e in errores[:10]:
-            print("  ", e)  # muestra primeras 10
-        # opcional: levantar excepción agregada
-        # raise Exception("Errores en proyectos: " + "; ".join(errores))
+            print("  ", e)
 
 
 def procesar_participantes_sustituye(df: pd.DataFrame, db: BaseDatos):
     db.ejecutarConsulta("DELETE FROM erasmus_participantes")
+    if hasattr(db, 'commit'):
+        db.commit()
     try:
         db.ejecutarConsulta("ALTER TABLE erasmus_participantes AUTO_INCREMENT = 1")
+        if hasattr(db, 'commit'):
+            db.commit()
     except Exception:
         pass
     errores = []
@@ -205,9 +201,9 @@ def procesar_participantes_sustituye(df: pd.DataFrame, db: BaseDatos):
             sql_insert = f"INSERT INTO erasmus_participantes ({columnas}) VALUES ({placeholders})"
             db.ejecutarConsulta(sql_insert, list(valores.values()))
         except Exception as e:
-            errores.append(
-                f"fila {index+1} ref={row.get('Referencia','')} dni={row.get('DNI','')}: {e}"
-            )
+            errores.append(f"fila {index+1} ref={row.get('Referencia','')} dni={row.get('DNI','')}: {e}")
+    if hasattr(db, 'commit'):
+        db.commit()
     if errores:
         print(f"[PARTICIPANTES] filas con error: {len(errores)}")
         for e in errores[:10]:
@@ -216,11 +212,14 @@ def procesar_participantes_sustituye(df: pd.DataFrame, db: BaseDatos):
 
 def procesar_instituciones_sustituye(df: pd.DataFrame, db: BaseDatos):
     db.ejecutarConsulta("DELETE FROM erasmus_instituciones")
+    if hasattr(db, 'commit'):
+        db.commit()
     try:
         db.ejecutarConsulta("ALTER TABLE erasmus_instituciones AUTO_INCREMENT = 1")
+        if hasattr(db, 'commit'):
+            db.commit()
     except Exception:
         pass
-    # normaliza columna País antes (si existe)
     if "País" in df.columns:
         df["País"] = df["País"].astype(str).str.strip()
     errores = []
@@ -241,9 +240,9 @@ def procesar_instituciones_sustituye(df: pd.DataFrame, db: BaseDatos):
             sql_insert = f"INSERT INTO erasmus_instituciones ({columnas}) VALUES ({placeholders})"
             db.ejecutarConsulta(sql_insert, list(valores.values()))
         except Exception as e:
-            errores.append(
-                f"fila {index+1} ref={row.get('Referencia','')} inst={row.get('Instituciones','')}: {e}"
-            )
+            errores.append(f"fila {index+1} ref={row.get('Referencia','')} inst={row.get('Instituciones','')}: {e}")
+    if hasattr(db, 'commit'):
+        db.commit()
     if errores:
         print(f"[INSTITUCIONES] filas con error: {len(errores)}")
         for e in errores[:10]:
