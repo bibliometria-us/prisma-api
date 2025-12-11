@@ -1,3 +1,4 @@
+from pathlib import Path
 import logger.config as config
 import os
 import json
@@ -25,6 +26,7 @@ class TaskLogger:
             f"{self.base_path}/{self.date[0:8]}/{self.date[9:]}/{self.date}.log"
         )
         self.metadata = LoggerMetadata(self.task_name, self.date)
+        self.metadata.parse()
 
     def add_log(self, log: Log, close: bool = False):
         self.logs.append(log)

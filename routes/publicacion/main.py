@@ -4,6 +4,9 @@ from flask import request, session
 from flask_restx import Namespace, Resource
 from db.conexion import BaseDatos
 from logger.async_request import AsyncRequest
+from routes.publicacion.busqueda_identificadores.busqueda_identificadores import (
+    buscar_publicaciones,
+)
 from routes.publicacion.citas_perdidas.citas_perdidas import buscar_citas_perdidas
 from security.api_key import comprobar_api_key
 from security.check_users import es_admin, es_editor, tiene_rol
@@ -105,6 +108,31 @@ def get_publicacion_from_id(columns: list[str], left_joins: list[str], id: int):
     result = db.ejecutarConsulta(query, params)
 
     return result
+
+
+# Función para, dado un rango de tiempo, buscar todas las publicaciones con DOI que no tengan un identificador dado (por ejemplo, Openalex), y usar su API para buscar estos identificadores
+@publicacion_namespace.route("/busqueda-identificadores")
+class BusquedaIdentificadores(Resource):
+    def post(self):
+        if not es_admin():
+            return {"message": "No autorizado"}, 401
+
+        current_year = date_utils.get_current_year()
+
+        inicio = int(request.headers.get("inicio", current_year))
+        fin = int(request.headers.get("fin", current_year))
+        tipo = request.headers.get("tipo", None)
+
+        tipos_permitidos = ["openalex"]
+
+        if not inicio or not fin or inicio > fin:
+            return {"message": "Rango de fechas inválido."}, 401
+
+        if tipo not in tipos_permitidos:
+            return {"message": "Tipo de métrica no soportado."}, 401
+
+        if tipo == "openalex":
+            buscar_publicaciones(inicio=inicio, fin=fin, tipo=tipo)
 
 
 @publicacion_namespace.route("/citas-perdidas")
