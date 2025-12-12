@@ -268,9 +268,16 @@ class CargaPublicacion:
 
         # Si resultado_comparacion es None (publicación nueva) o True (sin conflictos), insertar autores
         # Solo hacer early return si hay un problema de conflicto
+        # CASO 1: Hay conflicto → Registrar pero NO insertar
         if resultado_comparacion is not None and resultado_comparacion is not True:
             return None
 
+        # CASO 2: Ya existen autores (sin conflicto) → NO insertar
+        if resultado_comparacion is True:
+            # Ya hay autores en la BD, no insertamos de nuevo
+            return None
+        # CASO 3: Publicación nueva (resultado_comparacion = None) → Insertar
+        # Solo llegamos aquí si es la primera vez que se cargan autores
         for i, autor in enumerate(self.datos.autores):
             self.insertar_autor(autor)
 

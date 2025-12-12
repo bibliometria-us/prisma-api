@@ -86,13 +86,12 @@ class OpenalexParser(Parser):
             autor_info = autor.get("author", [])
             if "display_name" in autor_info:
                 firma = autor_info.get("display_name")
-            if "id" in autor_info:
+            if "id" in autor_info and autor_info.get("id") is not None:
                 openalex_id = autor_info.get("id").split("/")[-1]
                 identificadores["openalex_id"] = openalex_id
-            if "orcid" in autor_info:
-                if autor_info.get("orcid") is not None:
-                    orcid = autor_info.get("orcid").split("/")[-1]
-                    identificadores["orcid"] = orcid
+            if "orcid" in autor_info and autor_info.get("orcid") is not None:
+                orcid = autor_info.get("orcid").split("/")[-1]
+                identificadores["orcid"] = orcid
 
             orden = cont
 
