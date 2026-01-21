@@ -46,7 +46,7 @@ def cargar_componente(componente) -> str:
         fecha_fin=componente.FechaBaja,
         fecha_renuncia=None,
         rol=componente.ParticipaComo,
-        proyecto_id=componente.IdProyecto,
+        sisius_id=componente.IdProyecto,
     )
 
     return componente.cargar()

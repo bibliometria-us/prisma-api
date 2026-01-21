@@ -6,7 +6,7 @@ from db.conexion import BaseDatos
 class Miembro:
     def __init__(
         self,
-        proyecto_id: int,
+        sisius_id: int,
         nombre: str,
         apellidos: str,
         rol: str,
@@ -21,13 +21,27 @@ class Miembro:
         self.rol = rol
         self.dni = dni
         self.investigador_id = self.id_investigador_por_dni()
-        self.proyecto_id = proyecto_id
+        self.proyecto_id = self.buscar_proyecto_id(sisius_id)
         self.fecha_inicio = fecha_inicio
         self.fecha_fin = fecha_fin
         self.fecha_renuncia = fecha_renuncia
         self.id_miembro: int = None
         self.ha_expirado = self.comprobar_expiracion()
+        
+    def buscar_proyecto_id(self, sisius_id: int) -> int:
+        db = BaseDatos(database="prisma_proyectos")
+        query = "SELECT id FROM proyecto WHERE sisius_id = %(sisius_id)s"
+        params = {"sisius_id": sisius_id}
 
+        db.ejecutarConsulta(query, params=params)
+
+        proyecto_id = db.get_first_cell()
+
+        if not proyecto_id:
+            return None
+
+        return proyecto_id
+    
     def id_investigador_por_dni(self) -> int:
         db = BaseDatos()
 
