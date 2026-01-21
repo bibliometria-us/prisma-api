@@ -1,5 +1,4 @@
 # Errores globales
-
 responses = {
     200: "La solicitud ha tenido éxito",
     401: "No autorizado",

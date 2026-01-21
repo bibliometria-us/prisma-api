@@ -1,8 +1,10 @@
+import threading
 from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify, session
 from db.conexion import BaseDatos
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
+from routes.carga.financiacion.carga_proyectos import carga_proyectos
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
 from routes.carga.publicacion.idus.parser import IdusParser
@@ -35,7 +37,7 @@ from routes.carga.investigador.erasmus_plus.carga import (
 from datetime import datetime
 from logger.async_request import AsyncRequest
 import re
-from utils.format import dataframe_to_json
+from utils.format import dataframe_to_json, flask_csv_to_df
 
 carga_namespace = Namespace("carga", doc=False)
 
@@ -375,3 +377,42 @@ class ImportarPublicacionesMasivo(Resource):
             return {"message": str(e)}, 402
         except Exception as e:
             return {"message": "Error inesperado"}, 500
+
+
+@carga_namespace.route(
+    "/financiacion/carga_proyectos",
+    doc=False,
+    endpoint="carga_proyectos",
+)
+class CargaProyectos(Resource):
+    def post(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+
+        request_files = request.files
+
+        for file in request_files.values():
+            file.name = file.filename
+
+        contracts = flask_csv_to_df(request_files["contracts"])
+        components = flask_csv_to_df(request_files["components"])
+        projects = flask_csv_to_df(request_files["projects"])
+        external_projects = flask_csv_to_df(request_files["external_projects"])
+
+        files = {
+            "contracts": contracts,
+            "components": components,
+            "projects": projects,
+            "external_projects": external_projects,
+        }
+
+        try:
+            thread = threading.Thread(target=carga_proyectos, kwargs={"files": files})
+            thread.start()
+        except KeyError as e:
+            return {"message": str(e)}, 400
+
+        return {"message": "Carga iniciada satisfactoriamente"}, 200
