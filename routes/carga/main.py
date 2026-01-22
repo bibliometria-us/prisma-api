@@ -400,13 +400,13 @@ class CargaProyectos(Resource):
         contracts = flask_csv_to_df(request_files["contracts"])
         components = flask_csv_to_df(request_files["components"])
         projects = flask_csv_to_df(request_files["projects"])
-        external_projects = flask_csv_to_df(request_files["external_projects"])
+        # external_projects = flask_csv_to_df(request_files["external_projects"])
 
         files = {
             "contracts": contracts,
             "components": components,
             "projects": projects,
-            "external_projects": external_projects,
+            # "external_projects": external_projects,
         }
 
         try:
