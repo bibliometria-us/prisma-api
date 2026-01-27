@@ -6,7 +6,7 @@ from db.conexion import BaseDatos
 class Miembro:
     def __init__(
         self,
-        proyecto_id: int,
+        sisius_id: int,
         nombre: str,
         apellidos: str,
         rol: str,
@@ -21,7 +21,7 @@ class Miembro:
         self.rol = rol
         self.dni = dni
         self.investigador_id = self.id_investigador_por_dni()
-        self.proyecto_id = proyecto_id
+        self.proyecto_id = self.buscar_proyecto_id(sisius_id=sisius_id)
         self.fecha_inicio = fecha_inicio
         self.fecha_fin = fecha_fin
         self.fecha_renuncia = fecha_renuncia
