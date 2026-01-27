@@ -16,8 +16,9 @@ def filtrar_componentes(componentes: DataFrame) -> DataFrame:
 
         componentes[columna_fecha] = componentes[columna_fecha].replace({pd.NaT: None})
 
-    # Descartar componentes sin DNI
+    # Descartar componentes sin DNI o con DNI = 99999999R
     componentes = componentes.dropna(subset=["NIF"])
+    componentes = componentes[componentes["NIF"] != "99999999R"]
 
     # Descartar componentes sin rol
     componentes = componentes.dropna(subset=["ParticipaComo"])
@@ -46,7 +47,7 @@ def cargar_componente(componente) -> str:
         fecha_fin=componente.FechaBaja,
         fecha_renuncia=None,
         rol=componente.ParticipaComo,
-        proyecto_id=componente.IdProyecto,
+        sisius_id=componente.IdProyecto,
     )
 
     return componente.cargar()
