@@ -27,7 +27,7 @@ class Miembro:
         self.fecha_renuncia = fecha_renuncia
         self.id_miembro: int = None
         self.ha_expirado = self.comprobar_expiracion()
-        
+
     def buscar_proyecto_id(self, sisius_id: int) -> int:
         db = BaseDatos(database="prisma_proyectos")
         query = "SELECT id FROM proyecto WHERE sisius_id = %(sisius_id)s"
@@ -41,7 +41,7 @@ class Miembro:
             return None
 
         return proyecto_id
-    
+
     def id_investigador_por_dni(self) -> int:
         db = BaseDatos()
 

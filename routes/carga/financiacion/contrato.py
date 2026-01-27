@@ -19,10 +19,10 @@ class Contrato(Miembro):
     ):
         self.organica = organica
         self.referencia = referencia
-        proyecto_id = self.buscar_id_proyecto()
+        sisius_id = self.buscar_sisius_id()
         rol = "Contratado"
         super().__init__(
-            proyecto_id,
+            sisius_id,
             nombre,
             apellidos,
             rol,
@@ -32,10 +32,10 @@ class Contrato(Miembro):
             fecha_renuncia,
         )
 
-    def buscar_id_proyecto(self):
+    def buscar_sisius_id(self):
         db = BaseDatos(database="prisma_proyectos")
         query = """
-        SELECT id FROM proyecto 
+        SELECT sisius_id FROM proyecto 
         WHERE
             referencia = %(referencia)s
             OR
