@@ -105,11 +105,18 @@ class CargaPublicacion:
         self.db.closeConnection()
 
     def cargar_publicacion(self):
+        """Realiza la carga de la publicación en la base de datos"""
+        # Validar los datos antes de la carga
         datos_validados = self.datos.validate()
+        # Validar los datos antiguos antes de la carga. Los datos antiguos son los datos que ya existen en la base de datos para esta publicación.
+        # Puede darse el caso de que la publicación ya exista en la base de datos previamente.
         datos_antiguos_validados = (
             self.datos_antiguos.validate() if self.datos_antiguos else True
         )
-        if not (datos_validados or datos_antiguos_validados):
+        # if not (datos_validados or datos_antiguos_validados):
+        #     raise ValueError
+
+        if not datos_validados or not datos_antiguos_validados:
             raise ValueError
 
         self.datos.sanitize()
@@ -171,6 +178,7 @@ class CargaPublicacion:
             self.datos_antiguos = DatosCargaPublicacion().from_id_publicacion(
                 self.id_publicacion, self.db
             )
+            # Validar los datos antiguos antes de la carga
             if not self.datos_antiguos.validate():
                 return None
 
@@ -251,7 +259,23 @@ class CargaPublicacion:
     def insertar_autores(self):
         """
         Inserta los autores de una publicación.
+        Solo inserta autores si NO existen autores previos para esta publicación.
         """
+        # Verificar si ya existen autores en la BD para esta publicación
+        query_verificar_autores = """
+            SELECT COUNT(*) as count 
+            FROM prisma.p_autor 
+            WHERE idPublicacion = %(idPublicacion)s
+        """
+        params_verificar = {"idPublicacion": self.id_publicacion}
+
+        resultado = self.db.consultaUna(query_verificar_autores, params_verificar)
+
+        # Si ya existen autores, NO insertar (mantener los de la primera fuente)
+        if resultado and resultado["count"] > 0:
+            return None
+
+        # Si no hay autores, proceder con la lógica original
         autores_agrupados = self.datos.contar_autores_agrupados()
         nuevos_autores = ", ".join(
             f"{key}: {value}" for key, value in autores_agrupados.items()
@@ -268,9 +292,16 @@ class CargaPublicacion:
 
         # Si resultado_comparacion es None (publicación nueva) o True (sin conflictos), insertar autores
         # Solo hacer early return si hay un problema de conflicto
+        # CASO 1: Hay conflicto → Registrar pero NO insertar
         if resultado_comparacion is not None and resultado_comparacion is not True:
             return None
 
+        # CASO 2: Ya existen autores (sin conflicto) → NO insertar
+        if resultado_comparacion is True:
+            # Ya hay autores en la BD, no insertamos de nuevo
+            return None
+        # CASO 3: Publicación nueva (resultado_comparacion = None) → Insertar
+        # Solo llegamos aquí si es la primera vez que se cargan autores
         for i, autor in enumerate(self.datos.autores):
             self.insertar_autor(autor)
 

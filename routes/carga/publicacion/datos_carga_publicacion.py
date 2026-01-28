@@ -232,8 +232,17 @@ class DatosCargaPublicacion(DatosCarga):
                 autor.orden = index
 
     def validate(self):
+        """Valida que los datos mínimos para una publicación estén presentes.
+        Retorna True si los datos son válidos, False en caso contrario.
+        Datos mínimos:
+        - Título
+        - Fuente válida (título y ISSN o ISBN)
+        - Tipo (no puede ser "Tesis")
+        - Al menos un autor
+        """
         if not self.titulo:
             return False
+        # Validar fuente: título, tipo y ISSN o ISBN
         if not self.fuente.validate():
             return False
         if not self.tipo or self.tipo == "Tesis":
@@ -489,6 +498,13 @@ class DatosCargaFuente(DatosCarga):
             identificador.sanitize()
 
     def validate(self):
+        """Valida que los datos mínimos para una fuente estén presentes.
+        Retorna True si los datos son válidos, False en caso contrario.
+        Datos mínimos:
+        - Título
+        - Tipo
+        - Al menos un identificador: ISSN o ISBN
+        """
         return self.titulo and self.tipo and (self.tiene_issn() or self.tiene_isbn())
 
     def get_issns(self) -> list["DatosCargaIdentificadorFuente"]:
