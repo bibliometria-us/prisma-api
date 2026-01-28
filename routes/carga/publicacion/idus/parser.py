@@ -58,7 +58,13 @@ class IdusParser(Parser):
             "info:eu-repo/semantics/bookPart": "Capítulo",
             "info:eu-repo/semantics/book": "Libro",
             "info:eu-repo/semantics/doctoralThesis": "Tesis",
-            "info:eu-repo/semantics/dataset": "Dataset",
+            # "info:eu-repo/semantics/dataset": "Dataset",
+            # NUEVO CAMBIO:
+            # "Artículo": "Artículo",
+            # "Ponencia": "Ponencia",
+            # "Capítulo de Libro": "Capítulo",
+            # "Libro": "Libro",
+            # "Tesis Doctoral": "Tesis",
         }
 
         valor = tipos.get(tipo) or "Otros"
@@ -202,7 +208,7 @@ class IdusParser(Parser):
 
     def cargar_titulo_y_tipo(self):
         titulo_revista = self.metadata.get("dc.journaltitle")
-        titulo_libro = self.metadata.get("dc.relation.ispartof")
+        titulo_libro_capitulo = self.metadata.get("dc.relation.ispartof")
         titulo_congreso = self.metadata.get("dc.eventtitle")
         # titulo_congreso = self.metadata.get("dc.eventtitle")
         # Establece título y tipo para libro y congreso en base a los metadatos del tipo de publicación
@@ -210,9 +216,18 @@ class IdusParser(Parser):
         if tipo_publicacion == "Artículo" and titulo_revista:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_revista[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Revista")
-        if tipo_publicacion == "Libro" and titulo_libro:
-            self.datos_carga_publicacion.fuente.set_titulo(titulo_libro[0]["value"])
+        # Si es libro  título de la fuente es el de la propia publicacion (dc.title)
+        if tipo_publicacion == "Libro":
+            self.datos_carga_publicacion.fuente.set_titulo(
+                self.datos_carga_publicacion.titulo
+            )
             self.datos_carga_publicacion.fuente.set_tipo("Libro")
+        # Si es capítulo de libro, título de la fuente es el del libro (dc.relation.ispartof)
+        if tipo_publicacion == "Capítulo" and titulo_libro_capitulo:
+            self.datos_carga_publicacion.fuente.set_titulo(
+                titulo_libro_capitulo[0]["value"]
+            )
+            self.datos_carga_publicacion.fuente.set_tipo("Capítulo")
         if tipo_publicacion == "Ponencia" and titulo_congreso:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_congreso[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Congreso")

@@ -24,11 +24,13 @@ class CargaPublicacionCrossref(CargaPublicacion):
     def cargar_publicacion_por_doi(self, id: str):
         api = CrossrefAPI()
         record = api.get_publicaciones_por_doi(id=id)
-        if len(record) == 0:
+        if not record or len(record) == 0:
             return None
 
         parser = CrossrefParser(data=record)
+        # Guardar los datos parseados
         self.datos = parser.datos_carga_publicacion
+        # Cargar la publicación en la base de datos
         self.cargar_publicacion()
 
         return self.id_publicacion

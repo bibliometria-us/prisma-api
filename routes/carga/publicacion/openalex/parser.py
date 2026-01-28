@@ -86,6 +86,10 @@ class OpenalexParser(Parser):
             autor_info = autor.get("author", [])
             if "display_name" in autor_info:
                 firma = autor_info.get("display_name")
+            if autor.get("raw_author_name") is not None and firma != autor.get(
+                "raw_author_name"
+            ):
+                firma = autor.get("raw_author_name")
             if "id" in autor_info and autor_info.get("id") is not None:
                 openalex_id = autor_info.get("id").split("/")[-1]
                 identificadores["openalex_id"] = openalex_id
@@ -245,7 +249,6 @@ class OpenalexParser(Parser):
         issns: list[str] = source.get("issn") or []
 
         for issn in issns:
-
             identificador = DatosCargaIdentificadorFuente(valor=issn, tipo="issn")
             self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
