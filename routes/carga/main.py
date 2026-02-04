@@ -1,12 +1,14 @@
 import threading
 from flask_restx import Namespace, Resource
 from flask import Response, make_response, request, jsonify, session
+import pandas as pd
 from db.conexion import BaseDatos
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
 from routes.carga.financiacion.carga_proyectos import carga_proyectos
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
+from routes.carga.investigador.grupos.carga_sica import carga_sica
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.investigador.centros_censo.procesado import procesado_fichero
@@ -27,10 +29,6 @@ from routes.carga.publicacion.crossref.carga import CargaPublicacionCrossref
 
 from security.check_users import es_admin, es_editor
 from celery import current_app
-from routes.carga.investigador.grupos.actualizar_sica import (
-    actualizar_tabla_sica,
-    actualizar_grupos_sica,
-)
 from routes.carga.investigador.erasmus_plus.carga import (
     carga_erasmus_plus,
 )
@@ -59,14 +57,42 @@ class CargaGrupos(Resource):
 
         files = request.files.getlist("files[]")
 
-        for file in files:
-            file_path = "/app/temp/" + file.filename
-            file.save(file_path)
-            actualizar_tabla_sica(file_path)
+        uploaded_filenames = {f.filename for f in files}
+        expected_filenames = {
+            "T_GRUPOS.csv",
+            "T_INSTITUCIONES.csv",
+            "T_INVESTIGADORES.csv",
+            "T_INVESTIGADORES_GRUPO.csv",
+        }
 
-        actualizar_grupos_sica()
+        missing_files = expected_filenames - uploaded_filenames
 
-        return None
+        if missing_files:
+            return {
+                "message": f"Faltan los siguientes ficheros: {str(missing_files)}"
+            }, 400
+
+        try:
+
+            file_dict = {
+                f.filename.lower().removesuffix(".csv"): pd.read_csv(
+                    f.stream,
+                    sep=";",
+                    quotechar='"',
+                    encoding="utf-8-sig",  # 'utf-8-sig' handles the BOM if it exists
+                )
+                for f in files
+            }
+        except Exception as e:
+            {"message": "Error procesando los ficheros introducidos"}, 502
+
+        try:
+            thread = threading.Thread(target=carga_sica, kwargs={"files": file_dict})
+            thread.start()
+        except Exception as e:
+            {"message": "Error inesperado"}, 502
+
+        return {"message": "Carga iniciada satisfactoriamente"}, 200
 
 
 # ********************************

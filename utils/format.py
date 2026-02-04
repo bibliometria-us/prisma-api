@@ -190,7 +190,7 @@ def table_to_pandas(table: list):
     return result
 
 
-def flask_csv_to_matix(file: FileStorage) -> List:
+def flask_csv_to_matrix(file: FileStorage) -> List:
     result = []
 
     data = file.stream.read()
@@ -203,10 +203,7 @@ def flask_csv_to_matix(file: FileStorage) -> List:
 
 
 def flask_csv_to_df(file: FileStorage) -> pandas.DataFrame:
-    if len(file.name.split(".")) < 1 or file.name.split(".")[1] != "csv":
-        raise FileFormatError
-
-    matrix = flask_csv_to_matix(file)
+    matrix = flask_csv_to_matrix(file)
     return table_to_pandas(matrix)
 
 

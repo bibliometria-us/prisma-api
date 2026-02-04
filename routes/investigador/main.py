@@ -667,7 +667,7 @@ class ColectivosInvestigador(Resource):
 
         file = files[0]
 
-        data = format.flask_csv_to_matix(file)
+        data = format.flask_csv_to_matrix(file)
 
         try:
             cargar_colectivos_investigadores(data)

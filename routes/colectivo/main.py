@@ -17,7 +17,7 @@ from security.check_users import es_admin, es_editor, pertenece_a_conjunto
 from celery import current_app
 import csv
 
-from utils.format import flask_csv_to_matix, table_to_pandas
+from utils.format import flask_csv_to_matrix, table_to_pandas
 
 colectivo_namespace = Namespace("colectivo", doc=False)
 
@@ -43,7 +43,7 @@ class CargaGrupos(Resource):
 
         file = files[0]
 
-        data = flask_csv_to_matix(file)
+        data = flask_csv_to_matrix(file)
 
         try:
             cargar_instituciones(data)

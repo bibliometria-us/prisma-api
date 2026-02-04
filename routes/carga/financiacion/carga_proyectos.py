@@ -1,3 +1,4 @@
+from datetime import datetime
 from pandas import DataFrame
 from db.conexion import BaseDatos
 from integration.email.email import enviar_correo
@@ -176,3 +177,15 @@ def comprobar_ficheros(files: dict[str, DataFrame]) -> None:
             raise KeyError(
                 f"El fichero {name} no contiene las siguientes columnas: {missing_columns}"
             )
+
+
+def actualizar_fecha_insercion():
+    db = BaseDatos()
+
+    query = """UPDATE a_configuracion
+        SET valor = %(fecha)s
+        WHERE variable = 'ACTUALIZACIONPROYECTOS'"""
+
+    params = {"fecha": datetime.now().date().strftime("%d/%m/%Y")}
+
+    db.ejecutarConsulta(query, params=params)
