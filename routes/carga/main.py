@@ -6,6 +6,14 @@ from db.conexion import BaseDatos
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
 from routes.carga.financiacion.carga_proyectos import carga_proyectos
+from routes.carga.fuente.metricas.acuerdos_transformativos.acuerdos_transformativos import (
+    carga_acuerdos_transformativos,
+    transformar_fichero,
+)
+from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
+    ErrorAT,
+    ErrorTransformacionFicheroAT,
+)
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
 from routes.carga.investigador.grupos.carga_sica import carga_sica
@@ -442,3 +450,41 @@ class CargaProyectos(Resource):
             return {"message": str(e)}, 400
 
         return {"message": "Carga iniciada satisfactoriamente"}, 200
+
+
+@carga_namespace.route(
+    "/metricas/carga_at",
+    doc=False,
+    endpoint="carga_at",
+)
+class CargaAT(Resource):
+    def post(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"error": "No autorizado"}, 401
+
+        try:
+            files = request.files.getlist("files[]")
+
+            if len(files) == 0:
+                return {"error": "No se han adjuntado ficheros adecuadamente"}, 400
+
+            file = files[0]
+
+            if not file.filename.endswith((".xlsx", ".xls")):
+                return {"error": "Formato de fichero erróneo"}, 400
+
+            data = transformar_fichero(file)
+            thread = threading.Thread(
+                target=carga_acuerdos_transformativos, kwargs={"data": data}
+            )
+            thread.start()
+
+            return {"message": "Carga iniciada satisfactoriamente"}
+
+        except ErrorAT as e:
+            return {"error": str(e)}, 400
+        except Exception as e:
+            return {"error": "Error inesperado"}, 502

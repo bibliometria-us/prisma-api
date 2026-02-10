@@ -1,96 +1,234 @@
+from datetime import datetime
+import numpy as np
+from pandas import DataFrame
+import pandas as pd
 from werkzeug.datastructures import FileStorage
 from db.conexion import BaseDatos
-from utils.format import flask_csv_to_df
+from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
+    ErrorColumnasFicheroAT,
+    ErrorTransformacionFicheroAT,
+    ErrorValoresFicheroAT,
+)
+import routes.carga.fuente.metricas.clarivate_journals as clarivate_journals
+
+columnas_obligatorias = {
+    "Editorial": "Editorial",
+    "ISSN": "ISSN",
+    "eISSN": "eISSN",
+    "Título": "Título",
+    "Modelo de publicación": "Tipo",
+}
+
+tipos_at = {
+    "Sólo Open Access": "Sólo Open Access",
+    "Sólo Open Access (depende de la disponibilidad de licencias)": "Sólo Open Access",
+    "Híbrida": "Híbrida",
+    "Cambio de híbrida a OA": "Cambio de híbrida a OA",
+    "Cambiando a acceso abierto (depende de la disponibilidad de APCs)": "Cambio de híbrida a OA",
+    "Diamante (publicación sin tasas)": "Diamante",
+    "Research Open (cubierta por el acuerdo)": "Research Open",
+    "Subscribe to Open (S2O)": "Subscribe to Open",
+}
 
 
-def carga_acuerdos_transformativos():
-    with open(
-        "routes/carga/fuente/metricas/acuerdos_transformativos/fuentes/Listado revistas completo.csv",
-        "rb",
-    ) as file:
-        file_storage = FileStorage(
-            stream=file,
-            name="Listado revistas completo.csv",
-            content_type="application/octet-stream",
+def transformar_fichero(file: FileStorage) -> DataFrame:
+    try:
+        data = pd.read_excel(file)
+    except Exception:
+        raise ErrorTransformacionFicheroAT(f"Error inesperado al procesar el fichero")
+
+    verificar_columnas(data=data)
+    data = normalizar_columnas(data=data)
+
+    verificar_tipos(data=data)
+    data = normalizar_tipos(data=data)
+
+    data = normalizar_issns(data=data)
+
+    return data
+
+
+def verificar_columnas(data: DataFrame) -> None:
+    columnas_fichero = set(data.columns)
+    missing = set(columnas_obligatorias.keys()) - columnas_fichero
+
+    if missing:
+        raise ErrorColumnasFicheroAT(
+            f"El fichero no contiene las columnas {str(missing)}"
         )
-        revistas = flask_csv_to_df(file_storage)
 
-    db = BaseDatos()
 
-    for index, revista in revistas.iterrows():
+def normalizar_columnas(data: DataFrame) -> DataFrame:
+    data = data.rename(columns=columnas_obligatorias)
+    return data
+
+
+def verificar_tipos(data: DataFrame) -> None:
+    valores_validos = set(tipos_at.keys())
+    columna = "Tipo"
+
+    is_valid = data[columna].isin(valores_validos).all()
+
+    if not is_valid:
+        raise ErrorValoresFicheroAT(
+            f"Se han encontrado valores en la columna '{columna}' no válidos. Los valores válidos son {valores_validos}"
+        )
+
+
+def normalizar_tipos(data: DataFrame) -> DataFrame:
+    data["Tipo"] = data["Tipo"].map(tipos_at)
+    return data
+
+
+def normalizar_issns(data: DataFrame) -> DataFrame:
+    issn_pattern = r"^\d{4}-\d{3}[\dX]$"
+    cols_to_check = ["ISSN", "eISSN"]
+
+    for col in cols_to_check:
+        data[col] = data[col].str.strip()
+
+        data[col] = data[col].mask(
+            ~data[col].str.contains(issn_pattern, na=False), None
+        )
+
+    return data
+
+
+def carga_acuerdos_transformativos(
+    data: DataFrame, inicio_wos: int = None, final_wos: int = None
+):
+
+    for revista in data.itertuples():
+        if not (revista.ISSN or revista.eISSN):
+            continue
+
+        id_fuente = buscar_revista(revista=revista)
+
+        if not id_fuente:
+            id_fuente = insertar_revista(revista=revista)
+
+        if not id_fuente:
+            continue
+
+        insertar_at(id_fuente=id_fuente, revista=revista)
+
+    actualizar_citescore()
+    actualizar_metricas_wos(inicio_wos=inicio_wos, final_wos=final_wos)
+
+
+def buscar_revista(revista) -> int:
+    bd = BaseDatos()
+
+    issns = list(filter(None, [revista.ISSN, revista.eISSN]))
+    str_issns = f"({','.join(f"'{issn}'" for issn in issns)})"
+
+    query_busqueda_revista = f"""
+    SELECT pf.idFuente from p_fuente pf
+    LEFT JOIN (SELECT idFuente, valor FROM p_identificador_fuente WHERE tipo IN ('issn','eissn')) issn ON issn.idFuente = pf.idFuente
+    WHERE issn.valor IN {str_issns}
+    GROUP BY pf.idFuente
+    """
+
+    bd.ejecutarConsulta(query_busqueda_revista)
+    id_fuente = bd.get_first_cell()
+
+    return id_fuente
+
+
+def insertar_revista(revista) -> int:
+    bd = BaseDatos(keep_connection_alive=True, autocommit=False)
+
+    query = """
+    INSERT INTO p_fuente (tipo, titulo, editorial, origen)
+    VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)
+    """
+
+    params = {
+        "tipo": "Revista",
+        "titulo": revista.Título,
+        "editorial": revista.Editorial,
+        "origen": "ACUERDOS TRANSFORMATIVOS",
+    }
+
+    bd.ejecutarConsulta(query, params=params)
+    id_fuente = bd.last_id
+
+    insertar_issns(revista=revista, id_fuente=id_fuente, bd=bd)
+
+    bd.commit()
+    bd.closeConnection()
+
+    return id_fuente
+
+
+def insertar_issns(revista, id_fuente: int, bd: BaseDatos):
+    issns = {
+        "issn": revista.ISSN,
+        "eissn": revista.eISSN,
+    }
+
+    for tipo, valor in issns.items():
+        if not valor:
+            continue
+
         query = """
-        SELECT fuente.idFuente FROM p_fuente fuente
-        LEFT JOIN (SELECT valor, idFuente FROM p_identificador_fuente WHERE tipo IN ('issn','eissn')) issn ON issn.idFuente = fuente.idFuente
-        WHERE issn.valor IN (%(issn)s, %(eissn)s)
-                """
+        INSERT INTO p_identificador_fuente (idFuente, tipo, valor)
+        VALUES (%(idFuente)s, %(tipo)s, %(valor)s)
+        """
 
-        params = {
-            "issn": revista["ISSN"],
-            "eissn": revista["eISSN"],
-        }
+        params = {"idFuente": id_fuente, "tipo": tipo, "valor": valor}
 
-        result = db.ejecutarConsulta(query, params)
-        found = db.has_rows()
+        bd.ejecutarConsulta(query, params=params)
 
-        if found:
-            id_fuente = result[1][0]
-        else:
-            query_revista = """
-            INSERT INTO p_fuente (tipo, titulo, editorial, origen)
-            VALUES (%(tipo)s, %(titulo)s, %(editorial)s, %(origen)s)
-            """
 
-            params_revista = {
-                "tipo": "Revista",
-                "titulo": revista["Título"],
-                "editorial": revista["Editorial"],
-                "origen": "ACUERDOS TRANSFORMATIVOS",
-            }
+def insertar_at(id_fuente: int, revista):
+    bd = BaseDatos()
 
-            db.ejecutarConsulta(query_revista, params_revista)
-            id_fuente = db.last_id
+    query = """
+    INSERT INTO m_at (idFuente, titulo, editorial, tipo, agno)
+    VALUES (%(idFuente)s, %(titulo)s, %(editorial)s, %(tipo)s, %(agno)s)
+    """
 
-            query_issn = """
-                        INSERT INTO p_identificador_fuente (idFuente, tipo, valor)
-                        VALUES (%(idFuente)s, %(tipo)s, %(valor)s)
-                        """
-            for tipo in ("ISSN", "eISSN"):
-                valor = revista[tipo]
-                if not valor:
-                    continue
-                params_issn = {
-                    "idFuente": id_fuente,
-                    "tipo": tipo.lower(),
-                    "valor": valor,
-                }
+    params = {
+        "idFuente": id_fuente,
+        "titulo": revista.Título,
+        "editorial": revista.Editorial,
+        "tipo": revista.Tipo,
+        "agno": datetime.now().year,
+    }
 
-                db.ejecutarConsulta(query_issn, params_issn)
+    bd.ejecutarConsulta(query, params=params)
 
-        query_at = """
-            REPLACE INTO m_at (idFuente, nombre, tipo, descuento, licencias_limitadas, promotor)
-            VALUES (%(idFuente)s, %(nombre)s, %(tipo)s, %(descuento)s, %(licencias_limitadas)s, %(promotor)s)
-            """
 
-        licencias_limitadas = False
-        if len(str(revista["Descuento"])) == 0:
-            revista["Descuento"] = "0"
-        if str(revista["Descuento"]).isnumeric():
-            descuento = int(revista["Descuento"])
-        else:
-            descuento = int(
-                "".join(c for c in str(revista["Descuento"]) if c.isdigit())
-            )
-            licencias_limitadas = True
+def actualizar_metricas_wos(inicio_wos: int, final_wos: int):
+    bd = BaseDatos()
 
-        params_at = {
-            "idFuente": id_fuente,
-            "nombre": revista["Editorial"],
-            "tipo": revista["Tipo"],
-            "descuento": descuento,
-            "licencias_limitadas": licencias_limitadas,
-            "promotor": revista["Promotor"],
-        }
+    current_year = datetime.now().year
+    inicio_wos = inicio_wos or current_year - 2
+    final_wos = final_wos or current_year - 2
 
-        db.ejecutarConsulta(query_at, params_at)
+    query = """SELECT m_at.idFuente FROM m_at WHERE agno = %(agno)s"""
+    params = {"agno": current_year}
 
-        pass
+    bd.ejecutarConsulta(query, params=params)
+    df = bd.get_dataframe()
+
+    lista_ids_fuente = df["idFuente"].to_list()
+    ids_fuente = ",".join(str(id_fuente) for id_fuente in lista_ids_fuente)
+
+    clarivate_journals.iniciar_carga(
+        fuentes=ids_fuente, año_inicio=inicio_wos, año_fin=final_wos
+    )
+
+
+def actualizar_citescore():
+    bd = BaseDatos()
+
+    # Para cada fila de la tabla m_citescore con idFuente nula, se busca idFuente en la tabla de identificadores que coincidan con el issn.
+    query = """
+    UPDATE m_citescore mc
+    SET idFuente = (SELECT pif.idFuente FROM p_identificador_fuente pif WHERE pif.tipo IN ('issn', 'eissn') AND pif.valor = mc.issn LIMIT 1)
+    WHERE mc.idFuente is NULL
+    """
+
+    bd.ejecutarConsulta(query)
