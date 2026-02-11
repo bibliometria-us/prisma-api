@@ -1,0 +1,2 @@
+class ErrorInformeAT(Exception):
+    pass
