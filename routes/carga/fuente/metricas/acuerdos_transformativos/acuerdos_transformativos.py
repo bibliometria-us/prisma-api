@@ -85,6 +85,7 @@ def normalizar_issns(data: DataFrame) -> DataFrame:
     cols_to_check = ["ISSN", "eISSN"]
 
     for col in cols_to_check:
+        data[col] = data[col].fillna("")
         data[col] = data[col].str.strip()
 
         data[col] = data[col].mask(
