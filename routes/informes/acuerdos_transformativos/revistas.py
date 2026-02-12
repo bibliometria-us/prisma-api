@@ -45,10 +45,9 @@ def informe_jif(año_jif: int, año_at: int) -> DataFrame:
     mj.decil as 'Decil',
     mj.tercil as 'Tercil'
     FROM m_at ma
-    LEFT JOIN m_jcr mj ON mj.idFuente = ma.idFuente
-    LEFT JOIN p_fuente pf ON pf.idFuente = ma.idFuente 
-    WHERE ma.agno = %(año_at)s AND mj.year = %(año_jif)s
-    GROUP BY mj.idFuente, mj.edition, mj.category
+    LEFT JOIN (SELECT * FROM m_jcr WHERE year = %(año_jif)s) as mj ON mj.idFuente = ma.idFuente
+    WHERE ma.agno = %(año_at)s
+    GROUP BY ma.idFuente, mj.edition, mj.category
     """
     params = {"año_at": año_at, "año_jif": año_jif}
 
@@ -73,10 +72,9 @@ def informe_jci(año_jci: int, año_at: int) -> DataFrame:
     mj.decil as 'Decil',
     mj.tercil as 'Tercil'
     FROM m_at ma
-    LEFT JOIN m_jci mj ON mj.idFuente = ma.idFuente
-    LEFT JOIN p_fuente pf ON pf.idFuente = ma.idFuente 
-    WHERE ma.agno = %(año_at)s AND mj.agno = %(año_jci)s
-    GROUP BY mj.idFuente, mj.categoria
+    LEFT JOIN (SELECT * FROM m_jci WHERE agno = %(año_jci)s) as mj ON mj.idFuente = ma.idFuente
+    WHERE ma.agno = %(año_at)s
+    GROUP BY ma.idFuente, mj.categoria
     """
     params = {"año_at": año_at, "año_jci": año_jci}
 
@@ -101,10 +99,9 @@ def informe_citescore(año_citescore: int, año_at: int) -> DataFrame:
     mj.decil as 'Decil',
     mj.tercil as 'Tercil'
     FROM m_at ma
-    LEFT JOIN m_citescore mj ON mj.idFuente = ma.idFuente
-    LEFT JOIN p_fuente pf ON pf.idFuente = ma.idFuente 
-    WHERE ma.agno = %(año_at)s AND mj.agno = %(año_citescore)s
-    GROUP BY mj.idFuente, mj.categoria
+    LEFT JOIN (SELECT * FROM m_citescore WHERE agno = %(año_citescore)s) as mj ON mj.idFuente = ma.idFuente
+    WHERE ma.agno = %(año_at)s
+    GROUP BY ma.idFuente, mj.categoria
     """
     params = {"año_at": año_at, "año_citescore": año_citescore}
 
