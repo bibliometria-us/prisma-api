@@ -35,6 +35,7 @@ def informe_jif(año_jif: int, año_at: int) -> DataFrame:
     ma.idFuente as 'ID Prisma',
     ma.titulo as 'Título',
     ma.editorial as 'Editorial',
+    ma.tipo as 'Modelo de publicación',
     mj.edition as 'Edición',
     mj.category as 'Categoría',
     (SELECT MIN(quartile) FROM m_jcr WHERE 
@@ -64,6 +65,7 @@ def informe_jci(año_jci: int, año_at: int) -> DataFrame:
     ma.idFuente as 'ID Prisma',
     ma.titulo as 'Título',
     ma.editorial as 'Editorial',
+    ma.tipo as 'Modelo de publicación',
     mj.categoria as 'Categoría',
     (SELECT MIN(cuartil) FROM m_jci WHERE 
                             idFuente = mj.idFuente 
@@ -91,6 +93,7 @@ def informe_citescore(año_citescore: int, año_at: int) -> DataFrame:
     ma.idFuente as 'ID Prisma',
     ma.titulo as 'Título',
     ma.editorial as 'Editorial',
+    ma.tipo as 'Modelo de publicación',
     mj.categoria as 'Categoría',
     (SELECT MIN(cuartil) FROM m_jci WHERE 
                             idFuente = mj.idFuente 
