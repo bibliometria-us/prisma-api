@@ -120,6 +120,7 @@ def join_grupos(investigadores_grupo: DataFrame, grupos: DataFrame) -> DataFrame
                 "FECHA_INICIO",
                 "ESTADO",
                 "ID_ENTIDAD",
+                "SITUACION",
             ]
         ].rename(
             columns={
@@ -129,6 +130,7 @@ def join_grupos(investigadores_grupo: DataFrame, grupos: DataFrame) -> DataFrame
                 "ACRONIMO": "ACRONIMO_GRUPO",
                 "FECHA_INICIO": "FECHA_CREACION_GRUPO",
                 "ESTADO": "ESTADO_GRUPO",
+                "SITUACION": "SITUACION_GRUPO",
             }
         ),
         on="ID_GRUPO",
@@ -215,8 +217,8 @@ def insertar_grupos(investigadores_grupo: DataFrame):
         for grupo in grupos.itertuples():
 
             query = (
-                "REPLACE INTO i_grupo (idGrupo, nombre, acronimo, rama, codigo, institucion, ambito, fecha_creacion, estado)"
-                "VALUES (%(idGrupo)s, %(nombre)s, %(acronimo)s, %(rama)s, %(codigo)s, %(institucion)s, %(ambito)s, %(fecha_creacion)s, %(estado)s)"
+                "REPLACE INTO i_grupo (idGrupo, nombre, acronimo, rama, codigo, institucion, ambito, fecha_creacion, estado, situacion)"
+                "VALUES (%(idGrupo)s, %(nombre)s, %(acronimo)s, %(rama)s, %(codigo)s, %(institucion)s, %(ambito)s, %(fecha_creacion)s, %(estado)s, %(situacion)s)"
             )
             params = {
                 "idGrupo": grupo.ID_GRUPO_PRISMA,
@@ -228,6 +230,7 @@ def insertar_grupos(investigadores_grupo: DataFrame):
                 "ambito": "Andalucía",
                 "fecha_creacion": grupo.FECHA_CREACION_GRUPO,
                 "estado": grupo.ESTADO_GRUPO,
+                "situacion": grupo.SITUACION_GRUPO,
             }
 
             db.ejecutarConsulta(query, params=params)
