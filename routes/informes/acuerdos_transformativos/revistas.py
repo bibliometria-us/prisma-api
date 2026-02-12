@@ -95,7 +95,7 @@ def informe_citescore(año_citescore: int, año_at: int) -> DataFrame:
     ma.editorial as 'Editorial',
     ma.tipo as 'Modelo de publicación',
     mj.categoria as 'Categoría',
-    (SELECT MIN(cuartil) FROM m_jci WHERE 
+    (SELECT MIN(cuartil) FROM m_citescore WHERE 
                             idFuente = mj.idFuente 
                             AND agno = mj.agno) as 'Cuartil máximo',
     mj.cuartil as 'Cuartil',
