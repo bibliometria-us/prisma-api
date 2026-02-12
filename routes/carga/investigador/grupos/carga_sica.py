@@ -169,6 +169,11 @@ def join_instituciones(
 
 
 def buscar_ids_investigador(investigadores_grupo: DataFrame) -> DataFrame:
+    # Normalizar DNI para que esté en mayúsculas
+    investigadores_grupo["NUMERO_DOCUMENTO"] = investigadores_grupo[
+        "NUMERO_DOCUMENTO"
+    ].str.upper()
+
     dnis = investigadores_grupo["NUMERO_DOCUMENTO"].tolist()
 
     # Se buscan todos los investigadores con DNI en la lista de DNIs del fichero
