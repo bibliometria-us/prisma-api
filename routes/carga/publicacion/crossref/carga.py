@@ -14,6 +14,7 @@ class CargaPublicacionCrossref(CargaPublicacion):
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
             "doi": self.cargar_publicacion_por_doi,
+            "crossref": self.cargar_publicacion_por_doi,
         }
         funcion = funciones.get(tipo)
         if funcion:

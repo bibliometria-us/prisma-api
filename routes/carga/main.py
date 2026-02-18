@@ -308,6 +308,12 @@ class CargaPublicacionImportar(Resource):
                         or id_publicacion
                     )
 
+                case "crossref":
+                    id_publicacion = (
+                        CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
+                        or id_publicacion
+                    )
+
                 case "idus":
                     id_publicacion = (
                         CargaPublicacionIdus().cargar_publicacion_por_handle(id)

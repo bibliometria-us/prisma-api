@@ -242,8 +242,11 @@ class DatosCargaPublicacion(DatosCarga):
         """
         if not self.titulo:
             return False
-        # Validar fuente: título, tipo y ISSN o ISBN
-        if not self.fuente.validate():
+        # Validar fuente: título, tipo y ISSN o ISBN (CASO ESPECIAL: Ponencia Crossref salta validación de fuente porque no trae ISSN ni ISBN pero se considera válida)
+        if (
+            not (self.tipo == "Ponencia" and self.fuente_datos == "Crossref")
+            and not self.fuente.validate()
+        ):
             return False
         if not self.tipo or self.tipo == "Tesis":
             return False
@@ -505,7 +508,16 @@ class DatosCargaFuente(DatosCarga):
         - Tipo
         - Al menos un identificador: ISSN o ISBN
         """
-        return self.titulo and self.tipo and (self.tiene_issn() or self.tiene_isbn())
+        return (
+            self.titulo
+            and (self.tipo or self.tipo != "")
+            and (self.tiene_issn() or self.tiene_isbn())
+        )
+        return (
+            self.titulo
+            and (self.tipo or tipo != "" and (self.tiene_issn() or self.tiene_isbn()))
+            or ()
+        )
 
     def get_issns(self) -> list["DatosCargaIdentificadorFuente"]:
         return [
