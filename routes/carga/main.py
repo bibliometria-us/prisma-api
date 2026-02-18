@@ -178,6 +178,11 @@ class CargaErasmusPlus(Resource):
     "/fuente/wos_journals/", doc=False, endpoint="carga_wos_journals"
 )
 class CargaWosJournals(Resource):
+    """Endpoint para iniciar la carga de métricas de revistas de WoS.
+    Estas métricas son el Journal Impact Factor y el Journal Citation Indicator.
+    Se pueden cargar para un conjunto de revistas específico o para todas las revistas.
+    Además, se puede especificar el rango de años a cargar."""
+
     def get(self):
 
         args = request.args
@@ -185,7 +190,7 @@ class CargaWosJournals(Resource):
 
         current_year = datetime.now().year
 
-        fuentes = args.get("fuentes", "todas")
+        fuentes = args.get("fuentes", "todas")  # Puede ser "todas", "1,2,3" o "1a10"
         inicio = int(args.get("inicio", current_year - 1))
         fin = int(args.get("fin", current_year - 1))
 

@@ -16,6 +16,9 @@ from abc import ABC, abstractmethod
 
 
 class JournalsAPI(API):
+    """Clase que representa una metrica de una revista-año-categoria de la API de Clarivate Journals,
+    se encarga de realizar las consultas a la API"""
+
     def __init__(
         self,
         db: BaseDatos,
@@ -58,13 +61,20 @@ class JournalsAPI(API):
         return result
 
     def carga(self) -> None:
+        """Realiza la carga de métricas de la revista.
+        Se encarga de ejecutar todas las funciones necesarias para obtener el ID de WoS,
+        los ISSNs y las métricas, y almacenarlas en la base de datos."""
         self.logger.metadata.start_task()
-        self.buscar_id_wos()
+        self.buscar_id_wos()  # Busca el ID de WoS asociado a la fuente-revista (abreviación)
         self.buscar_issns()
         self.obtener_metricas()
         self.logger.close()
 
     def buscar_id_wos(self) -> str:
+        """Busca el ID de WoS asociado a la revista.
+        Primero busca en la base de datos y si no lo encuentra,
+        lo busca a través de la API y lo almacena en la base de datos para futuras consultas.
+        """
         busqueda_db = self.buscar_id_wos_db()
 
         if not busqueda_db:
@@ -74,6 +84,12 @@ class JournalsAPI(API):
         return self.id_wos
 
     def buscar_id_wos_db(self) -> bool:
+        """Busca el ID de WoS de la Fuente en la base de datos,
+        si lo encuentra lo asigna a self.id_wos y devuelve True,
+        si no lo encuentra devuelve False.
+        El id WOS de fuente es una abreviación del ID de WoS que se obtiene de la API,
+          es un número que identifica la revista en la base de datos de WoS y para el JCR.
+        """
 
         query_busqueda = "SELECT valor FROM p_identificador_fuente WHERE tipo = 'wos' AND idFuente = %s"
         params_busqueda = [self.id_fuente]
