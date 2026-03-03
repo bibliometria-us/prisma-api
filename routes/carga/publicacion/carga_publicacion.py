@@ -28,6 +28,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorFuente,
     DatosCargaPublicacion,
 )
+from routes.carga.publicacion.exception.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.registro_cambios_publicacion import (
     RegistroCambiosPublicacionAtributos,
@@ -47,7 +48,14 @@ class CargaPublicacion:
     Clase que representa una carga de publicación de publicación generica
     """
 
-    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
+    def __init__(
+        self,
+        db: BaseDatos = None,
+        id_carga=None,
+        auto_commit=True,
+        autor=None,
+        tipo_carga=None,
+    ) -> None:
         self.id_carga = id_carga or RegistroCambios.generar_id_carga()
         self.datos: DatosCargaPublicacion = None
         self.datos_antiguos: DatosCargaPublicacion = None
@@ -56,6 +64,8 @@ class CargaPublicacion:
         self.id_publicacion = 0
         self.fuente_existente = False
         self.origen = None
+        self.autor = autor
+        self.tipo_carga = tipo_carga
         self.problemas_carga: list[ProblemaCarga] = []
         self.lista_registros: list[RegistroCambios] = []
 
@@ -104,8 +114,17 @@ class CargaPublicacion:
         """
         self.db.closeConnection()
 
+    def comprobar_tipo_carga(self):
+        tipos_validos = ["importacion"]
+        if self.tipo_carga not in tipos_validos:
+            raise ErrorCargaPublicacion(
+                f"Tipo de carga no válido. Tipos válidos: {tipos_validos}"
+            )
+
     def cargar_publicacion(self):
         """Realiza la carga de la publicación en la base de datos"""
+        # Comprobar que se ha establecido un tipo de carga
+        self.comprobar_tipo_carga()
         # Validar los datos antes de la carga
         datos_validados = self.datos.validate()
         # Validar los datos antiguos antes de la carga. Los datos antiguos son los datos que ya existen en la base de datos para esta publicación.
@@ -133,9 +152,27 @@ class CargaPublicacion:
         self.insertar_financiaciones()
         self.insertar_fechas_publicacion()
         self.insertar_valores_acceso_abierto()
+
+        self.procesar_registros()
         self.insertar_registros()
         self.insertar_problemas()
+
         self.commit_database()
+
+    def procesar_registros(self):
+        # Procesar los registros de cambios según el tipo de carga
+        if self.tipo_carga == "importacion":
+            self.limpiar_registros_importacion()
+
+    def limpiar_registros_importacion(self):
+        # En las importaciones, solo se registra el autor en cambios de id_publicacion, y se coloca el primero en la lista.
+        for registro in self.lista_registros:
+            if (
+                isinstance(registro, RegistroCambiosPublicacionAtributos)
+                and registro.tipo_dato == "id_publicacion"
+            ):
+                continue
+            registro.autor = None
 
     def insertar_registros(self):
         for registro in self.lista_registros:
@@ -186,13 +223,27 @@ class CargaPublicacion:
 
         return datos_publicacion
 
+    def insertar_registro_nueva_publicacion(self):
+        registro = RegistroCambiosPublicacionAtributos(
+            id=self.id_publicacion,
+            atributo="id_publicacion",
+            valor=self.id_publicacion,
+            origen=None,
+            bd=self.db,
+            autor=self.autor,
+        )
+        self.lista_registros.append(registro)
+
     def comparar_atributos_publicacion(self, publicacion_antigua):
         """
         Si se ha encontrado una publicación existente con identificadores comunes,
         comparar los atributos entre sí.
         """
 
-        tipos_atributo = ["tipo", "año_publicacion"]  # Columnas a comprobar
+        tipos_atributo = [
+            "tipo",
+            "año_publicacion",
+        ]  # Columnas a comprobar
 
         for tipo_atributo in tipos_atributo:
             nuevo_atributo = getattr(self.datos, tipo_atributo)
@@ -203,6 +254,7 @@ class CargaPublicacion:
                 valor=nuevo_atributo,
                 origen=self.origen,
                 bd=self.db,
+                autor=self.autor,
             )
 
             if not publicacion_antigua:
@@ -237,6 +289,7 @@ class CargaPublicacion:
 
             self.db.ejecutarConsulta(query, params)
             self.id_publicacion = self.db.last_id
+            self.insertar_registro_nueva_publicacion()
 
         self.comparar_atributos_publicacion(publicacion_antigua=publicacion_antigua)
 
@@ -286,6 +339,7 @@ class CargaPublicacion:
             valor=nuevos_autores,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         resultado_comparacion = self.comparar_autores(registro)
@@ -417,6 +471,7 @@ class CargaPublicacion:
             valor=identificador.valor,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         if self.buscar_identificador_publicacion(identificador, registro):
@@ -462,6 +517,7 @@ class CargaPublicacion:
             valor=dato.valor,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         if self.buscar_dato_publicacion(dato, registro):
@@ -572,7 +628,9 @@ class CargaPublicacion:
         if tipo == "coleccion":
             fuente = self.datos.fuente.coleccion
             fuente_antigua = self.datos_antiguos.fuente.coleccion
+
         nombres_atributo = ["tipo"]
+
         for nombre_atributo in nombres_atributo:
             atributo = getattr(fuente, nombre_atributo)
             atributo_antiguo = getattr(fuente_antigua, nombre_atributo)
@@ -583,13 +641,17 @@ class CargaPublicacion:
                 valor=atributo,
                 origen=self.origen,
                 bd=self.db,
+                autor=self.autor,
             )
 
             problema = registro.detectar_conflicto(valor_actual=atributo_antiguo)
             if problema:
                 self.problemas_carga.append(problema)
+                continue
 
-            self.lista_registros.append(registro)
+            # Solo se almacea el registro de cambio si no existía previamente el atributo o ha cambiado.
+            if not atributo_antiguo or atributo_antiguo != atributo:
+                self.lista_registros.append(registro)
 
     def insertar_fuente(self, tipo: str = "fuente") -> int:
         id_fuente = self.buscar_fuente(tipo=tipo)
@@ -709,7 +771,17 @@ class CargaPublicacion:
             valor=self.datos.fuente.id_fuente,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
+
+        # Si ya hay una fuente vinculada a la publicación y es la misma, no hacer nada
+        if (
+            self.datos_antiguos
+            and self.datos_antiguos.fuente
+            and self.datos_antiguos.fuente.id_fuente
+            and self.datos_antiguos.fuente.id_fuente == self.datos.fuente.id_fuente
+        ):
+            return None
 
         query_insertar_id_fuente_publicacion = "UPDATE prisma.p_publicacion SET idFuente = %(idFuente)s WHERE idPublicacion = %(idPublicacion)s"
         params_insertar_id_fuente_publicacion = {
@@ -729,6 +801,7 @@ class CargaPublicacion:
             valor=self.datos.fuente.coleccion.id_fuente,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         # Check if collection is already linked to this source
@@ -828,6 +901,7 @@ class CargaPublicacion:
             valor=str(identificador),
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         # Verificar si el identificador ya existe en los datos antiguos
@@ -942,6 +1016,7 @@ class CargaPublicacion:
             valor=dato.valor,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         if dato_antiguo:
@@ -1066,6 +1141,7 @@ class CargaPublicacion:
                     valor=valor,
                     origen=self.origen,
                     bd=self.db,
+                    autor=self.autor,
                 )
                 self.lista_registros.append(registro)
 
@@ -1190,6 +1266,7 @@ class CargaPublicacion:
             valor=str(fecha),
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         if self.buscar_fecha_publicacion(fecha, registro):
@@ -1241,6 +1318,7 @@ class CargaPublicacion:
             financiacion=financiacion.proyecto,
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         if self.buscar_financiacion(financiacion, registro):
@@ -1293,6 +1371,7 @@ class CargaPublicacion:
             valor=str(acceso_abierto),
             origen=self.origen,
             bd=self.db,
+            autor=self.autor,
         )
 
         if self.buscar_acceso_abierto(acceso_abierto, registro):

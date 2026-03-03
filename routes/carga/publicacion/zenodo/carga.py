@@ -6,9 +6,11 @@ import json
 
 
 class CargaPublicacionZenodo(CargaPublicacion):
-    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
+    def __init__(
+        self, db: BaseDatos = None, id_carga=None, auto_commit=True, tipo_carga=None
+    ) -> None:
 
-        super().__init__(db, id_carga, auto_commit)
+        super().__init__(db, id_carga, auto_commit, tipo_carga=tipo_carga)
         self.origen = "Zenodo"
 
     def carga_publicacion(self, tipo: str, id: str):

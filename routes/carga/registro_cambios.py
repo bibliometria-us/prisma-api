@@ -13,6 +13,7 @@ class RegistroCambios:
         tipo_dato_2: str,
         tipo_dato_3: str,
         valor: str,
+        valor_antiguo: str = None,
         autor: str = "Unidad de Bibliometría",
         origen: str = "Origen desconocido",
         bd: BaseDatos = None,
@@ -24,6 +25,7 @@ class RegistroCambios:
         self.tipo_dato_2 = tipo_dato_2
         self.tipo_dato_3 = tipo_dato_3
         self.valor = valor
+        self.valor_antiguo = valor_antiguo
         self.origen = origen
         self.autor = autor
         self.fecha = datetime.now()
@@ -44,8 +46,8 @@ class RegistroCambios:
 
     def insertar(self, id_carga=None):
         query = f"""
-            INSERT INTO prisma.{self.tabla} (id, tipo_dato, tipo_dato_2, tipo_dato_3, valor, origen, fecha, comentario, id_carga)
-                VALUES (%(id)s, %(tipo_dato)s, %(tipo_dato_2)s, %(tipo_dato_3)s, %(valor)s, %(origen)s, %(fecha)s, %(comentario)s, %(id_carga)s)
+            INSERT INTO prisma.{self.tabla} (id, tipo_dato, tipo_dato_2, tipo_dato_3, valor, valor_antiguo, origen, fecha, comentario, id_carga, autor)
+                VALUES (%(id)s, %(tipo_dato)s, %(tipo_dato_2)s, %(tipo_dato_3)s, %(valor)s, %(valor_antiguo)s, %(origen)s, %(fecha)s, %(comentario)s, %(id_carga)s, %(autor)s)
                 """
         self.id_carga = id_carga
         if not self.id_carga:
@@ -57,10 +59,12 @@ class RegistroCambios:
             "tipo_dato_2": self.tipo_dato_2,
             "tipo_dato_3": self.tipo_dato_3,
             "valor": self.valor,
+            "valor_antiguo": self.valor_antiguo,
             "origen": self.origen,
             "fecha": self.fecha,
             "comentario": self.comentario,
             "id_carga": self.id_carga,
+            "autor": self.autor,
         }
 
         self.bd.ejecutarConsulta(query, params)
@@ -107,6 +111,7 @@ class RegistroCambios:
                 tipo_dato_2=data["tipo_dato_2"],
                 tipo_dato_3=data["tipo_dato_3"],
                 valor=data["valor"],
+                valor_antiguo=data["valor_antiguo"],
                 origen=data["origen"],
                 bd=self.bd,
             )
@@ -119,6 +124,7 @@ class RegistroCambios:
                 tipo_dato_2=self.tipo_dato_2,
                 tipo_dato_3=self.tipo_dato_3,
                 valor=valor_actual,
+                valor_antiguo=self.valor_antiguo,
                 origen="Origen desconocido",
                 bd=self.bd,
             )
