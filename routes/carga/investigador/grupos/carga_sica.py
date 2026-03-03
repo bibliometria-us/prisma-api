@@ -81,10 +81,15 @@ def filtrar_investigadores_grupo(investigadores_grupo: DataFrame) -> DataFrame:
         investigadores_grupo["FECHA_INICIO"] <= today
     ]
 
-    # Ordena los miembros por id, y luego por fecha de inicio.
-    investigadores_grupo = investigadores_grupo.sort_values(
-        by=["ID_PERSONAL", "FECHA_INICIO"], ascending=True
+    # Ordena los miembros por id, luego por rol (Miembro primero, Investigador después)
+    investigadores_grupo["_orden_rol"] = investigadores_grupo["ROL"].map(
+        {"Miembro": 0, "Investigador": 1}
     )
+
+    investigadores_grupo = investigadores_grupo.sort_values(
+        by=["ID_PERSONAL", "_orden_rol"], ascending=[True, True]
+    )
+    investigadores_grupo = investigadores_grupo.drop(columns=["_orden_rol"])
 
     # Se eliminan duplicados dejando el último. De esta forma, nos quedamos siempre con la entrada más actualizada.
     investigadores_grupo = investigadores_grupo.drop_duplicates(
