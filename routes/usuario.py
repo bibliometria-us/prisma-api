@@ -18,7 +18,7 @@ def get_user_data():
     result = data
 
     # Carga usuario ficticio si existe (para versión local)
-    if dummy_user:
+    if dummy_user and login.is_logged_in():
         result = dummy_user
 
     return result

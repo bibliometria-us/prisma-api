@@ -7,16 +7,9 @@ import json
 
 
 class CargaPublicacionWos(CargaPublicacion):
-    def __init__(
-        self,
-        db: BaseDatos = None,
-        id_carga=None,
-        auto_commit=True,
-        autor=None,
-        tipo_carga=None,
-    ) -> None:
+    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
 
-        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
+        super().__init__(db, id_carga, auto_commit)
         self.origen = "WOS"
 
     def carga_publicacion(self, tipo: str, id: str):
