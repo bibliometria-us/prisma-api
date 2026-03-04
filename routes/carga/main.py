@@ -297,14 +297,17 @@ class CargaPublicacionImportar(Resource):
         args = request.args
         tipo = args.get("tipo", "").strip()
         id = args.get("id", "").strip()
-        api_key = args.get("api_key")
 
-        saml_user_data = get_user_data()
-        usuario = saml_user_data.get("mail", [""])[0].split("@")[0] or None
+        if not (es_admin() or es_editor()):
+            return {"error": "No autorizado."}, 401
+
+        try:
+            saml_user_data = get_user_data()
+            usuario = saml_user_data.get("mail", [""])[0].split("@")[0] or None
+        except Exception:
+            usuario = None
 
         tipo_carga = "importacion"
-        # if not es_admin():
-        #    return {"message": "No autorizado"}, 401
 
         try:
             id_publicacion = None
@@ -382,10 +385,16 @@ class CargaPublicacionImportar(Resource):
                     )
 
             id_publicacion = id_publicacion or 0
+
+            if id_publicacion == 0:
+                return {
+                    "error": "No se ha podido encontrar una publicación con el identificador aportado."
+                }, 400
+
             return {"id_publicacion": id_publicacion}, 200
 
         except Exception as e:
-            return {"message": "Error inesperado"}, 500
+            return {"error": "Error inesperado al importar la publicación."}, 500
 
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****
