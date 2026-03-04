@@ -13,7 +13,6 @@ class RegistroCambios:
         tipo_dato_2: str,
         tipo_dato_3: str,
         valor: str,
-        valor_antiguo: str = None,
         autor: str = "Unidad de Bibliometría",
         origen: str = "Origen desconocido",
         bd: BaseDatos = None,
@@ -25,7 +24,6 @@ class RegistroCambios:
         self.tipo_dato_2 = tipo_dato_2
         self.tipo_dato_3 = tipo_dato_3
         self.valor = valor
-        self.valor_antiguo = valor_antiguo
         self.origen = origen
         self.autor = autor
         self.fecha = datetime.now()
@@ -59,12 +57,10 @@ class RegistroCambios:
             "tipo_dato_2": self.tipo_dato_2,
             "tipo_dato_3": self.tipo_dato_3,
             "valor": self.valor,
-            "valor_antiguo": self.valor_antiguo,
             "origen": self.origen,
             "fecha": self.fecha,
             "comentario": self.comentario,
             "id_carga": self.id_carga,
-            "autor": self.autor,
         }
 
         self.bd.ejecutarConsulta(query, params)
@@ -123,7 +119,6 @@ class RegistroCambios:
                 tipo_dato_2=self.tipo_dato_2,
                 tipo_dato_3=self.tipo_dato_3,
                 valor=valor_actual,
-                valor_antiguo=self.valor_antiguo,
                 origen="Origen desconocido",
                 bd=self.bd,
             )

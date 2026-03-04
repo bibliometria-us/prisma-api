@@ -35,7 +35,6 @@ from routes.carga.publicacion.openalex.carga import CargaPublicacionOpenalex
 from routes.carga.publicacion.zenodo.carga import CargaPublicacionZenodo
 from routes.carga.publicacion.crossref.carga import CargaPublicacionCrossref
 
-from routes.usuario import get_user_data
 from security.check_users import es_admin, es_editor
 from celery import current_app
 from routes.carga.investigador.erasmus_plus.carga import (
@@ -316,71 +315,51 @@ class CargaPublicacionImportar(Resource):
             match tipo:
                 case "scopus":
                     id_publicacion = (
-                        CargaPublicacionScopus(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                 case "pubmed" | "wos":
                     id_publicacion = (
-                        CargaPublicacionWos(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                 case "openalex":
                     id_publicacion = (
-                        CargaPublicacionOpenalex(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                 case "zenodo_id":
                     id_publicacion = (
-                        CargaPublicacionZenodo(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                 case "doi":
                     id_publicacion = (
-                        CargaPublicacionScopus(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                     id_publicacion = (
-                        CargaPublicacionWos(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                     id_publicacion = (
-                        CargaPublicacionOpenalex(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
                     id_publicacion = (
-                        CargaPublicacionCrossref(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
 
                 case "crossref":
                     id_publicacion = (
-                        CargaPublicacionCrossref(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
+                        CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
                         or id_publicacion
                     )
 
                 case "idus":
                     id_publicacion = (
-                        CargaPublicacionIdus(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).cargar_publicacion_por_handle(id)
+                        CargaPublicacionIdus().cargar_publicacion_por_handle(id)
                         or id_publicacion
                     )
 
