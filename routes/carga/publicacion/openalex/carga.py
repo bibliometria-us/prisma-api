@@ -1,5 +1,6 @@
 from db.conexion import BaseDatos
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.openalex.parser import OpenalexParser
 from integration.apis.openalex.openalex import OpenalexAPI
 import json
@@ -27,7 +28,9 @@ class CargaPublicacionOpenalex(CargaPublicacion):
         if funcion:
             return funcion(id)
         else:
-            raise ValueError(f"El tipo {tipo} no está soportado.")
+            raise ErrorCargaPublicacion(
+                f"El identificador tipo {tipo} no está soportado."
+            )
 
     def cargar_publicacion_por_id(self, id: str):
         api = OpenalexAPI()

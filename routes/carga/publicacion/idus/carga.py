@@ -1,6 +1,9 @@
 from db.conexion import BaseDatos
 from integration.apis.idus.idus import IdusAPI, IdusAPIItems, IdusAPISearch
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
+from routes.carga.publicacion.exception import (
+    ErrorCargaPublicacion,
+)
 from routes.carga.publicacion.idus.parser import IdusParser
 
 
@@ -16,6 +19,18 @@ class CargaPublicacionIdus(CargaPublicacion):
 
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.origen = "idUS"
+
+    def cargar_publicacion(self, tipo: str, id: str):
+        funciones = {
+            "handle": self.cargar_publicacion_por_handle,
+        }
+        funcion = funciones.get(tipo)
+        if funcion:
+            return funcion(id)
+        else:
+            raise ErrorCargaPublicacion(
+                f"El identificador tipo {tipo} no está soportado."
+            )
 
     def cargar_publicacion_por_handle(self, handle):
         api = IdusAPIItems()

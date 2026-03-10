@@ -18,6 +18,7 @@ from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
 from routes.carga.investigador.grupos.carga_sica import carga_sica
 from routes.carga.publicacion.idus.parser import IdusParser
+from routes.carga.publicacion.importacion_publicacion import ImportacionPublicacion
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.investigador.centros_censo.procesado import procesado_fichero
 from routes.carga.investigador.erasmus_plus.procesado import (
@@ -307,94 +308,22 @@ class CargaPublicacionImportar(Resource):
         except Exception:
             usuario = None
 
-        tipo_carga = "importacion"
+        importacion = ImportacionPublicacion(id=id, tipo_id=tipo, autor=usuario)
 
-        try:
-            id_publicacion = None
+        importacion.importar()
 
-            # TODO: Implementar recursividad para hacer una búsqueda general si se encuentra un DOI
-            match tipo:
-                case "scopus":
-                    id_publicacion = (
-                        CargaPublicacionScopus(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                case "pubmed" | "wos":
-                    id_publicacion = (
-                        CargaPublicacionWos(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                case "openalex":
-                    id_publicacion = (
-                        CargaPublicacionOpenalex(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                case "zenodo_id":
-                    id_publicacion = (
-                        CargaPublicacionZenodo(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                case "doi":
-                    id_publicacion = (
-                        CargaPublicacionScopus(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                    id_publicacion = (
-                        CargaPublicacionWos(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                    id_publicacion = (
-                        CargaPublicacionOpenalex(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-                    id_publicacion = (
-                        CargaPublicacionCrossref(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
+        id_publicacion = importacion.id_publicacion
 
-                case "crossref":
-                    id_publicacion = (
-                        CargaPublicacionCrossref(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).carga_publicacion(tipo=tipo, id=id)
-                        or id_publicacion
-                    )
-
-                case "idus":
-                    id_publicacion = (
-                        CargaPublicacionIdus(
-                            autor=usuario, tipo_carga=tipo_carga
-                        ).cargar_publicacion_por_handle(id)
-                        or id_publicacion
-                    )
-
-            id_publicacion = id_publicacion or 0
-
-            if id_publicacion == 0:
+        if id_publicacion == 0:
+            if importacion.errores:
                 return {
-                    "error": "No se ha podido encontrar una publicación con el identificador aportado."
+                    "error": ";\n ".join(importacion.errores),
                 }, 400
+            return {
+                "error": "No se ha podido encontrar una publicación con el identificador aportado."
+            }, 400
 
-            return {"id_publicacion": id_publicacion}, 200
-
-        except Exception as e:
-            return {"error": "Error inesperado al importar la publicación."}, 500
+        return {"id_publicacion": id_publicacion}, 200
 
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****

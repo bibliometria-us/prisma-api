@@ -5,6 +5,7 @@ import sys
 
 import pandas as pd
 from db.conexion import BaseDatos
+from routes.carga.carga import Carga
 from routes.carga.editor.registro_cambios_editor import RegistroCambiosEditorAtributos
 from routes.carga.fuente.registro_cambios_fuente import (
     RegistroCambiosFuenteAtributos,
@@ -28,7 +29,10 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorFuente,
     DatosCargaPublicacion,
 )
-from routes.carga.publicacion.exception.exception import ErrorCargaPublicacion
+from routes.carga.publicacion.exception import (
+    ErrorCargaPublicacion,
+    ErrorImportacionPublicacion,
+)
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.registro_cambios_publicacion import (
     RegistroCambiosPublicacionAtributos,
@@ -43,7 +47,7 @@ from routes.carga.publicacion.registro_cambios_publicacion import (
 from routes.carga.registro_cambios import ProblemaCarga, RegistroCambios
 
 
-class CargaPublicacion:
+class CargaPublicacion(Carga):
     """
     Clase que representa una carga de publicación de publicación generica
     """
@@ -56,104 +60,36 @@ class CargaPublicacion:
         autor=None,
         tipo_carga=None,
     ) -> None:
-        self.id_carga = id_carga or RegistroCambios.generar_id_carga()
-        self.datos: DatosCargaPublicacion = None
-        self.datos_antiguos: DatosCargaPublicacion = None
-        self.auto_commit = auto_commit
-        self.start_database(db)
-        self.id_publicacion = 0
-        self.fuente_existente = False
-        self.origen = None
-        self.autor = autor
-        self.tipo_carga = tipo_carga
-        self.problemas_carga: list[ProblemaCarga] = []
-        self.lista_registros: list[RegistroCambios] = []
+        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
+        self.datos: DatosCargaPublicacion
+        self.datos_antiguos: DatosCargaPublicacion
 
-    # Decorador
-    def busqueda(func):
-        def wrapper(self: "CargaPublicacion", *args, **kwargs):
-            if self.datos_antiguos is not None:
-                return func(self, *args, **kwargs)
-            else:
-                return None
-
-        return wrapper
-
-    def start_database(self, db: BaseDatos):
-        """
-        Crea la conexión con la base de datos
-        """
-        if db:
-            self.db = db
-            assert self.db.autocommit == False
-        else:
-            self.db = BaseDatos(
-                database=None, autocommit=False, keep_connection_alive=True
-            )
-            self.db.startConnection()
-            self.db.connection.start_transaction()
-
-    def stop_database(self):
-        """
-        Crea la cierra y revierte cambios en la conexión con la base de datos
-        """
-        self.db.rollback()
-        self.db.closeConnection()
-
-    def commit_database(self):
-        """
-        Crea la cierra y persiste cambios en la conexión con la base de datos
-        """
-        if self.auto_commit:
-            self.db.commit()
-            self.db.closeConnection()
-
-    def close_database(self):
-        """
-        Cierra la conexión con la base de datos
-        """
-        self.db.closeConnection()
-
-    def comprobar_tipo_carga(self):
-        tipos_validos = ["importacion"]
-        if self.tipo_carga not in tipos_validos:
-            raise ErrorCargaPublicacion(
-                f"Tipo de carga no válido. Tipos válidos: {tipos_validos}"
-            )
+    def carga_publicacion(self):
+        pass
 
     def cargar_publicacion(self):
         """Realiza la carga de la publicación en la base de datos"""
         # Comprobar que se ha establecido un tipo de carga
         self.comprobar_tipo_carga()
         # Validar los datos antes de la carga
-        datos_validados = self.datos.validate()
-        # Validar los datos antiguos antes de la carga. Los datos antiguos son los datos que ya existen en la base de datos para esta publicación.
-        # Puede darse el caso de que la publicación ya exista en la base de datos previamente.
-        datos_antiguos_validados = (
-            self.datos_antiguos.validate() if self.datos_antiguos else True
-        )
-        # if not (datos_validados or datos_antiguos_validados):
-        #     raise ValueError
+        self.validar_datos()
 
-        if not datos_validados or not datos_antiguos_validados:
-            raise ValueError
+        # if self.datos_antiguos:
+        #    self.datos_antiguos.validate()
 
         self.datos.sanitize()
 
-        self.insertar_publicacion()
-        self.insertar_autores()
-        self.insertar_identificadores_publicacion()
-        self.insertar_datos_publicacion()
-        self.insertar_fuente(tipo="fuente")
+        self.guardar_publicacion()
 
-        if self.datos.fuente.coleccion.validate():
+        if self.datos.fuente.coleccion:
             self.insertar_fuente(tipo="coleccion")
+        else:
+            self.insertar_fuente(tipo="fuente")
 
         self.insertar_financiaciones()
         self.insertar_fechas_publicacion()
         self.insertar_valores_acceso_abierto()
 
-        self.procesar_registros()
         self.insertar_registros()
         self.insertar_problemas()
 
@@ -174,13 +110,40 @@ class CargaPublicacion:
                 continue
             registro.autor = None
 
-    def insertar_registros(self):
-        for registro in self.lista_registros:
-            registro.insertar(id_carga=self.id_carga)
+    def validar_datos(self):
+        self.datos.validate()
 
-    def insertar_problemas(self):
-        for problema in self.problemas_carga:
-            problema.insertar(id_carga=self.id_carga)
+    def guardar_publicacion(self):
+        self.insertar_publicacion()
+        self.insertar_autores()
+        self.insertar_identificadores_publicacion()
+        self.insertar_datos_publicacion()
+
+    # INSERCIÓN DE PUBLICACIÓN Y ATRIBUTOS BÁSICOS -----------------------------------------------------
+    def insertar_publicacion(self):
+        """
+        Inserta la publicación en base de dato
+        DUDA: esto es lo único que se almacena de la publicación en Prisma?
+        """
+        publicacion_antigua = self.buscar_publicacion()
+
+        if not publicacion_antigua:
+            query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen, validado)
+                        VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s, %(validado)s)"""
+
+            params = {
+                "tipo": self.datos.tipo,
+                "titulo": self.datos.titulo,
+                "agno": self.datos.año_publicacion,
+                "origen": self.origen,
+                "validado": 3,
+            }
+
+            self.db.ejecutarConsulta(query, params)
+            self.id_publicacion = self.db.last_id
+            self.insertar_registro_nueva_publicacion()
+
+        self.comparar_atributos_publicacion(publicacion_antigua=publicacion_antigua)
 
     def buscar_publicacion(self):
         """
@@ -215,9 +178,6 @@ class CargaPublicacion:
             self.datos_antiguos = DatosCargaPublicacion().from_id_publicacion(
                 self.id_publicacion, self.db
             )
-            # Validar los datos antiguos antes de la carga
-            if not self.datos_antiguos.validate():
-                return None
 
             self.datos_antiguos.sanitize()
 
@@ -268,47 +228,7 @@ class CargaPublicacion:
                 if problema:
                     self.problemas_carga.append(problema)
 
-    def insertar_publicacion(self):
-        """
-        Inserta la publicación en base de dato
-        DUDA: esto es lo único que se almacena de la publicación en Prisma?
-        """
-        publicacion_antigua = self.buscar_publicacion()
-
-        if not publicacion_antigua:
-            query = """INSERT INTO prisma.p_publicacion (tipo, titulo, agno, origen, validado)
-                        VALUES (%(tipo)s, %(titulo)s, %(agno)s, %(origen)s, %(validado)s)"""
-
-            params = {
-                "tipo": self.datos.tipo,
-                "titulo": self.datos.titulo,
-                "agno": self.datos.año_publicacion,
-                "origen": self.origen,
-                "validado": 3,
-            }
-
-            self.db.ejecutarConsulta(query, params)
-            self.id_publicacion = self.db.last_id
-            self.insertar_registro_nueva_publicacion()
-
-        self.comparar_atributos_publicacion(publicacion_antigua=publicacion_antigua)
-
-    @busqueda
-    def comparar_autores(self, registro: RegistroCambiosPublicacionCantidadAutores):
-
-        antiguos_autores = ", ".join(
-            f"{key}: {value}"
-            for key, value in self.datos_antiguos.contar_autores_agrupados().items()
-        )
-
-        problema = registro.detectar_conflicto(valor_actual=antiguos_autores)
-
-        if problema:
-            self.problemas_carga.append(problema)
-            return problema
-
-        return True
-
+    # INSERCIÓN DE AUTORES ----------------------------------------------------------------------
     def insertar_autores(self):
         """
         Inserta los autores de una publicación.
@@ -361,6 +281,41 @@ class CargaPublicacion:
 
         self.lista_registros.append(registro)
 
+    @Carga.busqueda
+    def comparar_autores(self, registro: RegistroCambiosPublicacionCantidadAutores):
+
+        antiguos_autores = ", ".join(
+            f"{key}: {value}"
+            for key, value in self.datos_antiguos.contar_autores_agrupados().items()
+        )
+
+        problema = registro.detectar_conflicto(valor_actual=antiguos_autores)
+
+        if problema:
+            self.problemas_carga.append(problema)
+            return problema
+
+        return True
+
+    def insertar_autor(self, autor: DatosCargaAutor):
+
+        query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador, contacto)
+                    VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s, %(contacto)s)
+                """
+        params = {
+            "orden": autor.orden,
+            "firma": autor.firma,
+            "rol": autor.tipo,
+            "contacto": autor.contacto,
+            "idPublicacion": self.id_publicacion,
+            "idInvestigador": self.buscar_id_investigador(autor),
+        }
+
+        self.db.ejecutarConsulta(query, params)
+        id_autor = self.db.last_id
+
+        self.insertar_afiliaciones_autor(autor, id_autor)
+
     def buscar_id_investigador(self, autor: DatosCargaAutor):
         # TODO: Plantear que la id de investigador de autor se actualice siempre
         if not autor.ids:
@@ -382,27 +337,6 @@ class CargaPublicacion:
 
         return id_investigador or 0
 
-    ## INSERCIÓN DE AUTORES
-    def insertar_autor(self, autor: DatosCargaAutor):
-
-        query = """INSERT INTO prisma.p_autor (orden,firma, rol, idPublicacion, idInvestigador, contacto)
-                    VALUES (%(orden)s, %(firma)s, %(rol)s, %(idPublicacion)s, %(idInvestigador)s, %(contacto)s)
-                """
-        params = {
-            "orden": autor.orden,
-            "firma": autor.firma,
-            "rol": autor.tipo,
-            "contacto": autor.contacto,
-            "idPublicacion": self.id_publicacion,
-            "idInvestigador": self.buscar_id_investigador(autor),
-        }
-
-        self.db.ejecutarConsulta(query, params)
-        id_autor = self.db.last_id
-
-        self.insertar_afiliaciones_autor(autor, id_autor)
-
-    ## INSERCIÓN DE AFILIACIONES DE AUTORES
     def insertar_afiliaciones_autor(self, autor: DatosCargaAutor, id_autor: int):
         for afiliacion in autor.afiliaciones:
             self.insertar_afiliacion_autor(afiliacion, id_autor)
@@ -442,25 +376,10 @@ class CargaPublicacion:
             id_afiliacion = self.db.get_first_cell()
             return id_afiliacion
 
+    # INSERCIÓN DE IDENTIFICADORES DE PUBLICACIÓN ----------------------------------------------------------------------
     def insertar_identificadores_publicacion(self):
         for identificador in self.datos.identificadores:
             self.insertar_identificador_publicacion(identificador)
-
-    @busqueda
-    def buscar_identificador_publicacion(
-        self,
-        identificador: DatosCargaIdentificadorPublicacion,
-        registro: RegistroCambiosPublicacionIdentificadores,
-    ) -> bool:
-        if identificador not in self.datos_antiguos.identificadores:
-            return False
-
-        problema = registro.detectar_conflicto(valor_actual=identificador.valor)
-
-        if problema:
-            self.problemas_carga.append(problema)
-
-        return True
 
     def insertar_identificador_publicacion(
         self, identificador: DatosCargaIdentificadorPublicacion
@@ -492,23 +411,26 @@ class CargaPublicacion:
 
         self.lista_registros.append(registro)
 
-    def insertar_datos_publicacion(self):
-        for dato in self.datos.datos:
-            self.insertar_dato_publicacion(dato)
-
-    @busqueda
-    def buscar_dato_publicacion(
-        self, dato: DatosCargaDatoPublicacion, registro: RegistroCambiosPublicacionDatos
+    @Carga.busqueda
+    def buscar_identificador_publicacion(
+        self,
+        identificador: DatosCargaIdentificadorPublicacion,
+        registro: RegistroCambiosPublicacionIdentificadores,
     ) -> bool:
-        if dato not in self.datos_antiguos.datos:
+        if identificador not in self.datos_antiguos.identificadores:
             return False
 
-        problema = registro.detectar_conflicto(valor_actual=dato.valor)
+        problema = registro.detectar_conflicto(valor_actual=identificador.valor)
 
         if problema:
             self.problemas_carga.append(problema)
 
         return True
+
+    # INSERCIÓN DE DATOS DE PUBLICACIÓN ----------------------------------------------------------------------
+    def insertar_datos_publicacion(self):
+        for dato in self.datos.datos:
+            self.insertar_dato_publicacion(dato)
 
     def insertar_dato_publicacion(self, dato: DatosCargaDatoPublicacion):
         registro = RegistroCambiosPublicacionDatos(
@@ -536,7 +458,21 @@ class CargaPublicacion:
         self.db.ejecutarConsulta(query, params)
         self.lista_registros.append(registro)
 
-    @busqueda
+    @Carga.busqueda
+    def buscar_dato_publicacion(
+        self, dato: DatosCargaDatoPublicacion, registro: RegistroCambiosPublicacionDatos
+    ) -> bool:
+        if dato not in self.datos_antiguos.datos:
+            return False
+
+        problema = registro.detectar_conflicto(valor_actual=dato.valor)
+
+        if problema:
+            self.problemas_carga.append(problema)
+
+        return True
+
+    @Carga.busqueda
     def buscar_fuente_en_datos_antiguos(self, tipo: str) -> int:
         """Busca la fuente en los datos antiguos de la publicación"""
         if tipo == "fuente":
@@ -843,7 +779,7 @@ class CargaPublicacion:
         for identificador in fuente.identificadores:
             self.insertar_identificador_fuente(identificador, tipo=tipo)
 
-    @busqueda
+    @Carga.busqueda
     def buscar_identificador_fuente(
         self,
         identificador: DatosCargaIdentificadorFuente,
@@ -909,7 +845,7 @@ class CargaPublicacion:
             identificador, registro, tipo=tipo
         )
 
-        # Si buscar_identificador_fuente devuelve None (decorador @busqueda), significa que no hay datos antiguos
+        # Si buscar_identificador_fuente devuelve None (decorador @Carga.busqueda), significa que no hay datos antiguos
         # En ese caso, verificar en BD y luego insertar si no existe
         # Si devuelve True, significa que ya existe en datos antiguos, no insertar
         # Si devuelve False, significa que no existe en datos antiguos, verificar BD y luego insertar
@@ -983,7 +919,7 @@ class CargaPublicacion:
         for dato in fuente.datos:
             self.insertar_dato_fuente(dato, tipo=tipo)
 
-    @busqueda
+    @Carga.busqueda
     def buscar_dato_fuente(self, dato: DatosCargaDatosFuente, tipo: str):
         if tipo == "fuente":
             fuente = self.datos.fuente
@@ -1086,7 +1022,7 @@ class CargaPublicacion:
 
         return id_editor or 0
 
-    @busqueda
+    @Carga.busqueda
     def buscar_editorial(
         self, editorial: DatosCargaEditorial, tipo: str
     ) -> DatosCargaEditorial:
@@ -1232,7 +1168,7 @@ class CargaPublicacion:
         for fecha in self.datos.fechas_publicacion:
             self.insertar_fecha_publicacion(fecha)
 
-    @busqueda
+    @Carga.busqueda
     def buscar_fecha_publicacion(
         self,
         fecha: DatosCargaFechaPublicacion,
@@ -1291,7 +1227,7 @@ class CargaPublicacion:
         for financiacion in self.datos.financiacion:
             self.insertar_financiacion(financiacion)
 
-    @busqueda
+    @Carga.busqueda
     def buscar_financiacion(
         self,
         financiacion: DatosCargaFinanciacion,
@@ -1341,7 +1277,7 @@ class CargaPublicacion:
         for acceso_abierto in self.datos.acceso_abierto:
             self.insertar_acceso_abierto(acceso_abierto)
 
-    @busqueda
+    @Carga.busqueda
     def buscar_acceso_abierto(
         self,
         acceso_abierto: DatosCargaAccesoAbierto,

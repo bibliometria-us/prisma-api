@@ -3,6 +3,7 @@ import copy
 import json
 from db.conexion import BaseDatos
 
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from utils.format import enumerated_dict, truncate_string
 from json import JSONEncoder
 from typing import Any, Type
@@ -14,6 +15,7 @@ class Encoder(JSONEncoder):
 
 
 class DatosCarga(ABC):
+
     @abstractmethod
     def to_dict(self):
         pass
@@ -189,12 +191,18 @@ class DatosCargaPublicacion(DatosCarga):
         return self.tipo in tipos
 
     def normalizar_fuente(self):
-        if not self.fuente.tiene_issn_e_isbn():
-            return None
-        if self.es_libro():
+        if self.es_libro() and self.fuente.tiene_issn_e_isbn():
             self.fuente_a_coleccion()
             self.libro_como_fuente()
-        if self.es_capitulo():
+
+        if (
+            self.es_libro()
+            and self.fuente.tiene_isbn()
+            and not self.fuente.tiene_issn()
+        ):
+            self.libro_como_fuente()
+
+        if self.es_capitulo() and self.fuente.tiene_issn_e_isbn():
             self.fuente.coleccion.identificadores = self.fuente.get_issns()
             self.fuente.identificadores = self.fuente.get_isbns()
 
@@ -241,18 +249,29 @@ class DatosCargaPublicacion(DatosCarga):
         - Al menos un autor
         """
         if not self.titulo:
-            return False
+            raise ErrorCargaPublicacion("La publicación no contiene título.")
+
         # Validar fuente: título, tipo y ISSN o ISBN (CASO ESPECIAL: Ponencia Crossref salta validación de fuente porque no trae ISSN ni ISBN pero se considera válida)
-        if (
-            not (self.tipo == "Ponencia" and self.fuente_datos == "Crossref")
-            and not self.fuente.validate()
-        ):
-            return False
-        if not self.tipo or self.tipo == "Tesis":
-            return False
+        if not (self.tipo == "Ponencia" and self.fuente_datos == "Crossref"):
+            self.validar_fuente()
+
+        if not self.tipo:
+            raise ErrorCargaPublicacion("La publicación no contiene un tipo.")
+
+        if self.tipo == "Tesis":
+            raise ErrorCargaPublicacion(
+                "Las tesis no pueden ser cargadas como publicaciones."
+            )
+
         if not self.autores:
-            return False
-        return True
+            raise ErrorCargaPublicacion("La publicación no contiene autores.")
+
+    def validar_fuente(self):
+        if self.fuente.coleccion:
+            self.fuente.coleccion.validate()
+            return
+
+        self.fuente.validate()
 
     def close(self):
         # self.libro_como_fuente()
@@ -465,7 +484,7 @@ class DatosCargaDatoPublicacion(DatosCarga):
 
 
 class DatosCargaFuente(DatosCarga):
-    def __init__(self, coleccion=True) -> None:
+    def __init__(self, coleccion=False) -> None:
         self.id_fuente = 0
         self.titulo = ""
         self.tipo = ""
@@ -508,16 +527,14 @@ class DatosCargaFuente(DatosCarga):
         - Tipo
         - Al menos un identificador: ISSN o ISBN
         """
-        return (
-            self.titulo
-            and (self.tipo or self.tipo != "")
-            and (self.tiene_issn() or self.tiene_isbn())
-        )
-        return (
-            self.titulo
-            and (self.tipo or tipo != "" and (self.tiene_issn() or self.tiene_isbn()))
-            or ()
-        )
+        if not self.titulo:
+            raise ErrorCargaPublicacion("La fuente no contiene título.")
+        if not self.tipo:
+            raise ErrorCargaPublicacion("La fuente no contiene un tipo.")
+        if not (self.tiene_issn() or self.tiene_isbn()):
+            raise ErrorCargaPublicacion(
+                "La fuente no contiene un identificador ISSN o ISBN."
+            )
 
     def get_issns(self) -> list["DatosCargaIdentificadorFuente"]:
         return [

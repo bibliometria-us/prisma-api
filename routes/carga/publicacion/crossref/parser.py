@@ -48,6 +48,7 @@ class CrossrefParser(Parser):
             "proceedings-article": "Ponencia",
             "book-chapter": "Capítulo",
             "book": "Libro",
+            "edited-book": "Libro",
             "other": "Otros",
         }
 

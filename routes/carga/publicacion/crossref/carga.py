@@ -4,6 +4,8 @@ from routes.carga.publicacion.crossref.parser import CrossrefParser
 from integration.apis.crossref.crossref.crossref import CrossrefAPI
 import json
 
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
+
 
 class CargaPublicacionCrossref(CargaPublicacion):
     def __init__(
@@ -27,7 +29,9 @@ class CargaPublicacionCrossref(CargaPublicacion):
         if funcion:
             return funcion(id)
         else:
-            raise ValueError(f"El tipo {tipo} no está soportado.")
+            raise ErrorCargaPublicacion(
+                f"El identificador tipo {tipo} no está soportado."
+            )
 
     def cargar_publicacion_por_doi(self, id: str):
         api = CrossrefAPI()

@@ -1,5 +1,6 @@
 from db.conexion import BaseDatos
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from utils import format
@@ -28,7 +29,9 @@ class CargaPublicacionScopus(CargaPublicacion):
         if funcion:
             return funcion(id)
         else:
-            raise ValueError(f"El tipo {tipo} no está soportado.")
+            raise ErrorCargaPublicacion(
+                f"El identificador tipo {tipo} no está soportado."
+            )
 
     def cargar_publicacion_por_id(self, id: str):
         api = ScopusSearch()
