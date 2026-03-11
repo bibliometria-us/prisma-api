@@ -20,9 +20,9 @@ class CargaPublicacionIdus(CargaPublicacion):
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.origen = "idUS"
 
-    def cargar_publicacion(self, tipo: str, id: str):
+    def carga_publicacion(self, tipo: str, id: str):
         funciones = {
-            "handle": self.cargar_publicacion_por_handle,
+            "idus": self.cargar_publicacion_por_handle,
         }
         funcion = funciones.get(tipo)
         if funcion:

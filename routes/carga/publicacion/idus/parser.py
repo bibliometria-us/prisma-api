@@ -60,11 +60,11 @@ class IdusParser(Parser):
             "info:eu-repo/semantics/doctoralThesis": "Tesis",
             # "info:eu-repo/semantics/dataset": "Dataset",
             # NUEVO CAMBIO:
-            # "Artículo": "Artículo",
-            # "Ponencia": "Ponencia",
-            # "Capítulo de Libro": "Capítulo",
-            # "Libro": "Libro",
-            # "Tesis Doctoral": "Tesis",
+            "artículo": "Artículo",
+            "ponencia": "Ponencia",
+            "capítulo de libra": "Capítulo",
+            "libro": "Libro",
+            "tesis doctoral": "Tesis",
         }
 
         valor = tipos.get(tipo) or "Otros"
