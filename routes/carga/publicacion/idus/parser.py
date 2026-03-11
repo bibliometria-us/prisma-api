@@ -65,6 +65,7 @@ class IdusParser(Parser):
             "capítulo de libra": "Capítulo",
             "libro": "Libro",
             "tesis doctoral": "Tesis",
+            "contribución de congreso": "Contribución de congreso",
         }
 
         valor = tipos.get(tipo) or "Otros"
@@ -228,7 +229,10 @@ class IdusParser(Parser):
                 titulo_libro_capitulo[0]["value"]
             )
             self.datos_carga_publicacion.fuente.set_tipo("Capítulo")
-        if tipo_publicacion == "Ponencia" and titulo_congreso:
+        if (
+            tipo_publicacion in ["Ponencia", "Contribución de congreso"]
+            and titulo_congreso
+        ):
             self.datos_carga_publicacion.fuente.set_titulo(titulo_congreso[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Congreso")
         return None
