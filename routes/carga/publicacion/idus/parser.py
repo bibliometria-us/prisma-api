@@ -217,31 +217,31 @@ class IdusParser(Parser):
     def cargar_titulo_y_tipo(self):
         titulo_revista = self.metadata.get("dc.journaltitle")
         titulo_libro_capitulo = self.metadata.get("dc.relation.ispartof")
-        titulo_congreso = self.metadata.get("dc.eventtitle")
-        # titulo_congreso = self.metadata.get("dc.eventtitle")
         # Establece título y tipo para libro y congreso en base a los metadatos del tipo de publicación
         tipo_publicacion = self.datos_carga_publicacion.tipo
+
+        # Si es artículo, título de la fuente es el de la revista (dc.journaltitle)
         if tipo_publicacion == "Artículo" and titulo_revista:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_revista[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Revista")
+
         # Si es libro  título de la fuente es el de la propia publicacion (dc.title)
         if tipo_publicacion == "Libro":
             self.datos_carga_publicacion.fuente.set_titulo(
                 self.datos_carga_publicacion.titulo
             )
             self.datos_carga_publicacion.fuente.set_tipo("Libro")
-        # Si es capítulo de libro, título de la fuente es el del libro (dc.relation.ispartof)
-        if tipo_publicacion == "Capítulo" and titulo_libro_capitulo:
+
+        # Si es capítulo de libro o ponencia, título de la fuente es el del libro (dc.relation.ispartof)
+        if (
+            tipo_publicacion in ["Capítulo", "Ponencia", "Contribución de congreso"]
+            and titulo_libro_capitulo
+        ):
             self.datos_carga_publicacion.fuente.set_titulo(
                 titulo_libro_capitulo[0]["value"]
             )
             self.datos_carga_publicacion.fuente.set_tipo("Capítulo")
-        if (
-            tipo_publicacion in ["Ponencia", "Contribución de congreso"]
-            and titulo_congreso
-        ):
-            self.datos_carga_publicacion.fuente.set_titulo(titulo_congreso[0]["value"])
-            self.datos_carga_publicacion.fuente.set_tipo("Congreso")
+
         return None
 
     def carga_editorial(self):
