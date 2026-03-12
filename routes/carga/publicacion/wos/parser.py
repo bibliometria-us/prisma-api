@@ -14,6 +14,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaFinanciacion,
     DatosCargaPublicacion,
 )
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
@@ -68,12 +69,15 @@ class WosParser(Parser):
             # TODO: Aclarar tipos pubs - a resolver
             "Article": "Artículo",
             "Meeting Abstract": "Meeting",
-            "News Item": "Otros",
+            # "News Item": "Otros",
             "Proceedings Paper": "proceedings",
             "Review": "Revisión",
         }
 
-        valor = tipos.get(tipo, "Otros")
+        valor = tipos.get(tipo)
+        if not valor:
+            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
+
         self.datos_carga_publicacion.set_tipo(valor)
 
     def _cargar_autores(

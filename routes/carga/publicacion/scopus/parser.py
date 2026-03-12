@@ -14,6 +14,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaFinanciacion,
     DatosCargaPublicacion,
 )
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
@@ -62,7 +63,10 @@ class ScopusParser(Parser):
             "le": "Letter",
         }
 
-        valor = tipos.get(tipo) or "Otros"
+        valor = tipos.get(tipo)
+        if not valor:
+            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
+
         self.datos_carga_publicacion.set_tipo(valor)
 
     def _cargar_autores(
