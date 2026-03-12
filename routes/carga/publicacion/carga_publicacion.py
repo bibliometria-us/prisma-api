@@ -25,6 +25,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaEditorial,
     DatosCargaFechaPublicacion,
     DatosCargaFinanciacion,
+    DatosCargaFuente,
     DatosCargaIdentificadorPublicacion,
     DatosCargaIdentificadorFuente,
     DatosCargaPublicacion,
@@ -81,10 +82,9 @@ class CargaPublicacion(Carga):
 
         self.guardar_publicacion()
 
+        self.insertar_fuente(tipo="fuente")
         if self.datos.fuente.coleccion:
             self.insertar_fuente(tipo="coleccion")
-        else:
-            self.insertar_fuente(tipo="fuente")
 
         self.insertar_financiaciones()
         self.insertar_fechas_publicacion()
@@ -480,7 +480,7 @@ class CargaPublicacion(Carga):
         if tipo == "coleccion":
             fuente = self.datos_antiguos.fuente.coleccion
 
-        if fuente.id_fuente:
+        if fuente:
             return fuente.id_fuente
         return 0
 
@@ -751,8 +751,8 @@ class CargaPublicacion(Carga):
             "idColeccion": self.datos.fuente.coleccion.id_fuente,
         }
 
-        result = self.db.ejecutarConsulta(query_check, params_check)
-        if result and result[0]["count"] > 0:
+        self.db.ejecutarConsulta(query_check, params_check)
+        if self.db.get_first_cell() > 0:
             # Collection association already exists, skip insertion
             return
 
@@ -795,6 +795,10 @@ class CargaPublicacion(Carga):
         valor_normalizado = (
             identificador.valor.replace("-", "").replace(" ", "").upper()
         )
+
+        # Si no hay datos antiguos o la fuente antigua no tiene identificadores, no se busca y se permite insertar directamente
+        if not fuente_antigua or not fuente_antigua.identificadores:
+            return False
 
         # Para ISSN/eISSN e ISBN/eISBN, buscar ambos tipos ya que representan la misma fuente
         tipos_busqueda = []

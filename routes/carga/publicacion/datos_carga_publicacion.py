@@ -203,6 +203,7 @@ class DatosCargaPublicacion(DatosCarga):
             self.libro_como_fuente()
 
         if self.es_capitulo() and self.fuente.tiene_issn_e_isbn():
+            self.fuente_a_coleccion()
             self.fuente.coleccion.identificadores = self.fuente.get_issns()
             self.fuente.identificadores = self.fuente.get_isbns()
 

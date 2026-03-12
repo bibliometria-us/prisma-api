@@ -52,9 +52,10 @@ def busqueda_publicacion_por_id(id_publicacion, db: BaseDatos) -> DatosCargaPubl
     buscar_identificadores_fuente(id_fuente, db, datos_carga_fuente)
 
     id_coleccion = buscar_coleccion_fuente(id_fuente, db)
+    datos_carga_fuente.coleccion = DatosCargaFuente()
     datos_carga_coleccion = datos_carga_publicacion.fuente.coleccion
     if id_coleccion is not None:
-        datos_carga_fuente.coleccion.id_fuente = id_coleccion
+        datos_carga_coleccion.id_fuente = id_coleccion
         buscar_fuente_publicacion(id_coleccion, db, datos_carga_coleccion)
         buscar_editoriales_fuente(id_coleccion, db, datos_carga_coleccion)
         buscar_datos_fuente(id_coleccion, db, datos_carga_coleccion)
