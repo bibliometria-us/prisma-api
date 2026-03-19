@@ -45,29 +45,8 @@ class ScopusParser(Parser):
         # Scopus no devuelve un título alternativo
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("subtype")
-
-        # TODO: Aclarar los tipos de publicación
-        tipos = {
-            "ar": "Artículo",
-            "ip": "Artículo",
-            "cp": "Ponencia",
-            "re": "Revisión",
-            "ed": "Editorial",
-            "bk": "Libro",
-            "no": "Nota",
-            "ch": "Capítulo",
-            "sh": "Short Survey",
-            "er": "Corrección",
-            "le": "Letter",
-        }
-
-        valor = tipos.get(tipo)
-        if not valor:
-            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
-
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("subtype")
 
     def _cargar_autores(
         self,

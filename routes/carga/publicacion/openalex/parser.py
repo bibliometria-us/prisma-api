@@ -45,37 +45,8 @@ class OpenalexParser(Parser):
         #      self.datos_carga_publicacion.add_titulo_alternativo(title["title"])
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("type")
-
-        tipos = {
-            "article": "Artículo",
-            "book-chapter": "Capítulo",
-            "dataset": "Dataset",
-            "preprint": "Preprint",
-            "dissertation": "Tesis",
-            "book": "Libro",
-            "review": "Revisión",
-            # "paratext": "Otros",
-            # "libguides": "Otros",
-            # "letter": "Otros",
-            # "other": "Otros",
-            # "reference-entry": "Otros",
-            "report": "Reporte",
-            "editorial": "Editorial",
-            "peer-review": "Peer Review",
-            "erratum": "Corrección",
-            # "standard": "Otros",
-            # "grant": "Otros",
-            # "supplementary-materials": "Otros",
-            # "retraction": "Otros",
-        }
-
-        valor = tipos.get(tipo)
-        if not valor:
-            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
-
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("type")
 
     def _cargar_autores(
         self,

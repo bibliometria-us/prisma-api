@@ -40,24 +40,8 @@ class CrossrefParser(Parser):
         # TODO: Titulo Alt - revisar en titles
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("type")
-
-        tipos = {
-            # TODO: Aclarar tipos pubs - a resolver
-            "journal-article": "Artículo",
-            "proceedings-article": "Ponencia",
-            "book-chapter": "Capítulo",
-            "book": "Libro",
-            "edited-book": "Libro",
-            "other": "Otros",
-        }
-
-        valor = tipos.get(tipo)
-        if not valor:
-            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
-
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("type")
 
     def _cargar_autores(
         self,

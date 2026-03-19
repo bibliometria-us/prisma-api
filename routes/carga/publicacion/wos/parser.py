@@ -46,39 +46,15 @@ class WosParser(Parser):
     def cargar_titulo_alternativo(self):
         pass
 
-    def cargar_tipo(self):
+    def origen_tipo(self):
         doctypes = self.data["static_data"]["summary"]["doctypes"]
-
-        # Verificar que hay tipos de documento
         if doctypes["count"] == 0:
-            self.datos_carga_publicacion.set_tipo("Otros")
-            return
+            return "Otros"
 
-        tipo = doctypes["doctype"]
+        tipos = doctypes["doctype"]
+        tipo = "Article" if "Article" in tipos else tipos[0]
 
-        if doctypes["count"] > 1:
-            if "Article" in tipo:
-                tipo = "Article"
-            else:
-                tipo = tipo[0]
-        else:
-            # Si solo hay un tipo, extraerlo de la lista
-            tipo = tipo[0] if isinstance(tipo, list) else tipo
-
-        tipos = {
-            # TODO: Aclarar tipos pubs - a resolver
-            "Article": "Artículo",
-            "Meeting Abstract": "Meeting",
-            # "News Item": "Otros",
-            "Proceedings Paper": "proceedings",
-            "Review": "Revisión",
-        }
-
-        valor = tipos.get(tipo)
-        if not valor:
-            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
-
-        self.datos_carga_publicacion.set_tipo(valor)
+        return tipo
 
     def _cargar_autores(
         self,

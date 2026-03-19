@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from config.publicacion.tipos_publicacion import mapear_tipo_publicacion
 from integration.apis.idus.idus import IdusAPIItems
 from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaAutor,
@@ -10,10 +11,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaIdentificadorFuente,
     DatosCargaIdentificadorAutor,
 )
-from routes.carga.publicacion.exception import (
-    ErrorCargaPublicacion,
-    ErrorImportacionPublicacion,
-)
+
 from routes.carga.publicacion.parser import Parser
 
 
@@ -53,30 +51,8 @@ class IdusParser(Parser):
         valor = titulo[0]["value"]
         self.datos_carga_publicacion.set_titulo_alternativo(valor)
 
-    def cargar_tipo(self):
-        tipo = self.metadata["dc.type"][0]["value"]
-
-        tipos = {
-            "info:eu-repo/semantics/article": "Artículo",
-            "info:eu-repo/semantics/conferenceObject": "Ponencia",
-            "info:eu-repo/semantics/bookPart": "Capítulo",
-            "info:eu-repo/semantics/book": "Libro",
-            "info:eu-repo/semantics/doctoralThesis": "Tesis",
-            # "info:eu-repo/semantics/dataset": "Dataset",
-            # NUEVO CAMBIO:
-            "artículo": "Artículo",
-            "ponencia": "Ponencia",
-            "capítulo de libra": "Capítulo",
-            "libro": "Libro",
-            "tesis doctoral": "Tesis",
-            "contribución de congreso": "Contribución de congreso",
-        }
-
-        valor = tipos.get(tipo)
-        if not valor:
-            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
-
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.metadata["dc.type"][0]["value"]
 
     def _cargar_autores(
         self,
@@ -240,7 +216,7 @@ class IdusParser(Parser):
             self.datos_carga_publicacion.fuente.set_titulo(
                 titulo_libro_capitulo[0]["value"]
             )
-            self.datos_carga_publicacion.fuente.set_tipo("Capítulo")
+            self.datos_carga_publicacion.fuente.set_tipo("Libro")
 
         return None
 
