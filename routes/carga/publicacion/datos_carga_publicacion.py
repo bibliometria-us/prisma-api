@@ -253,16 +253,11 @@ class DatosCargaPublicacion(DatosCarga):
             raise ErrorCargaPublicacion("La publicación no contiene título.")
 
         # Validar fuente: título, tipo y ISSN o ISBN (CASO ESPECIAL: Ponencia Crossref salta validación de fuente porque no trae ISSN ni ISBN pero se considera válida)
-        if not (self.tipo == "Ponencia" and self.fuente_datos == "Crossref"):
+        if not ((self.tipo == "Ponencia" and self.fuente_datos == "Crossref") or (self.tipo == "Tesis" and self.fuente_datos == "IDUS")):
             self.validar_fuente()
 
         if not self.tipo:
             raise ErrorCargaPublicacion("La publicación no contiene un tipo.")
-
-        if self.tipo == "Tesis":
-            raise ErrorCargaPublicacion(
-                "Las tesis no pueden ser cargadas como publicaciones."
-            )
 
         if not self.autores:
             raise ErrorCargaPublicacion("La publicación no contiene autores.")
