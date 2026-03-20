@@ -18,9 +18,13 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
         contracts = files.get("contracts")
         components = files.get("components")
 
-        result_carga_proyectos = proyecto.cargar_proyectos(projects=projects)
-        result_carga_contratos = contrato.cargar_contratos(contratos=contracts)
-        result_carga_componentes = componente.cargar_componentes(componentes=components)
+        bd = BaseDatos(keep_connection_alive=True, database=None, autocommit=False)
+
+        result_carga_proyectos = proyecto.cargar_proyectos(projects=projects, bd=bd)
+        result_carga_contratos = contrato.cargar_contratos(contratos=contracts, bd=bd)
+        result_carga_componentes = componente.cargar_componentes(
+            componentes=components, bd=bd
+        )
         data = {
             "carga_proyectos": result_carga_proyectos,
             "carga_contratos": result_carga_contratos,
@@ -49,14 +53,9 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
         altas_miembros = (
             estadisticas_componentes["altas"] + estadisticas_contratos["altas"]
         )
-        bajas_miembros = (
-            estadisticas_componentes["bajas"] + estadisticas_contratos["bajas"]
-        )
 
         mensaje = f"""
-        Se han insertado {inserciones_proyectos} proyectos nuevos.
-        <br>
-        Se han dado de baja {bajas_miembros} miembros de proyectos y se han dado de alta {altas_miembros}.
+        Se han insertado {inserciones_proyectos} proyectos nuevos y se han dado de alta {altas_miembros} miembros.
         {'<br>' + 
          f'Se han detectado {errores} en la carga. Se recomienda revisar los archivos de log para más detalles.' if errores else ''}
         """

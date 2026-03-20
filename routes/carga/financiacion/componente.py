@@ -1,4 +1,5 @@
 from pandas import DataFrame
+from db.conexion import BaseDatos
 from routes.carga.financiacion.miembro import Miembro
 import pandas as pd
 
@@ -26,18 +27,18 @@ def filtrar_componentes(componentes: DataFrame) -> DataFrame:
     return componentes
 
 
-def cargar_componentes(componentes: DataFrame) -> list[str]:
+def cargar_componentes(componentes: DataFrame, bd: BaseDatos) -> list[str]:
     componentes = filtrar_componentes(componentes=componentes)
 
     result = []
 
     for componente in componentes.itertuples(index=True):
-        result += cargar_componente(componente=componente)
+        result += cargar_componente(componente=componente, bd=bd)
 
     return result
 
 
-def cargar_componente(componente) -> str:
+def cargar_componente(componente, bd: BaseDatos) -> str:
 
     componente = Miembro(
         apellidos=componente.Apellidos,
@@ -48,6 +49,7 @@ def cargar_componente(componente) -> str:
         fecha_renuncia=None,
         rol=componente.ParticipaComo,
         sisius_id=componente.IdProyecto,
+        bd=bd,
     )
 
     return componente.cargar()

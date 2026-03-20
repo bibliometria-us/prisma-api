@@ -16,9 +16,11 @@ class Contrato(Miembro):
         fecha_inicio: Timestamp,
         fecha_fin: Timestamp,
         fecha_renuncia: Timestamp,
+        bd: BaseDatos,
     ):
         self.organica = organica
         self.referencia = referencia
+        self.bd = bd or BaseDatos()
         sisius_id = self.buscar_sisius_id()
         rol = "Contratado"
         super().__init__(
@@ -30,12 +32,12 @@ class Contrato(Miembro):
             fecha_inicio,
             fecha_fin,
             fecha_renuncia,
+            bd,
         )
 
     def buscar_sisius_id(self):
-        db = BaseDatos(database="prisma_proyectos")
         query = """
-        SELECT sisius_id FROM proyecto 
+        SELECT sisius_id FROM prisma_proyectos.proyecto 
         WHERE
             referencia = %(referencia)s
             OR
@@ -48,9 +50,9 @@ class Contrato(Miembro):
             "organica": self.organica,
         }
 
-        db.ejecutarConsulta(query, params=params)
+        self.bd.ejecutarConsulta(query, params=params)
 
-        return db.get_first_cell()
+        return self.bd.get_first_cell()
 
 
 def filtrar_contratos(contratos: DataFrame) -> DataFrame:
@@ -75,18 +77,18 @@ def filtrar_contratos(contratos: DataFrame) -> DataFrame:
     return contratos
 
 
-def cargar_contratos(contratos: DataFrame) -> list[str]:
+def cargar_contratos(contratos: DataFrame, bd: BaseDatos) -> list[str]:
     contratos = filtrar_contratos(contratos=contratos)
 
     result = []
 
     for contrato in contratos.itertuples(index=True):
-        result += cargar_contrato(contrato=contrato)
+        result += cargar_contrato(contrato=contrato, bd=bd)
 
     return result
 
 
-def cargar_contrato(contrato) -> list[str]:
+def cargar_contrato(contrato, bd: BaseDatos) -> list[str]:
 
     contrato = Contrato(
         organica=contrato.Organica,
@@ -97,6 +99,7 @@ def cargar_contrato(contrato) -> list[str]:
         fecha_inicio=contrato.FechaInicio,
         fecha_fin=contrato.FechaFin,
         fecha_renuncia=contrato.FechaRenuncia,
+        bd=bd,
     )
 
     return contrato.cargar()

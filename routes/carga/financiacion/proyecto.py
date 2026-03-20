@@ -46,6 +46,7 @@ class Proyecto:
         sisius_id: int,
         visible: bool = True,
         id: int = 0,
+        bd: BaseDatos = None,
     ):
         self.id = int(id)
         self.tipo = tipo
@@ -62,22 +63,22 @@ class Proyecto:
         self.competitivo = bool(competitivo)
         self.sisius_id = sisius_id
         self.visible = bool(visible)
+        self.bd = bd or BaseDatos()
 
-    @staticmethod
-    def from_sisius_id(sisius_id: int) -> "Proyecto":
-        db = BaseDatos()
+    def from_sisius_id(self, sisius_id: int) -> "Proyecto":
+
         query = """SELECT * FROM prisma_proyectos.proyecto WHERE sisius_id = %(sisius_id)s"""
 
         params = {
             "sisius_id": sisius_id,
         }
 
-        db.ejecutarConsulta(query, params=params)
+        self.bd.ejecutarConsulta(query, params=params)
 
-        if not db.has_rows():
+        if not self.bd.has_rows():
             return None
 
-        data = db.get_dataframe().iloc[0]
+        data = self.bd.get_dataframe().iloc[0]
         result = Proyecto(
             id=data["id"],
             tipo=data["tipo"],
@@ -99,7 +100,6 @@ class Proyecto:
         return result
 
     def insertar_proyecto(self) -> str:
-        db = BaseDatos(autocommit=False)
         query = """
         INSERT INTO prisma_proyectos.proyecto (id, tipo, nombre, referencia, organica, inicio, fin, 
         ambito, concedido, solicitado, prog_financiador, entidad_financiadora, competitivo, visible, sisius_id)
@@ -125,12 +125,13 @@ class Proyecto:
             "sisius_id": self.sisius_id,
         }
 
-        db.ejecutarConsulta(query, params=params)
+        self.bd.ejecutarConsulta(query, params=params)
+        self.id = self.bd.last_id
 
-        if db.error:
+        if self.bd.error:
             return f"Error insertando el proyecto '{self.nombre}'"
 
-        if db.rowcount == 1:
+        if self.bd.rowcount == 1:
             return f"Insertado el proyecto '{self.nombre}': {local_config.prisma_url}/financiacion/{self.id} "
 
     def actualizar_proyecto(self, proyecto_antiguo: "Proyecto") -> list[str]:
@@ -140,6 +141,8 @@ class Proyecto:
         result: list[str] = []
 
         for nombre, valor_nuevo in atributos_nuevos.items():
+            if isinstance(valor_nuevo, BaseDatos):
+                continue
             valor_antiguo = atributos_antiguos.get(nombre)
             if valor_antiguo != valor_nuevo:
                 result.append(
@@ -149,7 +152,6 @@ class Proyecto:
         return result
 
     def actualizar_atributo(self, nombre, valor_antiguo, valor_nuevo) -> str:
-        db = BaseDatos()
         query = f"""UPDATE prisma_proyectos.proyecto
                     SET {nombre} = %(valor_nuevo)s
                     WHERE id = %(id)s"""
@@ -158,9 +160,9 @@ class Proyecto:
             "id": self.id,
         }
 
-        db.ejecutarConsulta(query, params=params)
+        self.bd.ejecutarConsulta(query, params=params)
 
-        if db.error:
+        if self.bd.error:
             return f"Error actualizando el atributo {nombre} con valor {str(valor_nuevo)} para el proyecto con ID {self.id}"
 
         return f"Actualizado atributo {nombre} de {str(valor_antiguo)} a {str(valor_nuevo)} para el proyecto con ID {self.id}"
@@ -213,17 +215,17 @@ def filtrar_proyectos(projects: DataFrame) -> DataFrame:
     return projects
 
 
-def cargar_proyectos(projects: DataFrame) -> list[str]:
+def cargar_proyectos(projects: DataFrame, bd: BaseDatos) -> list[str]:
     projects = filtrar_proyectos(projects=projects)
     result = []
 
     for project in projects.itertuples(index=True):
-        result += cargar_proyecto(project=project)
+        result += cargar_proyecto(project=project, bd=bd)
 
     return result
 
 
-def cargar_proyecto(project) -> list[str]:
+def cargar_proyecto(project, bd: BaseDatos) -> list[str]:
     sisius_id = int(project.IdProyecto)
 
     proyecto_nuevo = Proyecto(
@@ -241,9 +243,10 @@ def cargar_proyecto(project) -> list[str]:
         competitivo=bool(project.EsCompetitivo != "No"),
         sisius_id=sisius_id,
         visible=True,
+        bd=bd,
     )
 
-    proyecto_antiguo = Proyecto.from_sisius_id(sisius_id=sisius_id)
+    proyecto_antiguo = proyecto_nuevo.from_sisius_id(sisius_id=sisius_id)
 
     if proyecto_antiguo:
         proyecto_nuevo.id = proyecto_antiguo.id
