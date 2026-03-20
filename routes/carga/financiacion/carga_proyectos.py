@@ -14,9 +14,9 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
         comprobar_ficheros(files)
 
         # Filtrar y cargar proyectos
-        projects = files.get("projects").sample(frac=0.1, random_state=42)
-        contracts = files.get("contracts").sample(frac=0.1, random_state=42)
-        components = files.get("components").sample(frac=0.1, random_state=42)
+        projects = files.get("projects")
+        contracts = files.get("contracts")
+        components = files.get("components")
 
         bd = BaseDatos(keep_connection_alive=True, database=None, autocommit=False)
 
