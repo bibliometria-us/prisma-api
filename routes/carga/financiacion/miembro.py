@@ -28,6 +28,7 @@ class Miembro:
         self.fecha_fin = fecha_fin
         self.fecha_renuncia = fecha_renuncia
         self.id_miembro: int = None
+        self.actualizar_rol = False
         self.ha_expirado = self.comprobar_expiracion()
 
     def buscar_proyecto_id(self, sisius_id: int) -> int:
@@ -78,25 +79,42 @@ class Miembro:
 
     def buscar_contrato_existente(self) -> None:
         query = """
-        SELECT id FROM prisma_proyectos.proyecto_miembro 
+        SELECT id, rol FROM prisma_proyectos.proyecto_miembro 
         WHERE
-        proyecto_id = %(proyecto_id)s AND firma = %(firma)s AND rol = %(rol)s
+        proyecto_id = %(proyecto_id)s AND firma = %(firma)s
         """
         params = {
             "proyecto_id": self.proyecto_id,
             "firma": self.firma,
-            "rol": self.rol,
         }
 
         self.bd.ejecutarConsulta(query, params=params)
-        self.id_miembro = self.bd.get_first_cell()
+        result = self.bd.get_dataframe()
+
+        id_miembro = result["id"][0] if len(result) > 0 else None
+        rol = result["rol"][0] if len(result) > 0 else None
+
+        self.id_miembro = id_miembro
+        self.comprobar_actualizacion_rol(rol_existente=rol)
+
+    def comprobar_actualizacion_rol(self, rol_existente: str) -> bool:
+        role_hierarchy = {"Responsable": 3, "Investigador/a": 2, "Contratado": 1}
+
+        if rol_existente not in role_hierarchy or self.rol not in role_hierarchy:
+            self.actualizar_rol = False
+            return
+
+        self.actualizar_rol = role_hierarchy[self.rol] > role_hierarchy[rol_existente]
 
     def cargar(self) -> list[str]:
-        self.buscar_contrato_existente()
+        rol = self.buscar_contrato_existente()
 
         # Si el proyecto para este contrato no está cargado, no se hace nada
         if not self.proyecto_id:
             return []
+
+        if self.id_miembro and self.actualizar_rol:
+            return [self.actualizar_rol_contrato()]
 
         # Si no existe este contrato, se da de alta y se devuelve el mensaje de alta
         if not self.id_miembro and not self.ha_expirado:
@@ -106,21 +124,8 @@ class Miembro:
         if not self.id_miembro and self.ha_expirado:
             self.alta_miembro()
             return []
+
         return []
-
-    def baja_miembro(self) -> str:
-        query = (
-            "DELETE FROM prisma_proyectos.proyecto_miembro WHERE id = %(id_miembro)s"
-        )
-        params = {"id_miembro": self.id_miembro}
-
-        self.bd.ejecutarConsulta(query, params=params)
-
-        if self.bd.error:
-            return f"Error dando de baja el contrato del investigador {self.firma} en el proyecto con id {self.proyecto_id}"
-
-        if self.bd.rowcount == 1:
-            return f"Dado de baja el contrato del investigador {self.firma} en el proyecto con id {self.proyecto_id}"
 
     def alta_miembro(self) -> str:
         query = (
@@ -144,3 +149,15 @@ class Miembro:
 
         if self.bd.rowcount == 1:
             return f"Dado de alta el contrato del investigador {self.firma} en el proyecto con id {self.proyecto_id}"
+
+    def actualizar_rol_contrato(self) -> str:
+        query = "UPDATE prisma_proyectos.proyecto_miembro SET rol = %(rol)s WHERE id = %(id)s"
+        params = {"rol": self.rol, "id": self.id_miembro}
+
+        self.bd.ejecutarConsulta(query, params=params)
+
+        if self.bd.error:
+            return f"Error actualizando el rol del contrato del investigador {self.firma} en el proyecto con id {self.proyecto_id}"
+
+        if self.bd.rowcount == 1:
+            return f"Actualizado el rol del contrato del investigador {self.firma} en el proyecto con id {self.proyecto_id} a {self.rol}"

@@ -14,9 +14,9 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
         comprobar_ficheros(files)
 
         # Filtrar y cargar proyectos
-        projects = files.get("projects")
-        contracts = files.get("contracts")
-        components = files.get("components")
+        projects = files.get("projects").sample(frac=0.1, random_state=42)
+        contracts = files.get("contracts").sample(frac=0.1, random_state=42)
+        components = files.get("components").sample(frac=0.1, random_state=42)
 
         bd = BaseDatos(keep_connection_alive=True, database=None, autocommit=False)
 
@@ -54,8 +54,15 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
             estadisticas_componentes["altas"] + estadisticas_contratos["altas"]
         )
 
+        actualizaciones_rol = (
+            estadisticas_componentes["actualizaciones"]
+            + estadisticas_contratos["actualizaciones"]
+        )
+
         mensaje = f"""
         Se han insertado {inserciones_proyectos} proyectos nuevos y se han dado de alta {altas_miembros} miembros.
+        {'<br>' + 
+         f'Se han actualizado {actualizaciones_rol} roles.' if actualizaciones_rol else ''}
         {'<br>' + 
          f'Se han detectado {errores} en la carga. Se recomienda revisar los archivos de log para más detalles.' if errores else ''}
         """
@@ -111,6 +118,7 @@ def calcular_estadisticas_proyectos(resultados: list[str]):
 def calcular_estadisticas_miembros(resultados: list[str]):
     altas = 0
     bajas = 0
+    actualizaciones = 0
     errores = 0
 
     for resultado in resultados:
@@ -123,11 +131,15 @@ def calcular_estadisticas_miembros(resultados: list[str]):
         if "Error" in resultado:
             errores += 1
             continue
+        if "Actualizado el rol" in resultado:
+            actualizaciones += 1
+            continue
 
     return {
         "altas": altas,
         "bajas": bajas,
         "errores": errores,
+        "actualizaciones": actualizaciones,
     }
 
 
