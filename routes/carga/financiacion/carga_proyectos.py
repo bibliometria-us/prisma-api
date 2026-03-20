@@ -20,8 +20,8 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
 
         bd = BaseDatos(keep_connection_alive=True, database=None, autocommit=False)
 
-        # result_carga_proyectos = proyecto.cargar_proyectos(projects=projects, bd=bd)
-        # result_carga_contratos = contrato.cargar_contratos(contratos=contracts, bd=bd)
+        result_carga_proyectos = proyecto.cargar_proyectos(projects=projects, bd=bd)
+        result_carga_contratos = contrato.cargar_contratos(contratos=contracts, bd=bd)
         result_carga_componentes = componente.cargar_componentes(
             componentes=components, bd=bd
         )
