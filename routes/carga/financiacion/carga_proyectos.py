@@ -20,8 +20,8 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
 
         bd = BaseDatos(keep_connection_alive=True, database=None, autocommit=False)
 
-        result_carga_proyectos = proyecto.cargar_proyectos(projects=projects, bd=bd)
-        result_carga_contratos = contrato.cargar_contratos(contratos=contracts, bd=bd)
+        # result_carga_proyectos = proyecto.cargar_proyectos(projects=projects, bd=bd)
+        # result_carga_contratos = contrato.cargar_contratos(contratos=contracts, bd=bd)
         result_carga_componentes = componente.cargar_componentes(
             componentes=components, bd=bd
         )
@@ -64,7 +64,7 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
         {'<br>' + 
          f'Se han actualizado {actualizaciones_rol} roles.' if actualizaciones_rol else ''}
         {'<br>' + 
-         f'Se han detectado {errores} en la carga. Se recomienda revisar los archivos de log para más detalles.' if errores else ''}
+         f'Se han detectado {errores} errores en la carga. Se recomienda revisar los archivos de log para más detalles.' if errores else ''}
         """
 
         for key, lines in data.items():

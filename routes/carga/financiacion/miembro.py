@@ -92,6 +92,8 @@ class Miembro:
         result = self.bd.get_dataframe()
 
         id_miembro = result["id"][0] if len(result) > 0 else None
+        id_miembro = int(id_miembro) if id_miembro else None
+
         rol = result["rol"][0] if len(result) > 0 else None
 
         self.id_miembro = id_miembro
