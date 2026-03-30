@@ -20,19 +20,6 @@ def eliminar_autores_pub(id_publicacion: int, bd: BaseDatos = None) -> dict:
 # ****************************************
 # *************   BASICO   ***************
 # ****************************************
-# Obtiene la lista de las bibliotecas
-def get_bibliotecas(bd: BaseDatos = None) -> dict:
-    query = """SELECT ib.idBiblioteca, ib.nombre AS BIBLIOTECA FROM i_biblioteca ib;"""
-    try:
-        if bd is None:
-            bd = BaseDatos()
-        bd.ejecutarConsulta(query)
-        consulta = bd.get_dataframe()
-    except Exception as e:
-        return {"error": e.message}, 400
-    return consulta
-
-
 # Obtiene la lista de los centros
 def get_centros(bd: BaseDatos = None) -> dict:
     query = """SELECT ic.idCentro, ic.nombre AS CENTRO FROM i_centro ic;"""
@@ -654,3 +641,157 @@ def get_quality_rule_i_02(bd: BaseDatos = None) -> dict:
     except Exception as e:
         return {"error": e.message}, 400
     return metrica
+
+
+# ****************************************
+# ************ PUBLICACIONES *************
+# ****************************************
+# BASICO
+# Obtiene la lista de las bibliotecas
+def get_bibliotecas(bd: BaseDatos = None) -> dict:
+    query = """SELECT ib.idBiblioteca AS ID_BIBLIOTECA, ib.nombre AS BIBLIOTECA FROM i_biblioteca ib;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
+
+
+# Regla de validacion
+# Lista de publicaciones con tipo no permitido (no incluido en la tabla de configuración de tipos de publicación)
+def get_pub_publicaciones_con_tipos_no_permitidos(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pp.idPublicacion AS ID_PUB, pp.tipo AS TIPO, pp.titulo AS TITULO, 
+                            pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ic.nombre AS BIBLIOTECA
+                                FROM prisma.publicacionesXcentro pp
+                                LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                                LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                                WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+                                AND pp.tipo NOT IN (SELECT tp.nombre FROM config.tipos_publicacion tp)
+                                ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones con más de un ID del mismo tipo
+def get_pub_publicaciones_mas_de_un_id_mismo_tipo(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                        pp.idPublicacion        AS ID_PUB,
+                        pp.titulo               AS TITULO,
+                        pp.tipo               AS TIPO,
+                        pp.agno                 AS AGNO,
+                        pip.tipo                AS TIPO_ID,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ic.nombre               AS BIBLIOTECA
+                    FROM prisma.publicacionesXcentro pp
+                    LEFT JOIN p_identificador_publicacion pip ON pip.idPublicacion = pp.idPublicacion
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+                    AND (pp.idPublicacion, pip.tipo) IN (
+                        SELECT idPublicacion, tipo
+                        FROM p_identificador_publicacion
+                        GROUP BY idPublicacion, tipo
+                        HAVING COUNT(*) > 1
+                    )
+                    GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, ic.idBiblioteca, ic.nombre
+                    ORDER BY pp.idPublicacion DESC, pip.tipo;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones sin ID
+def get_pub_publicaciones_sin_id(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                        pp.idPublicacion        AS ID_PUB,
+                        pp.tipo                 AS TIPO,
+                        pp.titulo               AS TITULO,
+                        pp.agno                 AS AGNO,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ic.nombre               AS BIBLIOTECA
+                    FROM prisma.publicacionesXcentro pp
+                    LEFT JOIN p_identificador_publicacion pip ON pip.idPublicacion = pp.idPublicacion
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+                    AND pip.idPublicacion IS NULL
+                    ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones con autores repetidos (misma firma) en la misma publicación
+def get_pub_publicaciones_autores_repetidos(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                    pp.idPublicacion        AS ID_PUB,
+                    pp.tipo                 AS TIPO,
+                    pp.titulo               AS TITULO,
+                    pp.agno                 AS AGNO,
+                    ic.idBiblioteca         AS ID_BIBLIOTECA,
+                    ic.nombre               AS BIBLIOTECA,
+                    GROUP_CONCAT(DISTINCT firmas_dup.firma ORDER BY firmas_dup.firma SEPARATOR ', ') AS FIRMAS_DUPLICADAS
+                FROM prisma.publicacionesXcentro pp
+                LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                JOIN (
+                    SELECT idPublicacion, firma
+                    FROM p_autor
+                    WHERE eliminado = '0'
+                    GROUP BY idPublicacion, firma
+                    HAVING COUNT(*) > 1
+                ) firmas_dup ON firmas_dup.idPublicacion = pp.idPublicacion
+                WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+                GROUP BY pp.idPublicacion, pp.tipo, pp.titulo, pp.agno, ic.idBiblioteca, ic.nombre
+                ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Métricas
+# Num Publicaciones por tipo y biblioteca
+def get_pub_num_publicaciones_por_biblioteca(bd: BaseDatos = None) -> dict:
+    query = """SELECT 
+                ic.idBiblioteca         AS ID_BIBLIOTECA,
+                ic.nombre               AS BIBLIOTECA,
+                pp.tipo                 AS TIPO,
+                COUNT(DISTINCT pp.idPublicacion) AS NUM_PUBLICACIONES
+            FROM prisma.publicacionesXcentro pp
+            LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+            LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+            WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+            GROUP BY ic.idBiblioteca, ic.nombre, pp.tipo
+            ORDER BY ic.idBiblioteca, NUM_PUBLICACIONES DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
