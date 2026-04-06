@@ -72,6 +72,8 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
                 f.write("\n".join(lines) + "\n")
                 ficheros.append(f.name)
 
+        actualizar_fecha_insercion()
+
         enviar_correo(
             adjuntos=ficheros,
             asunto="Carga de proyectos",
