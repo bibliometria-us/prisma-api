@@ -215,7 +215,48 @@ def filtrar_proyectos(projects: DataFrame) -> DataFrame:
     return projects
 
 
+def buscar_proyectos_no_en_sisius(
+    bd: BaseDatos, referencias_sisius: list[str]
+) -> list[str]:
+    # Obtener los proyectos de Prisma que no están en SISIUS para ocultarlos
+    query_proyectos_prisma = (
+        """SELECT referencia, id FROM prisma_proyectos.proyecto WHERE visible = 1"""
+    )
+    bd.ejecutarConsulta(query_proyectos_prisma)
+
+    proyectos_prisma = bd.get_dataframe()
+
+    ids_prisma_no_en_sisius = proyectos_prisma[
+        ~proyectos_prisma["referencia"].isin(referencias_sisius)
+    ]["id"].tolist()
+
+    return ids_prisma_no_en_sisius
+
+
+def ocultar_proyectos_no_en_sisius(
+    bd: BaseDatos, referencias_sisius: list[str]
+) -> list[str]:
+    # Ocultar los proyectos de Prisma que no están en SISIUS
+    proyectos_no_en_sisius = buscar_proyectos_no_en_sisius(
+        bd=bd, referencias_sisius=referencias_sisius
+    )
+
+    query_ocultar_proyectos = f"""
+    UPDATE prisma_proyectos.proyecto
+    SET visible = 0
+    WHERE id IN ({','.join(['%s'] * len(proyectos_no_en_sisius))})
+    """
+
+    params = proyectos_no_en_sisius
+
+    bd.ejecutarConsulta(query_ocultar_proyectos, params=params)
+
+
 def cargar_proyectos(projects: DataFrame, bd: BaseDatos) -> list[str]:
+    # Obtener las referencias de los proyectos en SISIUS para ocultar los que ya no están en SISIUS
+    referencias_sisius = projects["Referencia"].tolist()
+    ocultar_proyectos_no_en_sisius(bd=bd, referencias_sisius=referencias_sisius)
+
     projects = filtrar_proyectos(projects=projects)
     result = []
 
