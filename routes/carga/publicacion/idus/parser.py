@@ -208,7 +208,7 @@ class IdusParser(Parser):
             )
 
         # Si es libro  título de la fuente es el de la propia publicacion (dc.title)
-        if tipo_publicacion == "Libro":
+        if tipo_publicacion in ["Libro", "Capítulo"]:
             self.datos_carga_publicacion.fuente.set_titulo(
                 self.datos_carga_publicacion.titulo
             )
