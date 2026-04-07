@@ -22,7 +22,7 @@ def eliminar_autores_pub(id_publicacion: int, bd: BaseDatos = None) -> dict:
 # ****************************************
 # Obtiene la lista de los centros
 def get_centros(bd: BaseDatos = None) -> dict:
-    query = """SELECT ic.idCentro, ic.nombre AS CENTRO FROM i_centro ic;"""
+    query = """SELECT ic.idCentro, ib.nombre  AS CENTRO FROM i_centro ic;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -101,7 +101,7 @@ def get_investigadores(bd: BaseDatos = None) -> dict:
                         ig.idGrupo AS Id_Grupo,
                         ig.nombre AS Grupo,
                         ic.idCentro AS Id_Centro,
-                        ic.nombre AS Centro,
+                        ib.nombre  AS Centro,
                         ii.idInstituto AS Id_Instituto,
                         ii.nombre AS Instituto,
                         iue.idUdExcelencia AS Id_UdExcelencia,
@@ -533,7 +533,7 @@ def get_quality_rule_f_09(bd: BaseDatos = None) -> dict:
     query = """SELECT pf.idFuente AS idFuente, pf.titulo AS TITULO, pf.editorial AS EDITORIAL, GROUP_CONCAT("ISBN: ",pif.valor  SEPARATOR ", ") AS IDENTIFICADORES
             FROM p_fuente pf 
             LEFT JOIN (SELECT * FROM `p_identificador_fuente` 
-            WHERE eliminado = 0 AND tipo IN ("isbn", "eisbn") AND valor NOT REGEXP '^[0-9][0-9\-]{8,16}[0-9Xx]$' AND
+            WHERE eliminado = 0 AND tipo IN ("isbn", "eisbn") AND valor NOT REGEXP '^[0-9][0-9\\-]{8,16}[0-9Xx]$' AND
             NOT(CHAR_LENGTH(REPLACE(valor, '-', '')) = 10 OR CHAR_LENGTH(REPLACE(valor, '-', '')) = 13)) pif ON pif.idFuente  = pf.idFuente 
             WHERE pf.eliminado = 0 AND pif.idIdentificador IS NOT NULL
             GROUP BY pf.idFuente;"""
@@ -613,7 +613,7 @@ def get_quality_rule_i_02(bd: BaseDatos = None) -> dict:
             ELSE 'Desconocido'END AS Genero,
             id.nombre AS Departamento,
             ig.nombre AS Grupo,
-            ic.nombre AS Centro,
+            ib.nombre  AS Centro,
             ii.nombre AS Instituto,
             iue.nombre AS Ud_Exelencia,
             iia.idInvestigador AS Id_Prisma,
@@ -646,7 +646,7 @@ def get_quality_rule_i_02(bd: BaseDatos = None) -> dict:
 # ****************************************
 # ************ PUBLICACIONES *************
 # ****************************************
-# BASICO
+# *** BASICO ***
 # Obtiene la lista de las bibliotecas
 def get_bibliotecas(bd: BaseDatos = None) -> dict:
     query = """SELECT ib.idBiblioteca AS ID_BIBLIOTECA, ib.nombre AS BIBLIOTECA FROM i_biblioteca ib;"""
@@ -660,17 +660,50 @@ def get_bibliotecas(bd: BaseDatos = None) -> dict:
     return consulta
 
 
-# Regla de validacion
+# Obtiene la lista de los tipo permitidos de publicaciones (incluidos en la tabla de configuración de tipos de publicación)
+def get_tipos_publicaciones_permitidos(bd: BaseDatos = None) -> dict:
+    query = (
+        """SELECT tp.nombre FROM config.tipos_publicacion tp WHERE tp.activo = '1'"""
+    )
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
+
+
+# *** Regla de validacion ***
 # Lista de publicaciones con tipo no permitido (no incluido en la tabla de configuración de tipos de publicación)
 def get_pub_publicaciones_con_tipos_no_permitidos(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT pp.idPublicacion AS ID_PUB, pp.tipo AS TIPO, pp.titulo AS TITULO, 
-                            pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ic.nombre AS BIBLIOTECA
-                                FROM prisma.publicacionesXcentro pp
-                                LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
-                                LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
-                                WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
-                                AND pp.tipo NOT IN (SELECT tp.nombre FROM config.tipos_publicacion tp)
-                                ORDER BY pp.idPublicacion DESC;"""
+pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ib.nombre AS BIBLIOTECA
+    FROM prisma.publicacionesXcentro pp
+    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND (pp.idFuente = '0' OR pp.idFuente IS NULL)
+    ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones con tipo "Otros"
+def get_pub_publicaciones_con_tipos_otros(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pp.idPublicacion AS ID_PUB, pp.tipo AS TIPO, pp.titulo AS TITULO, 
+pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ib.nombre  AS BIBLIOTECA
+    FROM prisma.publicacionesXcentro pp
+    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND pp.tipo = "Otros"
+    ORDER BY pp.idPublicacion DESC;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -690,7 +723,7 @@ def get_pub_publicaciones_mas_de_un_id_mismo_tipo(bd: BaseDatos = None) -> dict:
                         pp.agno                 AS AGNO,
                         pip.tipo                AS TIPO_ID,
                         ic.idBiblioteca         AS ID_BIBLIOTECA,
-                        ic.nombre               AS BIBLIOTECA
+                        ib.nombre               AS BIBLIOTECA
                     FROM prisma.publicacionesXcentro pp
                     LEFT JOIN p_identificador_publicacion pip ON pip.idPublicacion = pp.idPublicacion
                     LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
@@ -702,7 +735,7 @@ def get_pub_publicaciones_mas_de_un_id_mismo_tipo(bd: BaseDatos = None) -> dict:
                         GROUP BY idPublicacion, tipo
                         HAVING COUNT(*) > 1
                     )
-                    GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, ic.idBiblioteca, ic.nombre
+                    GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, ic.idBiblioteca, ib.nombre 
                     ORDER BY pp.idPublicacion DESC, pip.tipo;"""
     try:
         if bd is None:
@@ -722,7 +755,7 @@ def get_pub_publicaciones_sin_id(bd: BaseDatos = None) -> dict:
                         pp.titulo               AS TITULO,
                         pp.agno                 AS AGNO,
                         ic.idBiblioteca         AS ID_BIBLIOTECA,
-                        ic.nombre               AS BIBLIOTECA
+                        ib.nombre               AS BIBLIOTECA
                     FROM prisma.publicacionesXcentro pp
                     LEFT JOIN p_identificador_publicacion pip ON pip.idPublicacion = pp.idPublicacion
                     LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
@@ -748,8 +781,8 @@ def get_pub_publicaciones_autores_repetidos(bd: BaseDatos = None) -> dict:
                     pp.titulo               AS TITULO,
                     pp.agno                 AS AGNO,
                     ic.idBiblioteca         AS ID_BIBLIOTECA,
-                    ic.nombre               AS BIBLIOTECA,
-                    GROUP_CONCAT(DISTINCT firmas_dup.firma ORDER BY firmas_dup.firma SEPARATOR ', ') AS FIRMAS_DUPLICADAS
+                    ib.nombre               AS BIBLIOTECA,
+                    GROUP_CONCAT(DISTINCT firmas_dup.firma ORDER BY firmas_dup.firma SEPARATOR '; ') AS FIRMAS_DUPLICADAS
                 FROM prisma.publicacionesXcentro pp
                 LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
                 LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
@@ -761,8 +794,509 @@ def get_pub_publicaciones_autores_repetidos(bd: BaseDatos = None) -> dict:
                     HAVING COUNT(*) > 1
                 ) firmas_dup ON firmas_dup.idPublicacion = pp.idPublicacion
                 WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
-                GROUP BY pp.idPublicacion, pp.tipo, pp.titulo, pp.agno, ic.idBiblioteca, ic.nombre
+                GROUP BY pp.idPublicacion, pp.tipo, pp.titulo, pp.agno, ic.idBiblioteca, ib.nombre 
                 ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones sin fuente
+def get_pub_publicaciones_sin_fuente(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pp.idPublicacion AS ID_PUB, pp.tipo AS TIPO, pp.titulo AS TITULO, 
+                        pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ib.nombre AS BIBLIOTECA
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND (pp.idFuente = '0' OR pp.idFuente IS NULL)
+                        ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones sin autores US
+def get_pub_publicaciones_sin_autores_us(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pp.idPublicacion AS ID_PUB, pp.tipo AS TIPO, pp.titulo AS TITULO,
+                        pp.agno AS AGNO
+                            FROM prisma.p_publicacion  pp
+                            WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+                            AND pp.idPublicacion NOT IN (
+                                SELECT DISTINCT idPublicacion
+                                FROM prisma.p_autor
+                                WHERE idInvestigador IS NOT NULL
+                                AND eliminado = '0'
+                            )
+                            ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones con más de un Dato del mismo tipo
+def get_pub_publicaciones_mas_de_un_dato_mismo_tipo(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                        pp.idPublicacion        AS ID_PUB,
+                        pp.titulo               AS TITULO,
+                        pp.tipo               AS TIPO,
+                        pp.agno                 AS AGNO,
+                        pip.tipo                AS TIPO_ID,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ib.nombre               AS BIBLIOTECA
+                    FROM prisma.publicacionesXcentro pp
+                    LEFT JOIN p_dato_publicacion pip ON pip.idPublicacion = pp.idPublicacion
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' 
+                    AND (pp.idPublicacion, pip.tipo) IN (
+                        SELECT idPublicacion, tipo
+                        FROM p_dato_publicacion
+                        GROUP BY idPublicacion, tipo
+                        HAVING COUNT(*) > 1
+                    )
+                    GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, ic.idBiblioteca, ib.nombre 
+                    ORDER BY pp.idPublicacion DESC, pip.tipo;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+#  Lista de publicaciones repetidas Título, tipo, año.
+def get_pub_publicaciones_repetidas_titulo_tipo_agno(bd: BaseDatos = None) -> dict:
+    query_publicacion = """WITH publicaciones_normalizadas AS (
+                        SELECT
+                            idPublicacion,
+                            tipo,
+                            agno,
+                            titulo,
+                            idCentro,
+                            LOWER(TRIM(REGEXP_REPLACE(titulo, '[^a-zA-Z0-9]', ''))) AS titulo_normalizado
+                        FROM prisma.publicacionesXcentro
+                        WHERE eliminado = '0'
+                    ),
+                    duplicados AS (
+                        SELECT titulo_normalizado, tipo, agno
+                        FROM publicaciones_normalizadas
+                        GROUP BY titulo_normalizado, tipo, agno
+                        HAVING COUNT(DISTINCT idPublicacion) > 1
+                    )
+                    SELECT
+                        pn.tipo                 AS TIPO,
+                        pn.agno                 AS AGNO,
+                        MIN(pn.titulo)          AS TITULO,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ib.nombre                AS BIBLIOTECA,
+                        COUNT(DISTINCT pn.idPublicacion) AS NUM_PUBLICACIONES,
+                        GROUP_CONCAT(DISTINCT pn.idPublicacion ORDER BY pn.idPublicacion SEPARATOR ', ') AS IDS_PUBLICACIONES
+                    FROM publicaciones_normalizadas pn
+                    JOIN duplicados d ON d.titulo_normalizado = pn.titulo_normalizado
+                        AND d.tipo = pn.tipo
+                        AND d.agno = pn.agno
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pn.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    GROUP BY pn.tipo, pn.agno, pn.titulo_normalizado, ic.idBiblioteca, ib.nombre 
+                    ORDER BY pn.tipo, pn.agno;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones repetidas Título, tipo y Titulo de Fuente.
+def get_pub_publicaciones_repetidas_titulo_tipo_fuente(bd: BaseDatos = None) -> dict:
+    query_publicacion = """WITH publicaciones_normalizadas AS (
+                        SELECT
+                            pp.idPublicacion,
+                            pp.tipo,
+                            pp.titulo,
+                            pp.agno,
+                            pp.idCentro,
+                            pf.titulo AS TITULO_FUENTE,
+                            LOWER(TRIM(REGEXP_REPLACE(pp.titulo, '[^a-zA-Z0-9]', ''))) AS titulo_normalizado
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                        WHERE pp.eliminado = '0'
+                    ),
+                    duplicados AS (
+                        SELECT titulo_normalizado, tipo, TITULO_FUENTE
+                        FROM publicaciones_normalizadas
+                        GROUP BY titulo_normalizado, tipo, TITULO_FUENTE
+                        HAVING COUNT(DISTINCT idPublicacion) > 1
+                    )
+                    SELECT
+                        pn.tipo                 AS TIPO,
+                        MIN(pn.titulo)          AS TITULO,
+                        pn.TITULO_FUENTE        AS TITULO_FUENTE,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ib.nombre                AS BIBLIOTECA,
+                        COUNT(DISTINCT pn.idPublicacion) AS NUM_PUBLICACIONES,
+                        GROUP_CONCAT(DISTINCT pn.idPublicacion ORDER BY pn.idPublicacion SEPARATOR ', ') AS IDS_PUBLICACIONES
+                    FROM publicaciones_normalizadas pn
+                    JOIN duplicados d ON d.titulo_normalizado = pn.titulo_normalizado
+                        AND d.tipo = pn.tipo
+                        AND d.TITULO_FUENTE = pn.TITULO_FUENTE
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pn.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    GROUP BY pn.tipo, pn.titulo_normalizado, pn.TITULO_FUENTE, ic.idBiblioteca, ib.nombre 
+                    ORDER BY pn.tipo, pn.TITULO_FUENTE;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones tipo capitulo cuya fuente sea una colección.
+def get_pub_publicaciones_tipo_capitulo_fuente_coleccion(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            pp.idPublicacion        AS ID_PUB,
+                            pp.tipo                 AS TIPO,
+                            pp.titulo               AS TITULO,
+                            pp.agno                 AS AGNO,
+                            ic.idBiblioteca         AS ID_BIBLIOTECA,
+                            ib.nombre                AS BIBLIOTECA,
+                            pf.titulo               AS TITULO_FUENTE
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        WHERE pp.eliminado = '0'
+                        AND pp.tipo = 'Capítulo'
+                        AND pf.tipo = 'Colección'
+                        ORDER BY ic.idBiblioteca, pp.agno DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones asociadas a fuentes eliminadas.
+def get_pub_publicaciones_asociadas_a_fuentes_eliminadas(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                        pp.idPublicacion        AS ID_PUB,
+                        pp.tipo                 AS TIPO,
+                        pp.titulo               AS TITULO,
+                        pp.agno                 AS AGNO,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ib.nombre                AS BIBLIOTECA,
+                        pf.titulo               AS TITULO_FUENTE
+                    FROM prisma.publicacionesXcentro pp
+                    LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    WHERE pp.eliminado = '0'
+                    AND pf.eliminado = '1'
+                    ORDER BY ic.idBiblioteca, pp.agno DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de Últimas 200 publicaciones insertadas.
+def get_pub_ultimas_200(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            pp.idPublicacion        AS ID_PUB,
+                            pp.tipo                 AS TIPO,
+                            pp.titulo               AS TITULO,
+                            pp.agno                 AS AGNO,
+                            ic.idBiblioteca         AS ID_BIBLIOTECA,
+                            ib.nombre                AS BIBLIOTECA,
+                            pf.titulo               AS TITULO_FUENTE
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        WHERE pp.eliminado = '0'
+                        ORDER BY pp.idPublicacion DESC
+                        LIMIT 200;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones con idScopus y que la revista asociada no tenga metrica en SJR/Citiscore
+def get_pub_publicaciones_scopus_sin_metrica_Revista(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            pp.idPublicacion        AS ID_PUB,
+                            pp.tipo                 AS TIPO,
+                            pp.titulo               AS TITULO,
+                            pp.agno                 AS AGNO,
+                            ic.idBiblioteca         AS ID_BIBLIOTECA,
+                            ib.nombre               AS BIBLIOTECA,
+                            pf.titulo               AS TITULO_FUENTE
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN (
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_sjr sjr ON pif.valor = sjr.issn
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                            UNION
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_sjr sjr ON pif.valor = sjr.issn_2
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                            UNION
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_citescore cs ON pif.valor = cs.issn
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                        ) fuentes_con_metrica ON fuentes_con_metrica.idFuente = pf.idFuente
+                        WHERE pp.eliminado = '0'
+                        AND pf.idFuente IS NOT NULL
+                        AND pf.eliminado = '0'
+                        AND pf.tipo = 'Revista'
+                        AND EXISTS (
+                            SELECT 1 FROM p_identificador_publicacion pip
+                            WHERE pip.idPublicacion = pp.idPublicacion
+                            AND pip.tipo = 'scopus'
+                        )
+                        AND fuentes_con_metrica.idFuente IS NULL
+                        ORDER BY ic.idBiblioteca, pp.idPublicacion DESC;SELECT
+                            pp.idPublicacion        AS ID_PUB,
+                            pp.tipo                 AS TIPO,
+                            pp.titulo               AS TITULO,
+                            pp.agno                 AS AGNO,
+                            ic.idBiblioteca         AS ID_BIBLIOTECA,
+                            ib.nombre               AS BIBLIOTECA,
+                            pf.titulo               AS TITULO_FUENTE
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN (
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_sjr sjr ON pif.valor = sjr.issn
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                            UNION
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_sjr sjr ON pif.valor = sjr.issn_2
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                            UNION
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_citescore cs ON pif.valor = cs.issn
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                        ) fuentes_con_metrica ON fuentes_con_metrica.idFuente = pf.idFuente
+                        WHERE pp.eliminado = '0'
+                        AND pf.idFuente IS NOT NULL
+                        AND pf.eliminado = '0'
+                        AND pf.tipo = 'Revista'
+                        AND EXISTS (
+                            SELECT 1 FROM p_identificador_publicacion pip
+                            WHERE pip.idPublicacion = pp.idPublicacion
+                            AND pip.tipo = 'scopus'
+                        )
+                        AND fuentes_con_metrica.idFuente IS NULL
+                        ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones con idWOS y que la revista asociada no tenga metrica en JCR ni JCI
+def get_pub_publicaciones_wos_sin_metrica_Revista(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                        pp.idPublicacion        AS ID_PUB,
+                        pp.tipo                 AS TIPO,
+                        pp.titulo               AS TITULO,
+                        pp.agno                 AS AGNO,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ib.nombre               AS BIBLIOTECA,
+                        pf.titulo               AS TITULO_FUENTE
+                    FROM prisma.publicacionesXcentro pp
+                    LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    LEFT JOIN (
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jcr jcr ON pif.valor = jcr.issn
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                        UNION
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jcr jcr ON pif.valor = jcr.issn_2
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                        UNION
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jci jci ON pif.valor = jci.issn
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                        UNION
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jci jci ON pif.valor = jci.issn_2
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                    ) fuentes_con_metrica ON fuentes_con_metrica.idFuente = pf.idFuente
+                    WHERE pp.eliminado = '0'
+                    AND pf.idFuente IS NOT NULL
+                    AND pf.eliminado = '0'
+                    AND pf.tipo = 'Revista'
+                    AND EXISTS (
+                        SELECT 1 FROM p_identificador_publicacion pip
+                        WHERE pip.idPublicacion = pp.idPublicacion
+                        AND pip.tipo = 'wos'
+                    )
+                    AND fuentes_con_metrica.idFuente IS NULL
+                    ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones asociadas a una Revista con SJR/Citiscore y no tenga idScopus
+def get_pub_Publicaciones_sjr_citescore_sin_scopus(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            pp.idPublicacion        AS ID_PUB,
+                            pp.tipo                 AS TIPO,
+                            pp.titulo               AS TITULO,
+                            pp.agno                 AS AGNO,
+                            ic.idBiblioteca         AS ID_BIBLIOTECA,
+                            ib.nombre               AS BIBLIOTECA,
+                            pf.titulo               AS TITULO_FUENTE
+                        FROM prisma.publicacionesXcentro pp
+                        LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN (
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_sjr sjr ON pif.valor = sjr.issn
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                            UNION
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_sjr sjr ON pif.valor = sjr.issn_2
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                            UNION
+                            SELECT pif.idFuente
+                            FROM p_identificador_fuente pif
+                            INNER JOIN m_citescore cs ON pif.valor = cs.issn
+                            WHERE pif.tipo IN ('issn', 'eissn')
+                        ) fuentes_con_metrica ON fuentes_con_metrica.idFuente = pf.idFuente
+                        WHERE pp.eliminado = '0'
+                        AND pf.idFuente IS NOT NULL
+                        AND pf.eliminado = '0'
+                        AND pf.tipo = 'Revista'
+                        AND fuentes_con_metrica.idFuente IS NOT NULL
+                        AND NOT EXISTS (
+                            SELECT 1 FROM p_identificador_publicacion pip
+                            WHERE pip.idPublicacion = pp.idPublicacion
+                            AND pip.tipo = 'scopus'
+                        )
+                        ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de publicaciones asociadas a una Revista con JCR y no tenga idWOS
+def get_pub_Publicaciones_jcr_jci_sin_wos(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                        pp.idPublicacion        AS ID_PUB,
+                        pp.tipo                 AS TIPO,
+                        pp.titulo               AS TITULO,
+                        pp.agno                 AS AGNO,
+                        ic.idBiblioteca         AS ID_BIBLIOTECA,
+                        ib.nombre               AS BIBLIOTECA,
+                        pf.titulo               AS TITULO_FUENTE
+                    FROM prisma.publicacionesXcentro pp
+                    LEFT JOIN p_fuente pf ON pf.idFuente = pp.idFuente
+                    LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+                    LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                    LEFT JOIN (
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jcr jcr ON pif.valor = jcr.issn
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                        UNION
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jcr jcr ON pif.valor = jcr.issn_2
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                        UNION
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jci jci ON pif.valor = jci.issn
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                        UNION
+                        SELECT pif.idFuente
+                        FROM p_identificador_fuente pif
+                        INNER JOIN m_jci jci ON pif.valor = jci.issn_2
+                        WHERE pif.tipo IN ('issn', 'eissn')
+                    ) fuentes_con_metrica ON fuentes_con_metrica.idFuente = pf.idFuente
+                    WHERE pp.eliminado = '0'
+                    AND pf.idFuente IS NOT NULL
+                    AND pf.eliminado = '0'
+                    AND pf.tipo = 'Revista'
+                    AND fuentes_con_metrica.idFuente IS NOT NULL
+                    AND NOT EXISTS (
+                        SELECT 1 FROM p_identificador_publicacion pip
+                        WHERE pip.idPublicacion = pp.idPublicacion
+                        AND pip.tipo = 'wos'
+                    )
+                    ORDER BY pp.idPublicacion DESC;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -778,14 +1312,14 @@ def get_pub_publicaciones_autores_repetidos(bd: BaseDatos = None) -> dict:
 def get_pub_num_publicaciones_por_biblioteca(bd: BaseDatos = None) -> dict:
     query = """SELECT 
                 ic.idBiblioteca         AS ID_BIBLIOTECA,
-                ic.nombre               AS BIBLIOTECA,
+                ib.nombre               AS BIBLIOTECA,
                 pp.tipo                 AS TIPO,
                 COUNT(DISTINCT pp.idPublicacion) AS NUM_PUBLICACIONES
             FROM prisma.publicacionesXcentro pp
             LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
             LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
             WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
-            GROUP BY ic.idBiblioteca, ic.nombre, pp.tipo
+            GROUP BY ic.idBiblioteca, ib.nombre , pp.tipo
             ORDER BY ic.idBiblioteca, NUM_PUBLICACIONES DESC;"""
     try:
         if bd is None:
@@ -795,3 +1329,111 @@ def get_pub_num_publicaciones_por_biblioteca(bd: BaseDatos = None) -> dict:
     except Exception as e:
         return {"error": e.message}, 400
     return consulta
+
+
+# ****************************************
+# ************ INVESTIGADORES *************
+# ****************************************
+
+
+# Lista de investigadores sin email
+def get_inv_investigadores_sin_email(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                            i.idInvestigador    AS ID_INVES,
+                            i.nombre            AS NOMBRE,
+                            i.apellidos         AS APELLIDOS,
+                            ic.idBiblioteca     AS ID_BIBLIOTECA,
+                            ib.nombre           AS BIBLIOTECA
+                        FROM i_investigador_activo i
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        WHERE i.email = '' OR i.email IS NULL"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de investigadores sin identificadores
+def get_inv_investigadores_sin_identificadores(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            i.idInvestigador    AS ID_INVES,
+                            i.nombre            AS NOMBRE,
+                            i.apellidos         AS APELLIDOS,
+                            ic.idBiblioteca     AS ID_BIBLIOTECA,
+                            ib.nombre           AS BIBLIOTECA
+                        FROM i_investigador_activo i
+                        LEFT JOIN i_identificador_investigador ii ON ii.idInvestigador = i.idInvestigador
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        WHERE ii.idInvestigador IS NULL"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de investigadores sin publicaciones
+def get_inv_investigadores_sin_publicaciones(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            i.idInvestigador    AS ID_INVES,
+                            i.nombre            AS NOMBRE,
+                            i.apellidos         AS APELLIDOS,
+                            ic.idBiblioteca     AS ID_BIBLIOTECA,
+                            ib.nombre           AS BIBLIOTECA
+                        FROM i_investigador_activo i
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        WHERE i.idInvestigador NOT IN (
+                            SELECT DISTINCT idInvestigador
+                            FROM prisma.p_autor
+                            WHERE idInvestigador IS NOT NULL
+                            AND eliminado = '0'
+                        )
+                        ORDER BY ic.idBiblioteca, i.apellidos;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de los 20 últimos investigadores insertados
+def get_inv_investigadores_20_ultimos_insertados(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT *
+                            FROM (
+                                SELECT
+                                    i.idInvestigador    AS ID_INVES,
+                                    i.nombre            AS NOMBRE,
+                                    i.apellidos         AS APELLIDOS,
+                                    ic.idBiblioteca     AS ID_BIBLIOTECA,
+                                    ib.nombre           AS BIBLIOTECA,
+                                    ROW_NUMBER() OVER (
+                                        PARTITION BY ic.idBiblioteca 
+                                        ORDER BY i.idInvestigador DESC
+                                    ) AS rn
+                                FROM i_investigador_activo i
+                                LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
+                                LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                            ) ranked
+                            WHERE rn <= 20
+                            ORDER BY ID_BIBLIOTECA, ID_INVES DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
