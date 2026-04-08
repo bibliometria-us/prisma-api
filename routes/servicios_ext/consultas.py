@@ -1398,7 +1398,6 @@ def get_inv_investigadores_sin_publicaciones(bd: BaseDatos = None) -> dict:
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
                         LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
                         LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento
-                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
                         WHERE i.idInvestigador NOT IN (
                             SELECT DISTINCT idInvestigador
                             FROM prisma.p_autor
