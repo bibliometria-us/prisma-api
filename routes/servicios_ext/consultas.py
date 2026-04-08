@@ -1343,10 +1343,12 @@ def get_inv_investigadores_sin_email(bd: BaseDatos = None) -> dict:
                             i.nombre            AS NOMBRE,
                             i.apellidos         AS APELLIDOS,
                             ic.idBiblioteca     AS ID_BIBLIOTECA,
-                            ib.nombre           AS BIBLIOTECA
+                            ib.nombre           AS BIBLIOTECA,
+                            id.nombre 			AS DEPARTAMENTO	
                         FROM i_investigador_activo i
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
                         LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
                         WHERE i.email = '' OR i.email IS NULL"""
     try:
         if bd is None:
@@ -1365,11 +1367,13 @@ def get_inv_investigadores_sin_identificadores(bd: BaseDatos = None) -> dict:
                             i.nombre            AS NOMBRE,
                             i.apellidos         AS APELLIDOS,
                             ic.idBiblioteca     AS ID_BIBLIOTECA,
-                            ib.nombre           AS BIBLIOTECA
+                            ib.nombre           AS BIBLIOTECA,
+                            id.nombre 			AS DEPARTAMENTO	
                         FROM i_investigador_activo i
                         LEFT JOIN i_identificador_investigador ii ON ii.idInvestigador = i.idInvestigador
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
                         LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
                         WHERE ii.idInvestigador IS NULL"""
     try:
         if bd is None:
@@ -1388,10 +1392,13 @@ def get_inv_investigadores_sin_publicaciones(bd: BaseDatos = None) -> dict:
                             i.nombre            AS NOMBRE,
                             i.apellidos         AS APELLIDOS,
                             ic.idBiblioteca     AS ID_BIBLIOTECA,
-                            ib.nombre           AS BIBLIOTECA
+                            ib.nombre           AS BIBLIOTECA,
+                            id.nombre 			AS DEPARTAMENTO	
                         FROM i_investigador_activo i
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
                         LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento
+                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
                         WHERE i.idInvestigador NOT IN (
                             SELECT DISTINCT idInvestigador
                             FROM prisma.p_autor
@@ -1419,6 +1426,7 @@ def get_inv_investigadores_20_ultimos_insertados(bd: BaseDatos = None) -> dict:
                                     i.apellidos         AS APELLIDOS,
                                     ic.idBiblioteca     AS ID_BIBLIOTECA,
                                     ib.nombre           AS BIBLIOTECA,
+                                    id.nombre 			AS DEPARTAMENTO,
                                     ROW_NUMBER() OVER (
                                         PARTITION BY ic.idBiblioteca 
                                         ORDER BY i.idInvestigador DESC
@@ -1426,9 +1434,40 @@ def get_inv_investigadores_20_ultimos_insertados(bd: BaseDatos = None) -> dict:
                                 FROM i_investigador_activo i
                                 LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
                                 LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                                LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
                             ) ranked
                             WHERE rn <= 20
                             ORDER BY ID_BIBLIOTECA, ID_INVES DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# Lista de los investigadores sin ORCID
+def get_inv_investigadores_sin_orcid(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            i.idInvestigador    AS ID_INVES,
+                            i.nombre            AS NOMBRE,
+                            i.apellidos         AS APELLIDOS,
+                            ic.idBiblioteca     AS ID_BIBLIOTECA,
+                            ib.nombre           AS BIBLIOTECA,
+                            id.nombre 			AS DEPARTAMENTO	
+                        FROM i_investigador_activo i
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
+                        WHERE i.idInvestigador NOT IN (
+                            SELECT DISTINCT idInvestigador
+                            FROM i_identificador_investigador
+                            WHERE tipo = 'orcid'
+                            AND idInvestigador IS NOT NULL
+                        )
+                        ORDER BY ic.idBiblioteca, i.apellidos;"""
     try:
         if bd is None:
             bd = BaseDatos()

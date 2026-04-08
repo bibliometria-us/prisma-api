@@ -1395,7 +1395,7 @@ class get_inv_investigadores_sin_publicaciones(Resource):
     doc=False,
     endpoint="get_inv_investigadores_20_ultimos_insertados",
 )
-class get_inv_20_ultimos_insertados(Resource):
+class get_inv_investigadores_20_ultimos_insertados(Resource):
     def get(self):
         args = request.args
         api_key = args.get("api_key")
@@ -1403,7 +1403,34 @@ class get_inv_20_ultimos_insertados(Resource):
         if not es_visor(api_key=api_key):
             return {"message": "No autorizado"}, 401
         try:
-            incidencias = consultas.get_inv_20_ultimos_insertados()
+            incidencias = consultas.get_inv_investigadores_20_ultimos_insertados()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# Lista de los investigadores sin ORCID
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_inv_investigadores_sin_orcid",
+    doc=False,
+    endpoint="get_inv_investigadores_sin_orcid",
+)
+class get_inv_investigadores_sin_orcid(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_inv_investigadores_sin_orcid()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
