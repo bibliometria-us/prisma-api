@@ -683,7 +683,7 @@ pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ib.nombre AS BIBLIOTECA
     FROM prisma.publicacionesXcentro pp
     LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
     LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
-    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND (pp.idFuente = '0' OR pp.idFuente IS NULL)
+    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND (pp.idFuente = '0' OR pp.idFuente IS NULL) AND pp.tipo NOT IN (SELECT nombre FROM config.tipos_publicacion WHERE activo = '1')
     ORDER BY pp.idPublicacion DESC;"""
     try:
         if bd is None:
@@ -1445,6 +1445,41 @@ def get_inv_investigadores_20_ultimos_insertados(bd: BaseDatos = None) -> dict:
     except Exception as e:
         return {"error": e.message}, 400
     return metrica
+
+
+# Lista de los investigadores sin ORCID
+def get_inv_investigadores_sin_orcid(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT
+                            i.idInvestigador    AS ID_INVES,
+                            i.nombre            AS NOMBRE,
+                            i.apellidos         AS APELLIDOS,
+                            ic.idBiblioteca     AS ID_BIBLIOTECA,
+                            ib.nombre           AS BIBLIOTECA,
+                            id.nombre 			AS DEPARTAMENTO	
+                        FROM i_investigador_activo i
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = i.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+                        LEFT JOIN prisma.i_departamento id ON id.idDepartamento = i.idDepartamento 
+                        WHERE i.idInvestigador NOT IN (
+                            SELECT DISTINCT idInvestigador
+                            FROM i_identificador_investigador
+                            WHERE tipo = 'orcid'
+                            AND idInvestigador IS NOT NULL
+                        )
+                        ORDER BY ic.idBiblioteca, i.apellidos;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# ****************************************
+# ************   FUENTES     *************
+# ****************************************
 
 
 # Lista de los investigadores sin ORCID
