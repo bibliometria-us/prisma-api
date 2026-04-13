@@ -1186,7 +1186,7 @@ def get_pub_publicaciones_wos_sin_metrica_Revista(bd: BaseDatos = None) -> dict:
                     AND EXISTS (
                         SELECT 1 FROM p_identificador_publicacion pip
                         WHERE pip.idPublicacion = pp.idPublicacion
-                        AND pip.tipo = 'wos'
+                        AND (pip.tipo = 'wos' OR pip.tipo = 'medline')
                     )
                     AND fuentes_con_metrica.idFuente IS NULL
                     ORDER BY pp.idPublicacion DESC;"""
@@ -1294,7 +1294,7 @@ def get_pub_Publicaciones_jcr_jci_sin_wos(bd: BaseDatos = None) -> dict:
                     AND NOT EXISTS (
                         SELECT 1 FROM p_identificador_publicacion pip
                         WHERE pip.idPublicacion = pp.idPublicacion
-                        AND pip.tipo = 'wos'
+                        AND (pip.tipo = 'wos' OR pip.tipo = 'medline')
                     )
                     ORDER BY pp.idPublicacion DESC;"""
     try:
