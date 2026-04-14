@@ -232,13 +232,11 @@ class OpenalexParser(Parser):
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar tipos de fuentes
         tipos_fuente = {
-            "ebook platform": "Otros",
+            "ebook platform": "Libro",
             "journal": "Revista",
-            "conference": "Ponencia",
+            "conference": "Congreso",
+            # Gestionar colecciones
             "book series": "Colección",
-            "repository": "Otros",
-            "other": "Otros",
-            "metadata": "Otros",
         }
         # Titulo y tipo
         primary_location = self.data.get("primary_location")

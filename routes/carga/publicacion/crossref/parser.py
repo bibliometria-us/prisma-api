@@ -190,7 +190,6 @@ class CrossrefParser(Parser):
 
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar tipos de fuentes
-        tipos_fuente = {"Revista": "Revista", "Libro": "Libro", "": "Revista"}
         tipo_fuente = ""
         # Titulo
         titulo = (
@@ -202,9 +201,9 @@ class CrossrefParser(Parser):
         tipo_fuente = None
         identificadores = self.datos_carga_publicacion.fuente.identificadores
         if any(obj.tipo == "issn" or obj.tipo == "eissn" for obj in identificadores):
-            tipo_fuente = tipos_fuente["Revista"]
+            tipo_fuente = "Revista"
         if any(obj.tipo == "isbn" or obj.tipo == "eisbn" for obj in identificadores):
-            tipo_fuente = tipos_fuente["Libro"]
+            tipo_fuente = "Libro"
 
         if tipo_fuente:
             self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)

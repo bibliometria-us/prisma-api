@@ -234,22 +234,18 @@ class ScopusParser(Parser):
         dato = DatosCargaDatosFuente(valor=valor, tipo="edición")
         self.datos_carga_publicacion.fuente.add_dato(dato)
 
+    def origen_tipo_fuente(self):
+        tipo_scopus = self.data.get("prism:aggregationType")
+        return tipo_scopus
+
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar los tipos de fuentes
-        tipos_fuente = {
-            "Journal": "Revista",
-            "Conference proceeding": "Conference Proceeding",
-            "Book series": "Book in series",
-            "Book": "Libro",
-            "Trade journal": "Revista",
-            "Undefined": "Desconocido",
-        }
         titulo = self.data.get("prism:publicationName")
-        tipo_scopus = self.data.get("prism:aggregationType")
-        tipo_fuente = tipos_fuente.get(tipo_scopus) or tipo_scopus
 
         self.datos_carga_publicacion.fuente.set_titulo(titulo)
-        self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
+        self.cargar_tipo_fuente()
+
+        pass
 
     def carga_editorial(self):
         # No viene en la llamada de Scopus
