@@ -683,7 +683,7 @@ pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ib.nombre AS BIBLIOTECA
     FROM prisma.publicacionesXcentro pp
     LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
     LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
-    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND (pp.idFuente = '0' OR pp.idFuente IS NULL) AND pp.tipo NOT IN (SELECT nombre FROM config.tipos_publicacion WHERE activo = '1')
+    WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' AND pp.tipo NOT IN (SELECT nombre FROM config.tipos_publicacion WHERE activo = '1')
     ORDER BY pp.idPublicacion DESC;"""
     try:
         if bd is None:
