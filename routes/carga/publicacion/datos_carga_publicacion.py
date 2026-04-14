@@ -191,7 +191,7 @@ class DatosCargaPublicacion(DatosCarga):
         return self.tipo in tipos
 
     def normalizar_fuente(self):
-        if self.es_libro() and self.fuente.tiene_issn_e_isbn():
+        if self.es_libro() and self.fuente.es_coleccion():
             self.fuente_a_coleccion()
             self.libro_como_fuente()
 
@@ -204,6 +204,7 @@ class DatosCargaPublicacion(DatosCarga):
 
         if self.es_capitulo() and self.fuente.tiene_issn_e_isbn():
             self.fuente_a_coleccion()
+            self.libro_como_fuente()
             self.fuente.coleccion.identificadores = self.fuente.get_issns()
             self.fuente.identificadores = self.fuente.get_isbns()
 
@@ -253,7 +254,10 @@ class DatosCargaPublicacion(DatosCarga):
             raise ErrorCargaPublicacion("La publicación no contiene título.")
 
         # Validar fuente: título, tipo y ISSN o ISBN (CASO ESPECIAL: Ponencia Crossref salta validación de fuente porque no trae ISSN ni ISBN pero se considera válida)
-        if not ((self.tipo == "Ponencia" and self.fuente_datos == "Crossref") or (self.tipo == "Tesis" and self.fuente_datos == "IDUS")):
+        if not (
+            (self.tipo == "Ponencia" and self.fuente_datos == "Crossref")
+            or (self.tipo == "Tesis" and self.fuente_datos == "IDUS")
+        ):
             self.validar_fuente()
 
         if not self.tipo:
@@ -560,6 +564,10 @@ class DatosCargaFuente(DatosCarga):
 
     def tiene_issn_e_isbn(self) -> bool:
         return self.tiene_issn() and self.tiene_isbn()
+
+    def es_coleccion(self) -> bool:
+        tipos = ["Colección"]
+        return self.tipo in tipos
 
     def to_dict(self):
         dict = {

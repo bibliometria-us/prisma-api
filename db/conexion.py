@@ -99,6 +99,7 @@ class BaseDatos:
             self.startConnection()
 
         try:
+            self.error = False
             cursor = self.connection.cursor()
             cursor.execute(consulta, params=params)
             column_names = cursor.column_names

@@ -318,16 +318,11 @@ class WosParser(Parser):
                     )
                     self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
+    def origen_tipo_fuente(self) -> str:
+        tipo_wos = self.data["static_data"]["summary"]["pub_info"]["pubtype"]
+        return tipo_wos
+
     def cargar_titulo_y_tipo(self):
-        # TODO: Aclarar tipos de fuentes
-        tipos_fuente = {
-            "Journal": "Revista",
-            "Conference proceeding": "Conference Proceeding",
-            "Book series": "Book in series",
-            "Book": "Libro",
-            "Trade journal": "Revista",
-            "Undefined": "Desconocido",
-        }
         # Titulo
         titulo_dict = self.data["static_data"]["summary"]["titles"]
         titulo = next(
@@ -339,10 +334,10 @@ class WosParser(Parser):
             None,
         )
 
-        tipo_wos = self.data["static_data"]["summary"]["pub_info"]["pubtype"]
-        tipo_fuente = tipos_fuente.get(tipo_wos) or tipo_wos
         self.datos_carga_publicacion.fuente.set_titulo(titulo)
-        self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
+        self.cargar_tipo_fuente()
+
+        pass
 
     def carga_editorial(self):
         publisher_data = self.data["static_data"]["summary"]["publishers"]["publisher"]
