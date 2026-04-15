@@ -393,8 +393,7 @@ class CargaPublicacion(Carga):
             autor=self.autor,
         )
 
-        if self.buscar_identificador_publicacion(identificador, registro):
-            return None
+        self.buscar_identificador_publicacion(identificador, registro)
 
         query = """
                 INSERT INTO prisma.p_identificador_publicacion (idPublicacion, tipo, valor, origen)
@@ -417,15 +416,45 @@ class CargaPublicacion(Carga):
         identificador: DatosCargaIdentificadorPublicacion,
         registro: RegistroCambiosPublicacionIdentificadores,
     ) -> bool:
-        if identificador not in self.datos_antiguos.identificadores:
-            return False
+        # Se busca el identificador en los datos antiguos de la publicación.
+        identificador_antiguo = next(
+            (
+                id
+                for id in self.datos_antiguos.identificadores
+                if id.tipo == identificador.tipo
+            ),
+            None,
+        )
 
-        problema = registro.detectar_conflicto(valor_actual=identificador.valor)
+        # Si el identificador no existe en los datos antiguos, se permite insertar directamente.
+        if not identificador_antiguo:
+            return
 
-        if problema:
-            self.problemas_carga.append(problema)
+        # Si ya existe un identificador del mismo tipo pero con valor diferente, se lanza un error.
+        if identificador.valor != identificador_antiguo.valor:
+            raise ErrorCargaPublicacion(
+                f"La publicación ya tiene un identificador de '{identificador.tipo}'. Identificador antiguo: '{identificador_antiguo.valor}'"
+            )
 
-        return True
+        # Si el identificador existe en otra publicación, se lanza un error.
+        query = """
+                SELECT id FROM prisma.p_identificador_publicacion WHERE tipo = %(tipo)s AND valor = %(valor)s
+                """
+        params = {
+            "tipo": identificador.tipo,
+            "valor": identificador.valor,
+        }
+
+        self.db.ejecutarConsulta(query, params)
+        id_publicacion_encontrada = self.db.get_first_cell()
+
+        if (
+            id_publicacion_encontrada
+            and id_publicacion_encontrada != self.id_publicacion
+        ):
+            raise ErrorCargaPublicacion(
+                f"El identificador de '{identificador.tipo}' con valor '{identificador.valor}' ya existe en otra publicación."
+            )
 
     # INSERCIÓN DE DATOS DE PUBLICACIÓN ----------------------------------------------------------------------
     def insertar_datos_publicacion(self):
