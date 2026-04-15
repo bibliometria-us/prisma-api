@@ -14,6 +14,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaPublicacion,
     DatosCargaAccesoAbierto,
 )
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 import routes.carga.publicacion.openalex.country_codes as country_codes
@@ -44,34 +45,8 @@ class OpenalexParser(Parser):
         #      self.datos_carga_publicacion.add_titulo_alternativo(title["title"])
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("type")
-
-        tipos = {
-            "article": "Artículo",
-            "book-chapter": "Capítulo",
-            "dataset": "Dataset",
-            "preprint": "Preprint",
-            "dissertation": "Tesis",
-            "book": "Libro",
-            "review": "Revisión",
-            "paratext": "Otros",
-            "libguides": "Otros",
-            "letter": "Otros",
-            "other": "Otros",
-            "reference-entry": "Otros",
-            "report": "Reporte",
-            "editorial": "Editorial",
-            "peer-review": "Peer Review",
-            "erratum": "Corrección",
-            "standard": "Otros",
-            "grant": "Otros",
-            "supplementary-materials": "Otros",
-            "retraction": "Otros",
-        }
-
-        valor = tipos.get(tipo) or "Otros"
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("type")
 
     def _cargar_autores(
         self,
@@ -86,13 +61,16 @@ class OpenalexParser(Parser):
             autor_info = autor.get("author", [])
             if "display_name" in autor_info:
                 firma = autor_info.get("display_name")
-            if "id" in autor_info:
+            if autor.get("raw_author_name") is not None and firma != autor.get(
+                "raw_author_name"
+            ):
+                firma = autor.get("raw_author_name")
+            if "id" in autor_info and autor_info.get("id") is not None:
                 openalex_id = autor_info.get("id").split("/")[-1]
                 identificadores["openalex_id"] = openalex_id
-            if "orcid" in autor_info:
-                if autor_info.get("orcid") is not None:
-                    orcid = autor_info.get("orcid").split("/")[-1]
-                    identificadores["orcid"] = orcid
+            if "orcid" in autor_info and autor_info.get("orcid") is not None:
+                orcid = autor_info.get("orcid").split("/")[-1]
+                identificadores["orcid"] = orcid
 
             orden = cont
 
@@ -121,7 +99,7 @@ class OpenalexParser(Parser):
                 ):
                     pais = country_codes.country_codes[aff.get("country_code")]
                 else:
-                    pais = None
+                    pais = None or "Desconocido"
                 afiliacion_autor = DatosCargaAfiliacionesAutor(
                     nombre=nombre, pais=pais, ror_id=ror_id
                 )
@@ -171,10 +149,11 @@ class OpenalexParser(Parser):
         ):
             return None
         fecha = datetime.strptime(self.data.get("publication_date"), "%Y-%m-%d")
-        agno = str(fecha.year)
+        agno = fecha.year
+        agno_str = f"{agno:04d}"
         mes = fecha.month
-        mes = f"{mes:02d}"
-        if len(agno) != 4 or len(mes) != 2:
+        mes_str = f"{mes:02d}"
+        if len(agno_str) != 4 or len(mes_str) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
             tipo="publicacion", agno=agno, mes=mes
@@ -191,7 +170,7 @@ class OpenalexParser(Parser):
         # Identificador doi Openalex
         if self.data.get("doi"):
             identificador_doi = DatosCargaIdentificadorPublicacion(
-                valor=self.data.get("doi").split("/")[-1], tipo="doi"
+                valor=self.data.get("doi").replace("https://doi.org/", ""), tipo="doi"
             )
             self.datos_carga_publicacion.add_identificador(identificador_doi)
 
@@ -245,7 +224,6 @@ class OpenalexParser(Parser):
         issns: list[str] = source.get("issn") or []
 
         for issn in issns:
-
             identificador = DatosCargaIdentificadorFuente(valor=issn, tipo="issn")
             self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
@@ -254,13 +232,11 @@ class OpenalexParser(Parser):
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar tipos de fuentes
         tipos_fuente = {
-            "ebook platform": "Otros",
+            "ebook platform": "Libro",
             "journal": "Revista",
-            "conference": "Ponencia",
+            "conference": "Congreso",
+            # Gestionar colecciones
             "book series": "Colección",
-            "repository": "Otros",
-            "other": "Otros",
-            "metadata": "Otros",
         }
         # Titulo y tipo
         primary_location = self.data.get("primary_location")
@@ -303,6 +279,7 @@ class OpenalexParser(Parser):
 
     def cargar_financiacion(self):
         # TODO: revisar donde viene la financiacion (grant)
+
         for grant in self.data.get("grants", []):
             entidad = grant.get("funder_display_name")
             proyecto = grant.get("award_id")

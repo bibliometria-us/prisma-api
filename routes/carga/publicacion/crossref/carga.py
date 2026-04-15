@@ -4,34 +4,48 @@ from routes.carga.publicacion.crossref.parser import CrossrefParser
 from integration.apis.crossref.crossref.crossref import CrossrefAPI
 import json
 
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
+
 
 class CargaPublicacionCrossref(CargaPublicacion):
-    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
+    def __init__(
+        self,
+        db: BaseDatos = None,
+        id_carga=None,
+        auto_commit=True,
+        autor=None,
+        tipo_carga=None,
+    ) -> None:
 
-        super().__init__(db, id_carga, auto_commit)
+        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.origen = "Crossref"
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
             "doi": self.cargar_publicacion_por_doi,
+            "crossref": self.cargar_publicacion_por_doi,
         }
         funcion = funciones.get(tipo)
         if funcion:
-            funcion(id)
+            return funcion(id)
         else:
-            raise ValueError(f"El tipo {tipo} no está soportado.")
+            raise ErrorCargaPublicacion(
+                f"El identificador tipo {tipo} no está soportado."
+            )
 
     def cargar_publicacion_por_doi(self, id: str):
         api = CrossrefAPI()
         record = api.get_publicaciones_por_doi(id=id)
-        if len(record) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+        if not record or len(record) == 0:
+            return None
 
         parser = CrossrefParser(data=record)
+        # Guardar los datos parseados
         self.datos = parser.datos_carga_publicacion
+        # Cargar la publicación en la base de datos
         self.cargar_publicacion()
 
-        return None
+        return self.id_publicacion
 
     def cargar_publicaciones_por_investigador(id_investigador: str):
         pass

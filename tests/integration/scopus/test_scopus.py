@@ -2,6 +2,7 @@ import pprint
 import pytest
 from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from routes.carga import consultas_cargas
+from routes.carga.publicacion.datos_carga_publicacion import DatosCargaPublicacion
 from routes.carga.publicacion.scopus.parser import ScopusParser
 import xml.etree.ElementTree as ET
 import json
@@ -158,18 +159,19 @@ def test_masivo_guardado_json():
     )
 
 
-def test_masivo_carga_json():
+def leer_fichero_json_scopus() -> list[DatosCargaPublicacion]:
     fuente = "scopus"
     FILENAME = f"tests/integration/{fuente}/json_masivo_{fuente}.json"
-    publicaciones_parseadas = []
 
     # Cargar el archivo JSON
     with open(FILENAME, "r", encoding="utf-8") as file:
         publicaciones = json.load(file)  # Lista de diccionarios
 
-    # Verificar la estructura
-    print(type(publicaciones))  # Debería ser <class 'list'>
-    print(type(publicaciones[0]))  # Cada elemento debería ser <class 'dict'>
+    return publicaciones
+
+
+def test_masivo_carga_json():
+    publicaciones = leer_fichero_json_scopus()
 
     lista_datos_publicacion = []
     # Imprimir algunas publicaciones

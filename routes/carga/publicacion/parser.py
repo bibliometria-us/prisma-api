@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
+from config.publicacion.tipos_fuente import mapear_tipo_fuente
+from config.publicacion.tipos_publicacion import mapear_tipo_publicacion
 from routes.carga.publicacion.datos_carga_publicacion import DatosCargaPublicacion
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 
 
 class Parser(ABC):
@@ -23,8 +26,32 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def cargar_tipo(self):
+    def origen_tipo(self) -> str:
         pass
+
+    def cargar_tipo(self):
+        tipo = self.origen_tipo()
+        valor = mapear_tipo_publicacion(
+            origen=self.datos_carga_publicacion.fuente_datos.lower(), nombre_origen=tipo
+        )
+
+        if not valor:
+            raise ErrorCargaPublicacion(f"Tipo de publicación '{tipo}' no soportado.")
+
+        self.datos_carga_publicacion.set_tipo(valor)
+
+    def origen_tipo_fuente(self) -> str:
+        pass
+
+    def cargar_tipo_fuente(self):
+        tipo = self.origen_tipo_fuente()
+        valor = mapear_tipo_fuente(
+            origen=self.datos_carga_publicacion.fuente_datos.lower(), nombre_origen=tipo
+        )
+        if not valor:
+            raise ErrorCargaPublicacion(f"Tipo de fuente '{tipo}' no soportado.")
+
+        self.datos_carga_publicacion.fuente.set_tipo(valor)
 
     @abstractmethod
     def cargar_autores(self):
@@ -76,5 +103,5 @@ class Parser(ABC):
         self.cargar_financiacion()
         self.cargar_fuente()
         self.carga_acceso_abierto()
-
+        self.datos_carga_publicacion.normalizar_fuente()
         self.datos_carga_publicacion.close()

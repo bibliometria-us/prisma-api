@@ -41,7 +41,7 @@ class OpenalexAPI(API):
             total_results = int(meta.get("count", 0))
 
             if total_results == 0:
-                raise ValueError("No se encontraron resultados.")
+                return []
 
             self.results.extend(search_results)
 

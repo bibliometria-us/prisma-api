@@ -2,6 +2,11 @@ from flask_restx import Namespace, Resource
 from flask import jsonify, request, session, redirect, url_for, send_file, Response
 import config.global_config as gconfig
 from logger.async_request import AsyncRequest
+from routes.informes.acuerdos_transformativos.autores import (
+    informe_at_dois,
+)
+from routes.informes.acuerdos_transformativos.exception import ErrorInformeAT
+from routes.informes.acuerdos_transformativos.revistas import informe_at_revistas
 from routes.informes.pub_metrica.pub_metrica import (
     generar_informe,
     buscar_publicaciones,
@@ -252,3 +257,67 @@ class InformeCalidad(Resource):
             return Response(res, status=200, mimetype="application/json")
         except Exception as e:
             return {"error": e.message}, 400
+
+
+@informe_namespace.route("/publicaciones_at", endpoint="publicaciones_at", doc=False)
+class PublicacionesAT(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key", None)
+
+        try:
+            assert es_admin(api_key=api_key)
+        except:
+            return {"message": "No autorizado"}, 401
+
+        try:
+            año_metricas = args.get("año_metricas", None)
+            files = request.files.getlist("files[]")
+
+            if len(files) == 0:
+                return {"error": "No se han adjuntado ficheros adecuadamente"}, 400
+
+            file = files[0]
+            output = informe_at_dois(file, año_metricas=año_metricas)
+
+            return send_file(
+                output,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                as_attachment=True,
+                download_name="informe_autores.xlsx",
+            )
+
+        except ErrorInformeAT as e:
+            return {"error": str(e)}
+        except Exception:
+            return {"error": "Error inesperado"}, 502
+
+
+@informe_namespace.route("/revistas_at", endpoint="revistas_at", doc=False)
+class RevistasAT(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key", None)
+
+        try:
+            assert es_admin(api_key=api_key)
+        except:
+            return {"message": "No autorizado"}, 401
+
+        try:
+            año_metricas = args.get("año_metricas", None)
+            año_at = args.get("año_at", None)
+
+            output = informe_at_revistas(año_metricas=año_metricas, año_at=año_at)
+
+            return send_file(
+                output,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                as_attachment=True,
+                download_name="informe_revistas.xlsx",
+            )
+
+        except ErrorInformeAT as e:
+            return {"error": str(e)}
+        except Exception:
+            return {"error": "Error inesperado"}, 502

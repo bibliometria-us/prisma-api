@@ -112,9 +112,8 @@ class WosAPI(API):
         dataBaseId = f"WOS"
 
         # Controla que incluya el prefijo
-        # TODO: distinguir WOS y Medline
-        prefijo = "WOS:"
-        query = f"DO=({id if id.startswith(prefijo) else prefijo + id})"
+        prefijo = ""
+        query = f"DO=({id})"
 
         body_args = {}
 

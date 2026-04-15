@@ -14,6 +14,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaFinanciacion,
     DatosCargaPublicacion,
 )
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
@@ -44,26 +45,8 @@ class ScopusParser(Parser):
         # Scopus no devuelve un título alternativo
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("subtype")
-
-        # TODO: Aclarar los tipos de publicación
-        tipos = {
-            "ar": "Artículo",
-            "ip": "Artículo",
-            "cp": "Ponencia",
-            "re": "Revisión",
-            "ed": "Editorial",
-            "bk": "Libro",
-            "no": "Nota",
-            "ch": "Capítulo",
-            "sh": "Short Survey",
-            "er": "Corrección",
-            "le": "Letter",
-        }
-
-        valor = tipos.get(tipo) or "Otros"
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("subtype")
 
     def _cargar_autores(
         self,
@@ -83,7 +66,7 @@ class ScopusParser(Parser):
         for autor in self.data.get(attr_name, []):
             # Se completa el Objeto DatosCargaAutor(Autor)
             firma = autor.get("authname")
-            orden = autor.get("@seq")
+            orden = int(autor.get("@seq"))
             carga_autor = DatosCargaAutor(orden=orden, firma=firma, tipo=tipo)
 
             # Se completa el Objeto DatosCargaIdentificadorAutor(Identificador del Autor)
@@ -95,9 +78,9 @@ class ScopusParser(Parser):
             # Se completa las el Objeto DatosCargaAfiliacionesAutor(Afiliaciones del Autor)
             for aff in autor.get("afid", []):
                 if_aff = aff.get("$")
-                nombre_aff = afiliaciones_publicacion[if_aff]["nombre"]
-                pais_aff = afiliaciones_publicacion[if_aff]["pais"]
-                ciudad_aff = afiliaciones_publicacion[if_aff]["ciudad"]
+                nombre_aff = afiliaciones_publicacion[if_aff].get("nombre")
+                pais_aff = afiliaciones_publicacion[if_aff].get("pais")
+                ciudad_aff = afiliaciones_publicacion[if_aff].get("ciudad")
                 afiliacion_autor = DatosCargaAfiliacionesAutor(
                     nombre=nombre_aff, pais=pais_aff, ciudad=ciudad_aff, ror_id=None
                 )
@@ -120,9 +103,9 @@ class ScopusParser(Parser):
 
     # cargar fecha en fechas_publicion (usar metodo general)
     def cargar_año_publicacion(self):
-        año = datetime.strptime(self.data.get("prism:coverDate"), "%Y-%m-%d").year
+        año = str(datetime.strptime(self.data.get("prism:coverDate"), "%Y-%m-%d").year)
         # TODO: Control Excep - esto se debería recoger en un nivel superior
-        if len(str(año)) != 4:
+        if len(año) != 4:
             raise TypeError("El año no tiene el formato correcto")
 
         self.datos_carga_publicacion.set_agno_publicacion(año)
@@ -134,10 +117,11 @@ class ScopusParser(Parser):
     def cargar_fecha_publicacion(self):
         # Fecha pub
         fecha = self.data.get("prism:coverDate")
-        agno = str(datetime.strptime(fecha, "%Y-%m-%d").year)
+        agno = datetime.strptime(fecha, "%Y-%m-%d").year
+        str_agno = str(agno)
         mes = datetime.strptime(fecha, "%Y-%m-%d").month
-        mes = f"{mes:02d}"
-        if len(str(agno)) != 4 or len(str(mes)) != 2:
+        str_mes = f"{mes:02d}"
+        if len(str_agno) != 4 or len(str_mes) != 2:
             raise TypeError("El mes o el año no tiene el formato correcto")
         fecha_insercion = DatosCargaFechaPublicacion(
             tipo="publicacion", agno=agno, mes=mes
@@ -159,7 +143,8 @@ class ScopusParser(Parser):
             self.datos_carga_publicacion.add_identificador(identificador)
 
     def cargar_scopus(self):
-        valor = self.data.get("eid")
+        valor: str = self.data.get("eid")
+        valor = valor.removeprefix("2-s2.0-")
         identificador = DatosCargaIdentificadorPublicacion(valor=valor, tipo="scopus")
         if valor:
             self.datos_carga_publicacion.add_identificador(identificador)
@@ -249,22 +234,18 @@ class ScopusParser(Parser):
         dato = DatosCargaDatosFuente(valor=valor, tipo="edición")
         self.datos_carga_publicacion.fuente.add_dato(dato)
 
+    def origen_tipo_fuente(self):
+        tipo_scopus = self.data.get("prism:aggregationType")
+        return tipo_scopus
+
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar los tipos de fuentes
-        tipos_fuente = {
-            "Journal": "Revista",
-            "Conference proceeding": "Conference Proceeding",
-            "Book series": "Book in series",
-            "Book": "Libro",
-            "Trade journal": "Revista",
-            "Undefined": "Desconocido",
-        }
         titulo = self.data.get("prism:publicationName")
-        tipo_scopus = self.data.get("prism:aggregationType")
-        tipo_fuente = tipos_fuente.get(tipo_scopus) or tipo_scopus
 
         self.datos_carga_publicacion.fuente.set_titulo(titulo)
-        self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)
+        self.cargar_tipo_fuente()
+
+        pass
 
     def carga_editorial(self):
         # No viene en la llamada de Scopus
@@ -300,7 +281,6 @@ class ScopusParser(Parser):
         self.cargar_titulo_y_tipo()
         self.carga_editorial()
         self.carga_acceso_abierto()
-        self.cargar_fecha_publicacion()
         # self.cargar_edicion_fuente()
 
     def cargar_financiacion(self):

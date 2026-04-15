@@ -1,18 +1,47 @@
 from db.conexion import BaseDatos
+from integration.apis.idus.idus import IdusAPI, IdusAPIItems, IdusAPISearch
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
+from routes.carga.publicacion.exception import (
+    ErrorCargaPublicacion,
+)
 from routes.carga.publicacion.idus.parser import IdusParser
 
 
 class CargaPublicacionIdus(CargaPublicacion):
-    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
+    def __init__(
+        self,
+        db: BaseDatos = None,
+        id_carga=None,
+        auto_commit=True,
+        autor=None,
+        tipo_carga=None,
+    ) -> None:
 
-        super().__init__(db, id_carga, auto_commit)
+        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.origen = "idUS"
 
+    def carga_publicacion(self, tipo: str, id: str):
+        funciones = {
+            "idus": self.cargar_publicacion_por_handle,
+        }
+        funcion = funciones.get(tipo)
+        if funcion:
+            return funcion(id)
+        else:
+            raise ErrorCargaPublicacion(
+                f"El identificador tipo {tipo} no está soportado."
+            )
+
     def cargar_publicacion_por_handle(self, handle):
-        parser = IdusParser(handle=handle)
+        api = IdusAPIItems()
+        record = api.get_from_handle(handle=handle)
+        if len(record) == 0:
+            return None
+        parser = IdusParser(data=record)
         self.datos = parser.datos_carga_publicacion
         self.cargar_publicacion()
+
+        return self.id_publicacion
 
     def cargar_publicacion_por_dict(self, data: dict):
         parser = IdusParser(data=data)
@@ -27,9 +56,9 @@ class CargaPublicacionIdus(CargaPublicacion):
             )
             carga.cargar_publicacion_por_handle(handle)
             if not batch:
-                carga.close_database()
+                carga.commit_database()
         if batch:
-            self.close_database()
+            self.commit_database()
 
     def cargar_publicaciones_por_dict(self, data_list: list[dict], batch=True):
         """Para cada diccionario, instanciamos un nuevo objeto de carga y le pasamos los datos"""
@@ -39,6 +68,6 @@ class CargaPublicacionIdus(CargaPublicacion):
             )
             carga.cargar_publicacion_por_dict(data)
             if not batch:
-                carga.close_database()
+                carga.commit_database()
         if batch:
-            self.close_database()
+            self.commit_database()

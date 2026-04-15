@@ -1,15 +1,32 @@
 import os
 import tempfile
+import threading
 from flask_restx import Namespace, Resource
-from flask import Response, make_response, request, jsonify
+from flask import Response, make_response, request, jsonify, session
+import pandas as pd
+from db.conexion import BaseDatos
 from models.investigador import Investigador
 from routes.carga import consultas_cargas
+from routes.carga.financiacion.carga_proyectos import carga_proyectos
+from routes.carga.fuente.metricas.acuerdos_transformativos.acuerdos_transformativos import (
+    carga_acuerdos_transformativos,
+    transformar_fichero,
+)
+from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
+    ErrorAT,
+    ErrorTransformacionFicheroAT,
+)
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
 from routes.carga.investigador.investigador.RRHH.carga import CargaInvestigadorRRHH
+from routes.carga.investigador.grupos.carga_sica import carga_sica
 from routes.carga.publicacion.idus.parser import IdusParser
+from routes.carga.publicacion.importacion_publicacion import ImportacionPublicacion
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from routes.carga.investigador.centros_censo.procesado import procesado_fichero
+from routes.carga.investigador.erasmus_plus.procesado import (
+    procesado_fichero_erasmus_plus,
+)
 from routes.carga.publicacion.carga_publicacion_por_investigador import (
     carga_publicaciones_investigador,
 )
@@ -21,41 +38,79 @@ from routes.carga.publicacion.wos.carga import CargaPublicacionWos
 from routes.carga.publicacion.openalex.carga import CargaPublicacionOpenalex
 from routes.carga.publicacion.zenodo.carga import CargaPublicacionZenodo
 from routes.carga.publicacion.crossref.carga import CargaPublicacionCrossref
+
+from routes.usuario import get_user_data
 from security.check_users import es_admin, es_editor
 from celery import current_app
-from routes.carga.investigador.grupos.actualizar_sica import (
-    actualizar_tabla_sica,
-    actualizar_grupos_sica,
+from routes.carga.investigador.erasmus_plus.carga import (
+    carga_erasmus_plus,
 )
 from datetime import datetime
 from logger.async_request import AsyncRequest
 import re
-from utils.format import dataframe_to_json
-
+from utils.format import dataframe_to_json, flask_csv_to_df
 
 carga_namespace = Namespace("carga", doc=False)
 
 
+# ********************************
+# **** CARGA DE GRUPOS DE INVESTIGACIÓN ****
+# ********************************
 @carga_namespace.route("/investigador/grupos", doc=False, endpoint="carga_grupos")
 class CargaGrupos(Resource):
     def post(self):
-        if not es_admin():
+        # Extraer api_key como en los otros endpoints
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
             return {"message": "No autorizado"}, 401
         if "files[]" not in request.files:
             return {"error": "No se han encontrado archivos en la petición"}, 400
 
         files = request.files.getlist("files[]")
 
-        for file in files:
-            file_path = "/app/temp/" + file.filename
-            file.save(file_path)
-            actualizar_tabla_sica(file_path)
+        uploaded_filenames = {f.filename for f in files}
+        expected_filenames = {
+            "T_GRUPOS.csv",
+            "T_INSTITUCIONES.csv",
+            "T_INVESTIGADORES.csv",
+            "T_INVESTIGADORES_GRUPO.csv",
+        }
 
-        actualizar_grupos_sica()
+        missing_files = expected_filenames - uploaded_filenames
 
-        return None
+        if missing_files:
+            return {
+                "message": f"Faltan los siguientes ficheros: {str(missing_files)}"
+            }, 400
+
+        try:
+
+            file_dict = {
+                f.filename.lower().removesuffix(".csv"): pd.read_csv(
+                    f.stream,
+                    sep=";",
+                    quotechar='"',
+                    encoding="utf-8-sig",  # 'utf-8-sig' handles the BOM if it exists
+                )
+                for f in files
+            }
+        except Exception as e:
+            {"message": "Error procesando los ficheros introducidos"}, 502
+
+        try:
+            thread = threading.Thread(target=carga_sica, kwargs={"files": file_dict})
+            thread.start()
+        except Exception as e:
+            {"message": "Error inesperado"}, 502
+
+        return {"message": "Carga iniciada satisfactoriamente"}, 200
 
 
+# ********************************
+# **** CARGA DE CENTROS DE CENSO ****
+# ********************************
 @carga_namespace.route(
     "/investigador/centros_censo/", doc=False, endpoint="carga_centros_censo"
 )
@@ -92,6 +147,72 @@ class CargaCentrosCenso(Resource):
             print(f"Ocurrió un error: {e}")
 
 
+# ********************************
+# **** CARGA DE INVESTIGADORES ERASMUS+ ****
+# ********************************
+@carga_namespace.route(
+    "/investigador/erasmus_plus/", doc=False, endpoint="carga_erasmus_plus"
+)
+class CargaErasmusPlus(Resource):
+    def post(self):
+        # Obtener parámetros de la URL (por ejemplo, clave de API para autorización)
+        args = request.args
+        try:
+            api_key = args.get("api_key")
+
+            # Verificar si el usuario es administrador (función de seguridad ya definida)
+            if not es_admin(api_key=api_key):
+                return {"message": "No autorizado"}, 401
+
+            # Verificar que se haya enviado un archivo con la clave esperada
+            if "files[]" not in request.files:
+                return {"error": "No se ha enviado ningún archivo Excel"}, 400
+
+            # Obtener el primer archivo (solo admitimos uno en esta carga)
+            file = request.files.getlist("files[]")[0]
+
+            # Validar la extensión del archivo (debe ser Excel)
+            if not file.filename.endswith((".xls", ".xlsx")):
+                return {"error": "El archivo no es un Excel válido"}, 400
+
+            # 1. Procesar el fichero y guardarlo temporalmente
+            excel_path = procesado_fichero_erasmus_plus(
+                file
+            )  # Puedes renombrar este método si no es CSV
+
+            # ----> EJECUCIÓN DIRECTA, SIN CELERY (SINCRÓNA) - DEBUG
+            # from routes.carga.investigador.erasmus_plus.carga import carga_erasmus_plus
+
+            # carga_erasmus_plus(excel_path)
+            # # Devolver respuesta directa
+            # return {"message": "Carga Erasmus+ completada correctamente"}, 200
+
+            # ----> EJECUCIÓN CON CELERY (ASINCRÓNA)
+            # 2. Preparar los parámetros que usará Celery (por ahora solo la ruta del fichero)
+            params = {"ruta": excel_path}
+
+            # 3. Crear una solicitud asíncrona para ejecutar la tarea en segundo plano
+            async_request = AsyncRequest(
+                # email="bibliometria@us.es",  # Email que recibirá la notificación
+                email="fmacias3@us.es",  # Email que recibirá la notificación
+                params=params,  # Parámetros que necesita la tarea
+                request_type="carga_erasmus_plus",  # Nombre que enlaza con la tarea de Celery
+            )
+
+            # 4. Lanzar la tarea asíncrona con Celery, pasando la ID del async_request
+            current_app.tasks["carga_erasmus_plus"].apply_async([async_request.id])
+
+            # Respuesta inmediata al cliente (Postman o frontend)
+            return {"message": "Carga lanzada correctamente"}, 202
+
+        except Exception as e:
+            print(f"Error en la carga Erasmus+: {e}")
+            return {"error": "Error inesperado en el servidor"}, 500
+
+
+# ********************************
+# **** CARGA DE FUENTES DE DATOS ****
+# ********************************
 @carga_namespace.route(
     "/fuente/wos_journals/", doc=False, endpoint="carga_wos_journals"
 )
@@ -117,10 +238,13 @@ class CargaWosJournals(Resource):
         return {"message": result}, 200
 
 
+# ********************************
+# **** CARGA DE PUBLICACIONES IDUS ****
+# ********************************
 @carga_namespace.route(
     "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
 )
-class CargaPublicacionIdus(Resource):
+class CargarPublicacionIdus(Resource):
     def get(self):
         args = request.args
 
@@ -175,37 +299,34 @@ class CargaPublicacionImportar(Resource):
     def get(self):
 
         args = request.args
-        tipo = args.get("tipo", None).strip()
-        id = args.get("id", None).strip()
-        api_key = args.get("api_key")
+        tipo = args.get("tipo", "").strip()
+        id = args.get("id", "").strip()
 
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
+        if not (es_admin() or es_editor()):
+            return {"error": "No autorizado."}, 401
+
         try:
-            match tipo:
-                case "scopus_id":
-                    CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
-                case "pubmed_id" | "wos_id":
-                    CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
-                case "openalex_id":
-                    CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
-                case "zenodo_id":
-                    CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
-                case "doi":
-                    # TODO: REVISAR ORDEN EJECUCIÓN
-                    CargaPublicacionScopus().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionWos().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionOpenalex().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionZenodo().carga_publicacion(tipo=tipo, id=id)
-                    CargaPublicacionCrossref().carga_publicacion(tipo=tipo, id=id)
-                # TODO: QUEDA IDUS
-                case "handle_idus":
-                    CargaPublicacionIdus().cargar_publicacion_por_handle(id)
+            saml_user_data = get_user_data()
+            usuario = saml_user_data.get("mail", [""])[0].split("@")[0] or None
+        except Exception:
+            usuario = None
 
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
+        importacion = ImportacionPublicacion(id=id, tipo_id=tipo, autor=usuario)
+
+        importacion.importar()
+
+        id_publicacion = importacion.id_publicacion
+
+        if id_publicacion == 0:
+            if importacion.errores:
+                return {
+                    "error": ";\n ".join(importacion.errores),
+                }, 400
+            return {
+                "error": "No se ha podido encontrar una publicación con el identificador aportado."
+            }, 400
+
+        return {"id_publicacion": id_publicacion}, 200
 
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****
@@ -264,202 +385,78 @@ class ImportarPublicacionesMasivo(Resource):
             return {"message": "Error inesperado"}, 500
 
 
-# *************************************
-# **** QUALITY RULES PUBLICACIONES ****
-# *************************************
-# p_00
-# No es una regla de calidad - Obtiene la lista de las bibliotecas
 @carga_namespace.route(
-    "/publicacion/p_00",
+    "/financiacion/carga_proyectos",
     doc=False,
-    endpoint="p_00",
+    endpoint="carga_proyectos",
 )
-class p_00(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas_cargas.get_quality_rule_p_00()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_01
-# Publicación con tipo de Datos duplicado
-@carga_namespace.route(
-    "/publicacion/p_01",
-    doc=False,
-    endpoint="p_01",
-)
-class p_01(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas_cargas.get_quality_rule_p_01()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_02
-# Publicación con tipo de Identificadores duplicado
-@carga_namespace.route(
-    "/publicacion/p_02",
-    doc=False,
-    endpoint="p_02",
-)
-class p_02(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas_cargas.get_quality_rule_p_02()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_03
-# Autores duplicados en publicación con mismo rol
-@carga_namespace.route(
-    "/publicacion/p_03",
-    doc=False,
-    endpoint="p_03",
-)
-class p_03(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas_cargas.get_quality_rule_p_03()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_04
-# Publicación sin autores US
-@carga_namespace.route(
-    "/publicacion/p_04",
-    doc=False,
-    endpoint="p_04",
-)
-class p_04(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas_cargas.get_quality_rule_p_04()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# *************************************
-# ****** CARGA DE INVESTIGADORES ******
-# *************************************
-
-
-# **** CARGA DE INVESTIGADORES ****
-@carga_namespace.route(
-    "/investigador/importar_investigadores_masivo",
-    doc=False,
-    endpoint="importar_investigadores_masivo",
-)
-class ImportarInvestigadoresMasivo(Resource):
-    # TODO: por hacer
+class CargaProyectos(Resource):
     def post(self):
-        dir_temp = "/app/temp/"
-
         args = request.args
-        api_key = request.form.get("api_key")
-        files = request.files
+        api_key = args.get("api_key")
+
         if not es_admin(api_key=api_key):
             return {"message": "No autorizado"}, 401
 
-        # Validar que los 4 archivos han sido subidos
-        required_files = ["pdi", "pi", "pdi_ceses", "pi_ceses"]
-        # required_files = ["pdi"]
-        for file_key in required_files:
-            if file_key not in files:
-                return {"message": f"Falta el archivo {file_key}"}, 400
+        request_files = request.files
 
-        pdi = files["pdi"]
-        pi = files["pi"]
-        pdi_ceses = files["pdi_ceses"]
-        pi_ceses = files["pi_ceses"]
+        for file in request_files.values():
+            file.name = file.filename
 
-        temp_files = {}  # Diccionario para almacenar rutas temporales
+        contracts = flask_csv_to_df(request_files["contracts"])
+        components = flask_csv_to_df(request_files["components"])
+        projects = flask_csv_to_df(request_files["projects"])
+        # external_projects = flask_csv_to_df(request_files["external_projects"])
+
+        files = {
+            "contracts": contracts,
+            "components": components,
+            "projects": projects,
+            # "external_projects": external_projects,
+        }
+
         try:
-            # Guardar archivos temporalmente
-            for file_key in required_files:
-                temp = tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".xlsx", dir=dir_temp
-                )
-                files[file_key].save(temp.name)
-                temp_files[file_key] = temp.name  # Guardar la ruta del archivo temporal
+            thread = threading.Thread(target=carga_proyectos, kwargs={"files": files})
+            thread.start()
+        except KeyError as e:
+            return {"message": str(e)}, 400
 
-            # Leer los archivos como DataFrames de pandas
-            CargaInvestigadorRRHH().cargar_investigador_RRHH(file_paths=temp_files)
-            pass
-        except ValueError as e:
-            return {"message": str(e)}, 402
+        return {"message": "Carga iniciada satisfactoriamente"}, 200
+
+
+@carga_namespace.route(
+    "/metricas/carga_at",
+    doc=False,
+    endpoint="carga_at",
+)
+class CargaAT(Resource):
+    def post(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_admin(api_key=api_key):
+            return {"error": "No autorizado"}, 401
+
+        try:
+            files = request.files.getlist("files[]")
+
+            if len(files) == 0:
+                return {"error": "No se han adjuntado ficheros adecuadamente"}, 400
+
+            file = files[0]
+
+            if not file.filename.endswith((".xlsx", ".xls")):
+                return {"error": "Formato de fichero erróneo"}, 400
+
+            data = transformar_fichero(file)
+            thread = threading.Thread(
+                target=carga_acuerdos_transformativos, kwargs={"data": data}
+            )
+            thread.start()
+
+            return {"message": "Carga iniciada satisfactoriamente"}
+
+        except ErrorAT as e:
+            return {"error": str(e)}, 400
         except Exception as e:
-            return {"message": "Error inesperado"}, 500
-        finally:
-            # Eliminar archivos temporales después de procesarlos
-            for temp_path in temp_files.values():
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+            return {"error": "Error inesperado"}, 502

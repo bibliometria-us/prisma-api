@@ -1,18 +1,24 @@
+import io
 import pandas as pd
-
+from werkzeug.datastructures import FileStorage
 from db.conexion import BaseDatos
+from routes.informes.acuerdos_transformativos.exception import ErrorInformeAT
 
 
-def leer_csv() -> list[str]:
-    path = "routes/informes/acuerdos_transformativos/fuente/dois.csv"
-    with open(path, "r") as f:
-        df = pd.read_csv(f)
+def leer_fichero(file: FileStorage) -> list[str]:
 
-    return df["DOI"].tolist()
+    df = pd.read_excel(file)
+
+    if not "DOI" in df.columns:
+        raise ErrorInformeAT(
+            "No se ha encontrado una columna de DOI en el fichero proporcionado"
+        )
+
+    return df["DOI"].dropna().tolist()
 
 
-def informe_autores_por_publicaciones():
-    dois = leer_csv()
+def informe_at_dois(file: FileStorage, año_metricas: int = None) -> io.BytesIO:
+    dois = leer_fichero(file)
 
     dois = [doi.lower() for doi in dois]
 
@@ -48,6 +54,7 @@ def informe_autores_por_publicaciones():
     missing_rows = pd.DataFrame({"DOI": list(missing_dois)})
     df_autores = pd.concat([df_autores, missing_rows], ignore_index=True)
 
+    params = {"año": año_metricas}
     query_jif = f"""SELECT 
             LOWER(doi.valor) AS 'DOI',
             f.titulo AS 'Revista',
@@ -55,20 +62,20 @@ def informe_autores_por_publicaciones():
             j.category as 'Categoría',
             j.impact_factor as 'JIF',
             j.quartile as 'Cuartil',
-            (SELECT MIN(j2.quartile) FROM m_jcr j2 WHERE j2.year = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Cuartil',
+            (SELECT MIN(j2.quartile) FROM m_jcr j2 WHERE j2.year = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Cuartil',
             j.decil as 'Decil',
-            (SELECT MIN(j2.decil) FROM m_jcr j2 WHERE j2.year = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Decil',
+            (SELECT MIN(j2.decil) FROM m_jcr j2 WHERE j2.year = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Decil',
             j.tercil as 'Tercil',
-            (SELECT MIN(j2.tercil) FROM m_jcr j2 WHERE j2.year = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Tercil'
+            (SELECT MIN(j2.tercil) FROM m_jcr j2 WHERE j2.year = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Tercil'
             FROM p_publicacion p
             LEFT JOIN (SELECT * FROM p_identificador_publicacion WHERE tipo = "doi") doi ON doi.idPublicacion = p.idPublicacion
             LEFT JOIN p_fuente f ON f.idFuente = p.idFuente
-            LEFT JOIN (SELECT * FROM m_jcr WHERE year = '2023') j ON j.idFuente = f.idFuente
+            LEFT JOIN (SELECT * FROM m_jcr WHERE year = %(año)s) j ON j.idFuente = f.idFuente
             WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, j.idFuente, j.edition, j.category
             ORDER BY doi.valor, j.idFuente;
             """
-    jif = bd.ejecutarConsulta(query_jif)
+    jif = bd.ejecutarConsulta(query_jif, params=params)
     df_jif = bd.get_dataframe()
 
     missing_dois = set(dois) - set(df_jif["DOI"])
@@ -81,20 +88,20 @@ def informe_autores_por_publicaciones():
             j.categoria as 'Categoría',
             j.jci as 'JCI',
             j.cuartil as 'Cuartil',
-            (SELECT MIN(j2.cuartil) FROM m_jci j2 WHERE j2.agno = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Cuartil',
+            (SELECT MIN(j2.cuartil) FROM m_jci j2 WHERE j2.agno = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Cuartil',
             j.decil as 'Decil',
-            (SELECT MIN(j2.decil) FROM m_jci j2 WHERE j2.agno = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Decil',
+            (SELECT MIN(j2.decil) FROM m_jci j2 WHERE j2.agno = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Decil',
             j.tercil as 'Tercil',
-            (SELECT MIN(j2.tercil) FROM m_jci j2 WHERE j2.agno = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Tercil'
+            (SELECT MIN(j2.tercil) FROM m_jci j2 WHERE j2.agno = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Tercil'
             FROM p_publicacion p
             LEFT JOIN (SELECT * FROM p_identificador_publicacion WHERE tipo = "doi") doi ON doi.idPublicacion = p.idPublicacion
             LEFT JOIN p_fuente f ON f.idFuente = p.idFuente
-            LEFT JOIN (SELECT * FROM m_jci WHERE agno = '2023') j ON j.idFuente = f.idFuente
+            LEFT JOIN (SELECT * FROM m_jci WHERE agno = %(año)s) j ON j.idFuente = f.idFuente
             WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, j.idFuente, j.categoria
             ORDER BY doi.valor, j.idFuente;
             """
-    jci = bd.ejecutarConsulta(query_jci)
+    jci = bd.ejecutarConsulta(query_jci, params=params)
     df_jci = bd.get_dataframe()
 
     missing_dois = set(dois) - set(df_jci["DOI"])
@@ -107,29 +114,35 @@ def informe_autores_por_publicaciones():
             j.categoria as 'Categoría',
             j.citescore as 'Citescore',
             j.cuartil as 'Cuartil',
-            (SELECT MIN(j2.cuartil) FROM m_citescore j2 WHERE j2.agno = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Cuartil',
+            (SELECT MIN(j2.cuartil) FROM m_citescore j2 WHERE j2.agno = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Cuartil',
             j.decil as 'Decil',
-            (SELECT MIN(j2.decil) FROM m_citescore j2 WHERE j2.agno = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Decil',
+            (SELECT MIN(j2.decil) FROM m_citescore j2 WHERE j2.agno = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Decil',
             j.tercil as 'Tercil',
-            (SELECT MIN(j2.tercil) FROM m_citescore j2 WHERE j2.agno = '2023' AND j2.idFuente = j.idFuente) as 'Máximo Tercil'
+            (SELECT MIN(j2.tercil) FROM m_citescore j2 WHERE j2.agno = %(año)s AND j2.idFuente = j.idFuente) as 'Máximo Tercil'
             FROM p_publicacion p
             LEFT JOIN (SELECT * FROM p_identificador_publicacion WHERE tipo = "doi") doi ON doi.idPublicacion = p.idPublicacion
             LEFT JOIN p_fuente f ON f.idFuente = p.idFuente
-            LEFT JOIN (SELECT * FROM m_citescore WHERE agno = '2023') j ON j.idFuente = f.idFuente
+            LEFT JOIN (SELECT * FROM m_citescore WHERE agno = %(año)s) j ON j.idFuente = f.idFuente
             WHERE LOWER(doi.valor) IN ({", ".join(f"'{doi}'" for doi in dois)})
             GROUP BY doi.valor, j.idFuente, j.categoria
             ORDER BY doi.valor, j.idFuente;
             """
-    citescore = bd.ejecutarConsulta(query_citescore)
+    citescore = bd.ejecutarConsulta(query_citescore, params=params)
     df_citescore = bd.get_dataframe()
 
     missing_dois = set(dois) - set(df_citescore["DOI"])
     missing_rows = pd.DataFrame({"DOI": list(missing_dois)})
     df_citescore = pd.concat([df_citescore, missing_rows], ignore_index=True)
 
-    with pd.ExcelWriter("informe_autores.xlsx", engine="xlsxwriter") as writer:
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_autores.to_excel(writer, sheet_name="Autores", index=False)
         df_jif.to_excel(writer, sheet_name="JIF", index=False)
         df_jci.to_excel(writer, sheet_name="JCI", index=False)
         df_citescore.to_excel(writer, sheet_name="Citescore", index=False)
-    pass
+        missing_rows.to_excel(writer, sheet_name="DOIs no utilizados", index=False)
+
+    output.seek(0)
+
+    return output

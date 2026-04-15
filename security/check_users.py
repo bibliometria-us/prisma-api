@@ -19,7 +19,8 @@ def tiene_rol(rol, api_key=None):
     db = BaseDatos("api")
 
     if not api_key:
-        usuario = session["samlUserdata"]["mail"][0].split("@")[0]
+        saml_user_data = session.get("samlUserdata", {})
+        usuario = saml_user_data.get("mail", [""])[0].split("@")[0] or None
     else:
         usuario = get_user_from_api_key(api_key)
 
@@ -30,6 +31,10 @@ def tiene_rol(rol, api_key=None):
     result = db.ejecutarConsulta(query, params)[1][0]
 
     return result != 0
+
+
+def es_visor(api_key=None):
+    return tiene_rol("visor", api_key=api_key)
 
 
 def es_admin(api_key=None):

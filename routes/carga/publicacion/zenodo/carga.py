@@ -6,9 +6,11 @@ import json
 
 
 class CargaPublicacionZenodo(CargaPublicacion):
-    def __init__(self, db: BaseDatos = None, id_carga=None, auto_commit=True) -> None:
+    def __init__(
+        self, db: BaseDatos = None, id_carga=None, auto_commit=True, tipo_carga=None
+    ) -> None:
 
-        super().__init__(db, id_carga, auto_commit)
+        super().__init__(db, id_carga, auto_commit, tipo_carga=tipo_carga)
         self.origen = "Zenodo"
 
     def carga_publicacion(self, tipo: str, id: str):
@@ -17,19 +19,19 @@ class CargaPublicacionZenodo(CargaPublicacion):
         }
         funcion = funciones.get(tipo)
         if funcion:
-            funcion(id)
+            return funcion(id)
 
     def cargar_publicacion_por_doi(self, id: str):
         api = ZenodoAPI()
-        records = api.get_publicaciones_por_doi(id=id)
+        records = api.get_publicaciones_por_doi(doi=id)
         if len(records) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
+            return None
         for publicacion in records:
             parser = ZenodoParser(data=publicacion)
             self.datos = parser.datos_carga_publicacion
             self.cargar_publicacion()
 
-        return None
+        return self.id_publicacion
 
     def cargar_publicaciones_por_investigador(id_investigador: str):
         pass

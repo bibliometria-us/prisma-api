@@ -42,26 +42,8 @@ class ZenodoParser(Parser):
         #      self.datos_carga_publicacion.add_titulo_alternativo(title["title"])
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("metadata").get("resource_type").get("title").get("en")
-
-        tipos = {
-            # TODO: Aclarar tipos pubs - a resolver
-            "ar": "Artículo",
-            "ip": "Artículo",
-            "cp": "Ponencia",
-            "re": "Revisión",
-            "ed": "Editorial",
-            "bk": "Libro",
-            "no": "Nota",
-            "ch": "Capítulo",
-            "sh": "Short Survey",
-            "er": "Corrección",
-            "le": "Letter",
-        }
-
-        valor = tipos.get(tipo) or "Otros"
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("metadata").get("resource_type").get("title").get("en")
 
     def _cargar_autores(
         self,

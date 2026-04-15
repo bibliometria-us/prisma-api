@@ -1,0 +1,2 @@
+class ErrorCargaSica(Exception):
+    pass

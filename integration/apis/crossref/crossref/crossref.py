@@ -48,6 +48,9 @@ class CrossrefAPI(API):
         self.set_param_mailto()
         self.get_respose(id=id)  # TODO: definir url correctamente
 
+        if not self.response:
+            return None
+
         search_results: dict = self.response.get("message", {})
         self.results = search_results
 

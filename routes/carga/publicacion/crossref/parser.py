@@ -14,6 +14,7 @@ from routes.carga.publicacion.datos_carga_publicacion import (
     DatosCargaFinanciacion,
     DatosCargaPublicacion,
 )
+from routes.carga.publicacion.exception import ErrorCargaPublicacion
 from routes.carga.publicacion.parser import Parser
 from datetime import datetime
 
@@ -39,20 +40,8 @@ class CrossrefParser(Parser):
         # TODO: Titulo Alt - revisar en titles
         pass
 
-    def cargar_tipo(self):
-        tipo = self.data.get("type")
-
-        tipos = {
-            # TODO: Aclarar tipos pubs - a resolver
-            "journal-article": "Artículo",
-            "proceedings-article": "Ponencia",
-            "book-chapter": "Capítulo",
-            "book": "Libro",
-            "other": "Otros",
-        }
-
-        valor = tipos.get(tipo) or "Otros"
-        self.datos_carga_publicacion.set_tipo(valor)
+    def origen_tipo(self):
+        return self.data.get("type")
 
     def _cargar_autores(
         self,
@@ -98,24 +87,26 @@ class CrossrefParser(Parser):
         pass
 
     def cargar_año_publicacion(self):
-        año = self.data["published"]["date-parts"][0][0]
+        if "published" in self.data:
+            año = str(self.data["published"]["date-parts"][0][0])
+        else:
+            return None
         # TODO: Control Excep - esto se debería recoger en un nivel superior (de hecho se comprueba 2 veces arriba)
-        assert len(str(año)) == 4
+        assert len(año) == 4
 
         self.datos_carga_publicacion.set_agno_publicacion(año)
 
     def cargar_fecha_publicacion(self):
-        date = (
-            self.data.get("published").get("date-parts")[0]
-            if self.data.get("published").get("date-parts")[0]
-            else None
-        )
+        if "published" in self.data:
+            date = self.data["published"]["date-parts"][0]
+        else:
+            return None
+
         if len(date) == 3:
-            agno = date[0]
-            mes = date[1]
-            mes = f"{mes:02d}"
+            agno = int(date[0])
+            mes = int(date[1])
             fecha_insercion = DatosCargaFechaPublicacion(
-                tipo="publicación", agno=agno, mes=mes
+                tipo="publicacion", agno=agno, mes=mes
             )
             self.datos_carga_publicacion.add_fechas_publicacion(fecha_insercion)
 
@@ -199,21 +190,20 @@ class CrossrefParser(Parser):
 
     def cargar_titulo_y_tipo(self):
         # TODO: Aclarar tipos de fuentes
-        tipos_fuente = {"Revista": "Revista", "Libro": "Libro", "": "Revista"}
         tipo_fuente = ""
         # Titulo
         titulo = (
             self.data.get("container-title")[0]
-            if self.data.get("container-title")[0]
+            if self.data.get("container-title")
             else None
         )
         # Necesario crear los identificadores previamente
         tipo_fuente = None
         identificadores = self.datos_carga_publicacion.fuente.identificadores
-        if any(obj.tipo == "isbn" or obj.tipo == "eisbn" for obj in identificadores):
-            tipo_fuente = tipos_fuente["Libro"]
         if any(obj.tipo == "issn" or obj.tipo == "eissn" for obj in identificadores):
-            tipo_fuente = tipos_fuente["Revista"]
+            tipo_fuente = "Revista"
+        if any(obj.tipo == "isbn" or obj.tipo == "eisbn" for obj in identificadores):
+            tipo_fuente = "Libro"
 
         if tipo_fuente:
             self.datos_carga_publicacion.fuente.set_tipo(tipo_fuente)

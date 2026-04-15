@@ -18,6 +18,9 @@ from routes.informes.main import informe_namespace
 from routes.carga.main import carga_namespace
 from routes.colectivo.main import colectivo_namespace
 from routes.publicacion.main import publicacion_namespace
+from routes.servicios_ext.main import servicios_ext_namespace
+from routes.carga.investigador.erasmus_plus import carga
+import os
 import os
 from flask import (
     Flask,
@@ -74,6 +77,7 @@ api.add_namespace(usuario.usuario_namespace)
 api.add_namespace(informe_namespace)
 api.add_namespace(carga_namespace)
 api.add_namespace(colectivo_namespace)
+api.add_namespace(servicios_ext_namespace)
 
 celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
@@ -102,8 +106,6 @@ def handle_invalid_accept_header(error):
 
 
 # SAML
-
-
 def init_saml_auth(req):
     auth = OneLogin_Saml2_Auth(req, custom_base_path=app.config["SAML_PATH"])
     return auth
