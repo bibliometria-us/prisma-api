@@ -233,10 +233,9 @@ def buscar_proyectos_no_en_sisius(
     return ids_prisma_no_en_sisius
 
 
-def ocultar_proyectos_no_en_sisius(
-    bd: BaseDatos, referencias_sisius: list[str]
-) -> list[str]:
+def ocultar_proyectos_no_en_sisius(referencias_sisius: list[str]) -> list[str]:
     # Ocultar los proyectos de Prisma que no están en SISIUS
+    bd = BaseDatos()
     proyectos_no_en_sisius = buscar_proyectos_no_en_sisius(
         bd=bd, referencias_sisius=referencias_sisius
     )
@@ -251,12 +250,43 @@ def ocultar_proyectos_no_en_sisius(
 
     bd.ejecutarConsulta(query_ocultar_proyectos, params=params)
 
+    if not bd.error:
+        return proyectos_no_en_sisius
+
+    return []
+
+
+def recuperar_proyectos_ocultos(referencias_sisius: list[str]) -> list[str]:
+    bd = BaseDatos()
+    # Recuperar los proyectos ocultos que vuelven a aparecer en SISIUS para volver a hacerlos visibles
+    query_proyectos_ocultos = (
+        """SELECT referencia, id FROM prisma_proyectos.proyecto WHERE visible = 0"""
+    )
+    bd.ejecutarConsulta(query_proyectos_ocultos)
+
+    proyectos_ocultos = bd.get_dataframe()
+
+    ids_proyectos_a_recuperar = proyectos_ocultos[
+        proyectos_ocultos["referencia"].isin(referencias_sisius)
+    ]["id"].tolist()
+
+    query_recuperar_proyectos = f"""
+    UPDATE prisma_proyectos.proyecto
+    SET visible = 1
+    WHERE id IN ({','.join(['%s'] * len(ids_proyectos_a_recuperar))})
+    """
+
+    params = ids_proyectos_a_recuperar
+
+    bd.ejecutarConsulta(query_recuperar_proyectos, params=params)
+
+    if not bd.error:
+        return ids_proyectos_a_recuperar
+
+    return []
+
 
 def cargar_proyectos(projects: DataFrame, bd: BaseDatos) -> list[str]:
-    # Obtener las referencias de los proyectos en SISIUS para ocultar los que ya no están en SISIUS
-    referencias_sisius = projects["Referencia"].tolist()
-    ocultar_proyectos_no_en_sisius(bd=bd, referencias_sisius=referencias_sisius)
-
     projects = filtrar_proyectos(projects=projects)
     result = []
 

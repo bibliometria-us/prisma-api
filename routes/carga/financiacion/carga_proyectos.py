@@ -1,5 +1,6 @@
 from datetime import datetime
 from pandas import DataFrame
+from config import local_config
 from db.conexion import BaseDatos
 from integration.email.email import enviar_correo
 import routes.carga.financiacion.proyecto as proyecto
@@ -20,6 +21,26 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
 
         bd = BaseDatos(keep_connection_alive=True, database=None, autocommit=False)
 
+        referencias_sisius = projects["Referencia"].tolist()
+
+        # Obtener las referencias de los proyectos en SISIUS para ocultar los que ya no están en SISIUS
+        proyectos_ocultados = proyecto.ocultar_proyectos_no_en_sisius(
+            referencias_sisius=referencias_sisius
+        )
+        urls_proyectos_ocultados = [
+            f"{local_config.prisma_url}/financiacion/{id_proyecto}"
+            for id_proyecto in proyectos_ocultados
+        ]
+
+        # Recuperar los proyectos ocultos que vuelven a aparecer en SISIUS para volver a hacerlos visibles
+        proyectos_recuperados = proyecto.recuperar_proyectos_ocultos(
+            referencias_sisius=referencias_sisius
+        )
+        urls_proyectos_recuperados = [
+            f"{local_config.prisma_url}/financiacion/{id_proyecto}"
+            for id_proyecto in proyectos_recuperados
+        ]
+
         result_carga_proyectos = proyecto.cargar_proyectos(projects=projects, bd=bd)
         result_carga_contratos = contrato.cargar_contratos(contratos=contracts, bd=bd)
         result_carga_componentes = componente.cargar_componentes(
@@ -29,6 +50,8 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
             "carga_proyectos": result_carga_proyectos,
             "carga_contratos": result_carga_contratos,
             "carga_componentes": result_carga_componentes,
+            "proyectos_ocultados": urls_proyectos_ocultados,
+            "proyectos_recuperados": urls_proyectos_recuperados,
         }
 
         # Calcular estadísticas
@@ -63,6 +86,8 @@ def carga_proyectos(files: dict[str, DataFrame] = None):
         Se han insertado {inserciones_proyectos} proyectos nuevos y se han dado de alta {altas_miembros} miembros.
         {'<br>' + 
          f'Se han actualizado {actualizaciones_rol} roles.' if actualizaciones_rol else ''}
+        {f'<br>Se han ocultado {len(proyectos_ocultados)} proyectos.' if proyectos_ocultados else ''}
+        {f'<br>Se han recuperado {len(proyectos_recuperados)} proyectos ocultos.' if proyectos_recuperados else ''}
         {'<br>' + 
          f'Se han detectado {errores} errores en la carga. Se recomienda revisar los archivos de log para más detalles.' if errores else ''}
         """
