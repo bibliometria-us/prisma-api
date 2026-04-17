@@ -45,58 +45,48 @@ class CargaInvestigadorRRHH:
 
         if len(records_pdi) == 0 and len(records_pi) == 0:
             raise ValueError(f"El listado de investigadores está vacío.")
+
         # Investigadores - PDI
+        investigadores_a_guardar: dict[str, DatosCargaInvestigador] = {}
+
         for record in records_pdi:
             parser = ParserInvestigador(data=record, tipo_fichero="pdi")
             investigador = parser.datos_carga_investigador
             # Se busca si existe el investigador en la lista de investigadores añadidos
-            investigador_in = next(
-                (
-                    inv
-                    for inv in self.datos_investigadores
-                    if inv.documento_identidad == investigador.documento_identidad
-                ),
-                None,
+            investigador_in = investigadores_a_guardar.get(
+                investigador.documento_identidad
             )
             # Si existe, se añade el contrato al investigador
             if investigador_in:
                 investigador_in.add_contrato(investigador.get_last_contrato())
             # Si no existe, se añade el investigador a la lista
             else:
-                self.datos_investigadores.append(investigador)
+                investigadores_a_guardar[investigador.documento_identidad] = (
+                    investigador
+                )
         # Investigadores - PI
         for record in records_pi:
             parser = ParserInvestigador(data=record, tipo_fichero="pi")
             investigador = parser.datos_carga_investigador
             # Se busca si existe el investigador en la lista de investigadores añadidos
-            investigador_in = next(
-                (
-                    inv
-                    for inv in self.datos_investigadores
-                    if inv.documento_identidad == investigador.documento_identidad
-                ),
-                None,
+            investigador_in = investigadores_a_guardar.get(
+                investigador.documento_identidad
             )
             # Si existe, se añade el contrato al investigador
             if investigador_in:
                 investigador_in.add_contrato(investigador.get_last_contrato())
             # Si no existe, se añade el investigador a la lista
             else:
-                self.datos_investigadores.append(investigador)
+                investigadores_a_guardar[investigador.documento_identidad] = (
+                    investigador
+                )
 
         # Ceses - PDI
         for record in records_ceses_pdi:
             parser = ParserCese(data=record, tipo_fichero="pdi")
             cese = parser.datos_carga_cese_investigador
             # Se busca el investigador al que pertenece el cese
-            investigador_in = next(
-                (
-                    inv
-                    for inv in self.datos_investigadores
-                    if inv.documento_identidad == cese.documento_identidad
-                ),
-                None,
-            )
+            investigador_in = investigadores_a_guardar.get(cese.documento_identidad)
             # Si se encuentra el investigador, se añade el cese al contrato mas cercano
             if investigador_in:
                 contrato = investigador_in.get_nearest_contrato(fecha_cese=cese.fecha)
@@ -113,21 +103,16 @@ class CargaInvestigadorRRHH:
                     documento_identidad=cese.documento_identidad
                 )
                 investigador.add_contrato_virtual_con_cese(cese=cese)
-                self.datos_investigadores.append(investigador)
+                investigadores_a_guardar[investigador.documento_identidad] = (
+                    investigador
+                )
 
         # Ceses - PI
         for record in records_ceses_pi:
             parser = ParserCese(data=record, tipo_fichero="pi")
             cese = parser.datos_carga_cese_investigador
             # Se busca el investigador al que pertenece el cese
-            investigador_in = next(
-                (
-                    inv
-                    for inv in self.datos_investigadores
-                    if inv.documento_identidad == cese.documento_identidad
-                ),
-                None,
-            )
+            investigador_in = investigadores_a_guardar.get(cese.documento_identidad)
             # Si se encuentra el investigador, se añade el cese al contrato mas cercano
             if investigador_in:
                 contrato = investigador_in.get_nearest_contrato(fecha_cese=cese.fecha)
@@ -144,7 +129,12 @@ class CargaInvestigadorRRHH:
                     documento_identidad=cese.documento_identidad
                 )
                 investigador.add_contrato_virtual_con_cese(cese=cese)
-                self.datos_investigadores.append(investigador)
+                investigadores_a_guardar[investigador.documento_identidad] = (
+                    investigador
+                )
+
+        # Se añaden los investigadores a la lista de investigadores a guardar
+        self.datos_investigadores = list(investigadores_a_guardar.values())
 
         # for inv_test in self.datos_investigadores:
         #     cont_ceses = 0
