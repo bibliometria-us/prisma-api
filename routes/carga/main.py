@@ -210,6 +210,43 @@ class CargaErasmusPlus(Resource):
             return {"error": "Error inesperado en el servidor"}, 500
 
 
+@carga_namespace.route(
+    "/investigador/rrhh", doc=False, endpoint="carga_investigador_rrhh"
+)
+class CargaInvestigadorRRHHEndpoint(Resource):
+    def post(self):
+        # Obtener parámetros de la URL (por ejemplo, clave de API para autorización)
+        args = request.args
+        try:
+            api_key = args.get("api_key")
+
+            # Verificar si el usuario es administrador (función de seguridad ya definida)
+            if not es_admin(api_key=api_key):
+                return {"message": "No autorizado"}, 401
+
+            # Obtener los archivos enviados y guardarlos temporalmente
+            files = request.files
+            file_paths = {}
+
+            for key, value in files.items():
+                value.name = value.filename
+                temp_file = tempfile.NamedTemporaryFile(delete=False)
+                value.save(temp_file.name)
+                file_paths[key] = temp_file.name
+
+            # Ejecutar la carga de investigadores desde RRHH
+            carga_investigador_rrhh = CargaInvestigadorRRHH()
+            carga_investigador_rrhh.cargar_investigador_RRHH(file_paths=file_paths)
+
+            return {
+                "message": "Carga de investigadores desde RRHH completada correctamente"
+            }, 200
+
+        except Exception as e:
+            print(f"Error en la carga de investigadores desde RRHH: {e}")
+            return {"error": "Error inesperado en el servidor"}, 500
+
+
 # ********************************
 # **** CARGA DE FUENTES DE DATOS ****
 # ********************************
