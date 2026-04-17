@@ -1201,7 +1201,7 @@ def get_pub_publicaciones_wos_sin_metrica_Revista(bd: BaseDatos = None) -> dict:
 
 
 # Lista de publicaciones asociadas a una Revista con SJR/Citiscore y no tenga idScopus
-def get_pub_Publicaciones_sjr_citescore_sin_scopus(bd: BaseDatos = None) -> dict:
+def get_pub_publicaciones_sjr_citescore_sin_scopus(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT
                             pp.idPublicacion        AS ID_PUB,
                             pp.tipo                 AS TIPO,
@@ -1252,7 +1252,7 @@ def get_pub_Publicaciones_sjr_citescore_sin_scopus(bd: BaseDatos = None) -> dict
 
 
 # Lista de publicaciones asociadas a una Revista con JCR y no tenga idWOS
-def get_pub_Publicaciones_jcr_jci_sin_wos(bd: BaseDatos = None) -> dict:
+def get_pub_publicaciones_jcr_jci_sin_wos(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT
                         pp.idPublicacion        AS ID_PUB,
                         pp.tipo                 AS TIPO,
