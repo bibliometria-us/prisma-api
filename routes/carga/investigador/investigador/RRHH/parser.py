@@ -4,7 +4,6 @@ from routes.carga.investigador.datos_carga_investigador import (
     DatosCargaAreaInvestigador,
     DatosCargaDepartamentoInvestigador,
     DatosCargaCentroInvestigador,
-    DatosCargaCentroCensoInvestigador,
     DatosCargaCeseInvestigador,
     DatosCargaContratoInvestigador,
 )

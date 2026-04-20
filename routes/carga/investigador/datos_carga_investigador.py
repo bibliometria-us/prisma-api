@@ -238,9 +238,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
         )
         # TODO: Los centros son parte de la estructura de un contrato?
         self.centro: DatosCargaCentroInvestigador = DatosCargaCentroInvestigador()
-        self.centro_censo: DatosCargaCentroCensoInvestigador = (
-            DatosCargaCentroCensoInvestigador()
-        )
+        self.centro_censo: DatosCargaCentroInvestigador = DatosCargaCentroInvestigador()
         self.cese: DatosCargaCeseInvestigador = DatosCargaCeseInvestigador()
         self.fecha_contratacion: datetime = None
         self.fecha_fin_contratacion: datetime = None
@@ -259,7 +257,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
     def set_centro(self, centro: "DatosCargaCentroInvestigador"):
         self.centro = centro
 
-    def set_centro_censo(self, centro_censo: "DatosCargaCentroCensoInvestigador"):
+    def set_centro_censo(self, centro_censo: "DatosCargaCentroInvestigador"):
         self.centro_censo = centro_censo
 
     def set_cese(self, cese: "DatosCargaCeseInvestigador"):
@@ -329,7 +327,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
         self.centro = DatosCargaCentroInvestigador().from_dict(
             source=source.get("centro")
         )
-        self.centro_censo = DatosCargaCentroCensoInvestigador().from_dict(
+        self.centro_censo = DatosCargaCentroInvestigador().from_dict(
             source=source.get("centro_censo")
         )
         self.cese = DatosCargaCeseInvestigador.from_dict(
@@ -516,32 +514,6 @@ class DatosCargaCentroInvestigador(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaCentroInvestigador") -> bool:
-        return self.id == value.id and self.nombre == value.nombre
-
-    def __hash__(self) -> int:
-        return hash((self.id, self.nombre))
-
-
-class DatosCargaCentroCensoInvestigador(DatosCarga):
-    def __init__(self, id: str = "", nombre: str = "") -> None:
-        self.id = id
-        self.nombre = nombre
-
-    def to_dict(self):
-        dict = {
-            "id": self.id,
-            "nombre": self.nombre,
-        }
-
-        return dict
-
-    def from_dict(self, source: dict):
-        self.id = source.get("id")
-        self.nombre = source.get("nombre")
-
-        return self
-
-    def __eq__(self, value: "DatosCargaCentroCensoInvestigador") -> bool:
         return self.id == value.id and self.nombre == value.nombre
 
     def __hash__(self) -> int:
