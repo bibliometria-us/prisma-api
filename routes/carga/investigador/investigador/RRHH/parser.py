@@ -73,18 +73,16 @@ class ParserInvestigador:
 
     def cargar_fecha_nacimiento(self):
         self.datos_carga_investigador.set_fecha_nacimiento(
-            self.data.get("F_NACIMIENTO").strftime("%d/%m/%Y")
+            self.data.get("F_NACIMIENTO")
         )
 
     def cargar_contrato(self):
         contrato = DatosCargaContratoInvestigador()
-        contrato.set_fecha_contratacion(self.data.get("F_INICIO").strftime("%d/%m/%Y"))
-        contrato.set_fecha_nombramiento(
-            self.data.get("F_NOMBRAMIENTO").strftime("%d/%m/%Y")
-        )
+        contrato.set_fecha_contratacion(self.data.get("F_INICIO"))
+        contrato.set_fecha_nombramiento(self.data.get("F_NOMBRAMIENTO"))
         fecha_fin = self.data.get("F_FIN")
         if not pd.isna(fecha_fin):
-            contrato.set_fecha_fin_contratacion(fecha_fin.strftime("%d/%m/%Y"))
+            contrato.set_fecha_fin_contratacion(fecha_fin)
         else:
             contrato.set_fecha_fin_contratacion("")
         contrato.set_centro(
@@ -156,9 +154,7 @@ class ParserCese:
         self.datos_carga_cese_investigador.set_valor(self.data.get("DES_CESE"))
 
     def set_fecha(self):
-        self.datos_carga_cese_investigador.set_fecha(
-            self.data.get("F_CESE").strftime("%d/%m/%Y")
-        )
+        self.datos_carga_cese_investigador.set_fecha(self.data.get("F_CESE"))
 
     def carga(self):
         self.set_fuente_datos()

@@ -58,7 +58,7 @@ class CargaInvestigadorRRHH:
             )
             # Si existe, se añade el contrato al investigador
             if investigador_in:
-                investigador_in.add_contrato(investigador.get_last_contrato())
+                investigador_in.add_contrato(investigador.contratos[0])
             # Si no existe, se añade el investigador a la lista
             else:
                 investigadores_a_guardar[investigador.documento_identidad] = (
@@ -74,7 +74,7 @@ class CargaInvestigadorRRHH:
             )
             # Si existe, se añade el contrato al investigador
             if investigador_in:
-                investigador_in.add_contrato(investigador.get_last_contrato())
+                investigador_in.add_contrato(investigador.contratos[0])
             # Si no existe, se añade el investigador a la lista
             else:
                 investigadores_a_guardar[investigador.documento_identidad] = (
@@ -99,9 +99,8 @@ class CargaInvestigadorRRHH:
                     investigador_in.add_contrato_virtual_con_cese(cese=cese)
             # Si no existe el investigador, se añade uno virtual, con un contrato virtual al cual se añade el cese
             else:
-                investigador = DatosCargaInvestigador(
-                    documento_identidad=cese.documento_identidad
-                )
+                investigador = DatosCargaInvestigador()
+                investigador.from_cese(cese)
                 investigador.add_contrato_virtual_con_cese(cese=cese)
                 investigadores_a_guardar[investigador.documento_identidad] = (
                     investigador
@@ -125,9 +124,8 @@ class CargaInvestigadorRRHH:
                     investigador_in.add_contrato_virtual_con_cese(cese=cese)
             # Si no existe el investigador, se añade uno virtual, con un contrato virtual al cual se añade el cese
             else:
-                investigador = DatosCargaInvestigador(
-                    documento_identidad=cese.documento_identidad
-                )
+                investigador = DatosCargaInvestigador()
+                investigador.from_cese(cese)
                 investigador.add_contrato_virtual_con_cese(cese=cese)
                 investigadores_a_guardar[investigador.documento_identidad] = (
                     investigador
@@ -152,5 +150,8 @@ class CargaInvestigadorRRHH:
         # TODO: Sanitizar y validar
         # TODO: Si todo ok
         # TODO: clase de guardado
-
+        lista_historicos = {
+            inv.documento_identidad: inv.get_historico_contratos()
+            for inv in self.datos_investigadores
+        }
         return None

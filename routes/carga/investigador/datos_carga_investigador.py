@@ -96,11 +96,15 @@ class DatosCargaInvestigador(DatosCarga):
         contrato.set_cese(cese)
         self.contratos.append(contrato)
 
+    def from_cese(self, cese: "DatosCargaCeseInvestigador"):
+        self.documento_identidad = cese.documento_identidad
+        self.fuente_datos = cese.fuente_datos
+
+        self.add_contrato_virtual_con_cese(cese=cese)
+
     def get_last_contrato(self) -> "DatosCargaContratoInvestigador":
         # Filtrar contratos que tengan una fecha válida
-        contratos_validos = [
-            c for c in self.contratos if c.fecha_contratacion not in (None, "")
-        ]
+        contratos_validos = [c for c in self.contratos if c.esta_activo()]
 
         # Si no hay contratos válidos, retornar None
         if not contratos_validos:
@@ -109,16 +113,17 @@ class DatosCargaInvestigador(DatosCarga):
         # Obtener el contrato con la fecha_contratacion más reciente
         return max(contratos_validos, key=lambda c: c.fecha_contratacion)
 
-    def get_nearest_contrato(self, fecha_cese: str) -> "DatosCargaContratoInvestigador":
+    def get_nearest_contrato(
+        self, fecha_cese: datetime
+    ) -> "DatosCargaContratoInvestigador":
         # Convertir fecha_cese de str a datetime
-        fecha_cese_dt = datetime.strptime(fecha_cese, "%d/%m/%Y")
 
         # Filtrar contratos con fecha_contratacion válida y que sean menores o iguales a fecha_cese
         contratos_validos = [
             c
             for c in self.contratos
-            if c.fecha_contratacion not in (None, "")  # Ignorar fechas vacías
-            and datetime.strptime(c.fecha_contratacion, "%d/%m/%Y") <= fecha_cese_dt
+            if c.fecha_contratacion  # Ignorar fechas vacías
+            and c.fecha_contratacion <= fecha_cese
         ]
 
         # Si no hay contratos válidos, retornar None
@@ -128,10 +133,15 @@ class DatosCargaInvestigador(DatosCarga):
         # Buscar el contrato más cercano a fecha_cese
         return min(
             contratos_validos,
-            key=lambda c: (
-                fecha_cese_dt - datetime.strptime(c.fecha_contratacion, "%d/%m/%Y")
-            ).days,
+            key=lambda c: (fecha_cese - c.fecha_contratacion).days,
         )
+
+    def get_historico_contratos(self):
+        contratos_ordenados: list[DatosCargaContratoInvestigador] = sorted(
+            self.contratos,
+            key=lambda contrato: contrato.get_fecha_inicio(),
+        )
+        return [contrato.to_dict() for contrato in contratos_ordenados]
 
     def to_dict(self):
         result = {
@@ -232,9 +242,9 @@ class DatosCargaContratoInvestigador(DatosCarga):
             DatosCargaCentroCensoInvestigador()
         )
         self.cese: DatosCargaCeseInvestigador = DatosCargaCeseInvestigador()
-        self.fecha_contratacion = ""
-        self.fecha_fin_contratacion = ""
-        self.fecha_nombramiento = ""
+        self.fecha_contratacion: datetime = None
+        self.fecha_fin_contratacion: datetime = None
+        self.fecha_nombramiento: datetime = None
         self.dict: dict = {}
 
     def set_categoria(self, categoria: "DatosCargaCategoriaInvestigador"):
@@ -255,14 +265,42 @@ class DatosCargaContratoInvestigador(DatosCarga):
     def set_cese(self, cese: "DatosCargaCeseInvestigador"):
         self.cese = cese
 
-    def set_fecha_contratacion(self, fecha_contratacion: str):
+    def set_fecha_contratacion(self, fecha_contratacion: datetime):
         self.fecha_contratacion = fecha_contratacion
 
-    def set_fecha_fin_contratacion(self, fecha_fin_contratacion: str):
+    def set_fecha_fin_contratacion(self, fecha_fin_contratacion: datetime):
         self.fecha_fin_contratacion = fecha_fin_contratacion
 
-    def set_fecha_nombramiento(self, fecha_nombramiento: str):
+    def set_fecha_nombramiento(self, fecha_nombramiento: datetime):
         self.fecha_nombramiento = fecha_nombramiento
+
+    def esta_cesado(self):
+        return self.cese and self.cese.fecha <= datetime.now()
+
+    def esta_vigente(self):
+        return self.fecha_fin_contratacion > datetime.now()
+
+    def esta_activo(self):
+        return self.esta_vigente() and not self.esta_cesado()
+
+    def get_fecha_inicio(self):
+        # Si el contrato es virtual, se asigna una fecha mínima para colocarlo al inicio del histórico de contratos del investigador
+        if self.es_virtual():
+            return datetime.min
+
+        return self.fecha_contratacion
+
+    def get_fecha_cierre(self):
+        fecha_fin_contratacion = self.fecha_fin_contratacion
+        fecha_cese = self.cese.fecha if self.cese and self.cese.fecha else None
+
+        if not fecha_cese:
+            return fecha_fin_contratacion
+
+        if not fecha_fin_contratacion:
+            return fecha_cese
+
+        return min(fecha_fin_contratacion, fecha_cese)
 
     def to_dict(self):
         result = {
@@ -275,6 +313,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
             "fecha_contratacion": self.fecha_contratacion,
             "fecha_fin_contratacion": self.fecha_fin_contratacion,
             "fecha_nombramiento": self.fecha_nombramiento,
+            "fecha_cierre": self.get_fecha_cierre(),
         }
 
         return result
@@ -331,9 +370,9 @@ class DatosCargaContratoInvestigador(DatosCarga):
     # creado especificamente para un cese de un investigador que no esté en la lista de investigadores activos
     def es_virtual(self):
         return (
-            self.fecha_contratacion == ""
-            and self.fecha_fin_contratacion == ""
-            and self.fecha_nombramiento == ""
+            not self.fecha_contratacion
+            and not self.fecha_fin_contratacion
+            and not self.fecha_nombramiento
         )
 
     def sanitize(self):
