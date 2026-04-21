@@ -20,7 +20,7 @@ class WosAPI(API):
             "Content-Type": "application/json",
         },
         response_type: str = "json",
-        records: list = [],
+        records: list = None,
     ):
 
         super().__init__(
@@ -31,7 +31,7 @@ class WosAPI(API):
             response_type=response_type,
             api_keys=api_keys,
         )
-        self.records = records
+        self.records = records or []
         self.records_found = 0
 
     def set_api_key(self):
