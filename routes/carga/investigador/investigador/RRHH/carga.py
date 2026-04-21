@@ -150,8 +150,34 @@ class CargaInvestigadorRRHH:
         # TODO: Sanitizar y validar
         # TODO: Si todo ok
         # TODO: clase de guardado
+        for investigador in self.datos_investigadores:
+            investigador.sanitize()
+
         lista_historicos = {
             inv.documento_identidad: inv.get_historico_contratos()
             for inv in self.datos_investigadores
         }
+        lista_ultimos_contratos = {
+            inv.documento_identidad: inv.get_last_contrato()
+            for inv in self.datos_investigadores
+        }
+
+        lista_investigadores_activos = {
+            inv.documento_identidad: inv
+            for inv in self.datos_investigadores
+            if inv.es_investigador_activo()
+        }
+
+        lista_investigadores_no_vigentes = {
+            inv.documento_identidad: inv
+            for inv in self.datos_investigadores
+            if inv.es_investigador_no_vigente()
+        }
+
+        lista_investigadores_cesados = {
+            inv.documento_identidad: inv
+            for inv in self.datos_investigadores
+            if inv.es_investigador_cesado()
+        }
+
         return None

@@ -103,15 +103,12 @@ class DatosCargaInvestigador(DatosCarga):
         self.add_contrato_virtual_con_cese(cese=cese)
 
     def get_last_contrato(self) -> "DatosCargaContratoInvestigador":
-        # Filtrar contratos que tengan una fecha válida
-        contratos_validos = [c for c in self.contratos if c.esta_activo()]
+        historico_contratos = self.get_historico_contratos()
+        ultimo_contrato: DatosCargaContratoInvestigador = (
+            historico_contratos[-1] if historico_contratos else None
+        )
 
-        # Si no hay contratos válidos, retornar None
-        if not contratos_validos:
-            return None
-
-        # Obtener el contrato con la fecha_contratacion más reciente
-        return max(contratos_validos, key=lambda c: c.fecha_contratacion)
+        return ultimo_contrato
 
     def get_nearest_contrato(
         self, fecha_cese: datetime
@@ -141,7 +138,22 @@ class DatosCargaInvestigador(DatosCarga):
             self.contratos,
             key=lambda contrato: contrato.get_fecha_inicio(),
         )
-        return [contrato.to_dict() for contrato in contratos_ordenados]
+        return contratos_ordenados
+
+    def es_investigador_activo(self):
+        ultimo_contrato = self.get_last_contrato()
+        return ultimo_contrato is not None and ultimo_contrato.esta_activo()
+
+    def es_investigador_cesado(self):
+        ultimo_contrato = self.get_last_contrato()
+        return ultimo_contrato is not None and ultimo_contrato.esta_cesado()
+
+    def es_investigador_no_vigente(self):
+        if self.es_investigador_cesado():
+            return False
+
+        ultimo_contrato = self.get_last_contrato()
+        return ultimo_contrato and not ultimo_contrato.esta_vigente()
 
     def to_dict(self):
         result = {
@@ -202,7 +214,8 @@ class DatosCargaInvestigador(DatosCarga):
         )
 
     def sanitize(self):
-        pass
+        for contrato in self.contratos:
+            contrato.sanitize()
 
     def validation(self):
         # TODO: Cuidado con los investigadores virtuales.
@@ -273,12 +286,24 @@ class DatosCargaContratoInvestigador(DatosCarga):
         self.fecha_nombramiento = fecha_nombramiento
 
     def esta_cesado(self):
-        return self.cese and self.cese.fecha <= datetime.now()
+        if not self.cese or not self.cese.fecha:
+            return False
+
+        return self.cese.fecha <= datetime.now()
 
     def esta_vigente(self):
+        if self.esta_cesado():
+            return False
+
+        if not self.fecha_fin_contratacion:
+            return True
+
         return self.fecha_fin_contratacion > datetime.now()
 
     def esta_activo(self):
+        if self.es_virtual():
+            return False
+
         return self.esta_vigente() and not self.esta_cesado()
 
     def get_fecha_inicio(self):
@@ -374,7 +399,18 @@ class DatosCargaContratoInvestigador(DatosCarga):
         )
 
     def sanitize(self):
-        pass
+        self.sanitize_dates()
+
+    def sanitize_dates(self):
+        # Si alguna de las fechas es una cadena vacía, se asigna None para evitar problemas de validación y comparación de fechas
+        for date_field in [
+            "fecha_contratacion",
+            "fecha_fin_contratacion",
+            "fecha_nombramiento",
+        ]:
+            date_value = getattr(self, date_field)
+            if date_value == "":
+                setattr(self, date_field, None)
 
     def validation(self):
         is_valid = True
@@ -529,7 +565,7 @@ class DatosCargaCeseInvestigador(DatosCarga):
         self.documento_identidad = ""
         self.tipo = ""
         self.valor = ""
-        self.fecha = ""
+        self.fecha = None
 
     def set_fuente_datos(self, fuente_datos: str):
         self.fuente_datos = fuente_datos
