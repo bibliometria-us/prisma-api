@@ -58,6 +58,7 @@ class DatosCargaInvestigador(DatosCarga):
         self.nacionalidad = ""
         self.sexo = ""
         self.fecha_nacimiento = ""
+        self.estados = []
         self.contratos: list[DatosCargaContratoInvestigador] = []
         self.dict: dict = {}
 
@@ -155,6 +156,24 @@ class DatosCargaInvestigador(DatosCarga):
         ultimo_contrato = self.get_last_contrato()
         return ultimo_contrato and not ultimo_contrato.esta_vigente()
 
+    def calcular_estado_investigador(self):
+        """Se calcula el estado del investigador en base a su último contrato.
+        Un investigador no debe tener más de un estado a la vez, pero no se descarta que pueda haber casos problemáticos
+        en los que un investigador tenga más de un estado.
+        En estos casos, se asignan todos los estados que correspondan para facilitar su identificación y posterior análisis.
+        """
+        if self.es_investigador_activo():
+            self.estados.append("Activo")
+        if self.es_investigador_cesado():
+            self.estados.append("Cesado")
+        if self.es_investigador_no_vigente():
+            self.estados.append("No vigente")
+
+        return
+
+    def existe_conflicto_estados(self):
+        return len(self.estados) > 1
+
     def to_dict(self):
         result = {
             "fuente_datos": self.fuente_datos,
@@ -197,6 +216,7 @@ class DatosCargaInvestigador(DatosCarga):
         return self
 
     def close(self):
+        self.calcular_estado_investigador()
         self.dict = self.to_dict()
 
     def __eq__(self, value: "DatosCargaInvestigador") -> bool:
