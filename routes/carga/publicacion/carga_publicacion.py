@@ -64,6 +64,8 @@ class CargaPublicacion(Carga):
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.datos: DatosCargaPublicacion
         self.datos_antiguos: DatosCargaPublicacion
+        self.tipos_carga_validos = ["importacion"]
+        self.id_publicacion = 0
 
     def carga_publicacion(self):
         pass

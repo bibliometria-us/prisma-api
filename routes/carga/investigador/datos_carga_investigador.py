@@ -1,0 +1,675 @@
+from abc import ABC, abstractmethod
+import datetime
+import json
+
+from pandas import Timestamp
+from db.conexion import BaseDatos
+
+from routes.carga.investigador.utils import validar_dni_nie, validar_email
+from utils.format import enumerated_dict
+from json import JSONEncoder
+from typing import Any, Type
+from datetime import datetime
+
+
+class Encoder(JSONEncoder):
+    def default(self, o: "DatosCarga"):
+        return o.to_dict()
+
+
+class DatosCarga(ABC):
+    @abstractmethod
+    def to_dict(self):
+        pass
+
+    @abstractmethod
+    def from_dict(self, source: dict):
+        pass
+
+    @staticmethod
+    def merge_dict(source: list["DatosCarga"] = []):
+        indexed: dict[int, DatosCarga] = enumerated_dict(source)
+        return [value.to_dict() for index, value in indexed.items()]
+
+    @staticmethod
+    def merged_from_dict(source: dict[int, dict], object_class: Type["DatosCarga"]):
+        if len(source) == 0:
+            return {}
+
+        return [object_class().from_dict(valor) for valor in source]
+
+    def __str__(self):
+        return str(self.to_dict())
+
+
+# *****************************
+# ***** CLASE INVESTIGADOR ****
+# *****************************
+class DatosCargaInvestigador(DatosCarga):
+    """
+    Clase que representa los datos necesarios para un investigador en Prisma
+    """
+
+    def __init__(self) -> None:
+        self.fuente_datos = ""
+        self.id = 0
+        self.nombre = ""
+        self.apellidos = ""
+        self.documento_identidad = None
+        self.email = ""
+        self.nacionalidad = ""
+        self.sexo = ""
+        self.fecha_nacimiento = ""
+        self.estados = []
+        self.contratos: list[DatosCargaContratoInvestigador] = []
+        self.dict: dict = {}
+
+    def set_fuente_datos(self, fuente_datos: str):
+        self.fuente_datos = fuente_datos
+
+    def set_nombre(self, nombre: str):
+        self.nombre = nombre
+
+    def set_apellidos(self, apellidos: str):
+        self.apellidos = apellidos
+
+    def set_documento_identidad(self, documento_identidad: str):
+        self.documento_identidad = documento_identidad
+
+    def set_email(self, email: str):
+        self.email = email
+
+    def set_nacionalidad(self, nacionalidad: str):
+        self.nacionalidad = nacionalidad
+
+    def set_sexo(self, sexo: str):
+        self.sexo = sexo
+
+    def set_fecha_nacimiento(self, fecha_nacimiento: str):
+        self.fecha_nacimiento = fecha_nacimiento
+
+    def add_contrato(self, contrato: "DatosCargaContratoInvestigador"):
+        self.contratos.append(contrato)
+
+    def add_contrato_virtual(self):
+        self.contratos.append(DatosCargaContratoInvestigador())
+
+    def add_contrato_virtual_con_cese(self, cese: "DatosCargaCeseInvestigador"):
+        contrato = DatosCargaContratoInvestigador()
+        contrato.set_cese(cese)
+        self.contratos.append(contrato)
+
+    def from_cese(self, cese: "DatosCargaCeseInvestigador"):
+        self.documento_identidad = cese.documento_identidad
+        self.fuente_datos = cese.fuente_datos
+
+        self.add_contrato_virtual_con_cese(cese=cese)
+
+    def get_last_contrato(self) -> "DatosCargaContratoInvestigador":
+        historico_contratos = self.get_historico_contratos()
+        ultimo_contrato: DatosCargaContratoInvestigador = (
+            historico_contratos[-1] if historico_contratos else None
+        )
+
+        return ultimo_contrato
+
+    def get_nearest_contrato(
+        self, fecha_cese: datetime
+    ) -> "DatosCargaContratoInvestigador":
+        # Convertir fecha_cese de str a datetime
+
+        # Filtrar contratos con fecha_contratacion válida y que sean menores o iguales a fecha_cese
+        contratos_validos = [
+            c
+            for c in self.contratos
+            if c.fecha_contratacion  # Ignorar fechas vacías
+            and c.fecha_contratacion <= fecha_cese
+        ]
+
+        # Si no hay contratos válidos, retornar None
+        if not contratos_validos:
+            return None
+
+        # Buscar el contrato más cercano a fecha_cese
+        return min(
+            contratos_validos,
+            key=lambda c: (fecha_cese - c.fecha_contratacion).days,
+        )
+
+    def get_historico_contratos(self):
+        contratos_ordenados: list[DatosCargaContratoInvestigador] = sorted(
+            self.contratos,
+            key=lambda contrato: contrato.get_fecha_inicio(),
+        )
+        return contratos_ordenados
+
+    def es_investigador_activo(self):
+        ultimo_contrato = self.get_last_contrato()
+        return ultimo_contrato is not None and ultimo_contrato.esta_activo()
+
+    def es_investigador_cesado(self):
+        ultimo_contrato = self.get_last_contrato()
+        return ultimo_contrato is not None and ultimo_contrato.esta_cesado()
+
+    def es_investigador_no_vigente(self):
+        if self.es_investigador_cesado():
+            return False
+
+        ultimo_contrato = self.get_last_contrato()
+        return ultimo_contrato and not ultimo_contrato.esta_vigente()
+
+    def calcular_estado_investigador(self):
+        """Se calcula el estado del investigador en base a su último contrato.
+        Un investigador no debe tener más de un estado a la vez, pero no se descarta que pueda haber casos problemáticos
+        en los que un investigador tenga más de un estado.
+        En estos casos, se asignan todos los estados que correspondan para facilitar su identificación y posterior análisis.
+        """
+        if self.es_investigador_activo():
+            self.estados.append("Activo")
+        if self.es_investigador_cesado():
+            self.estados.append("Cesado")
+        if self.es_investigador_no_vigente():
+            self.estados.append("No vigente")
+
+        return
+
+    def existe_conflicto_estados(self):
+        return len(self.estados) > 1
+
+    def to_dict(self):
+        result = {
+            "fuente_datos": self.fuente_datos,
+            "id": self.id,
+            "nombre": self.nombre,
+            "apellidos": self.apellidos,
+            "documento_identidad": self.documento_identidad,
+            "email": self.email,
+            "nacionalidad": self.nacionalidad,
+            "sexo": self.sexo,
+            "fecha_nacimiento": self.fecha_nacimiento,
+            "contratos": DatosCargaContratoInvestigador.merge_dict(self.contratos),
+        }
+
+        return result
+
+    def from_dict(self, source: dict):
+        self.fuente_datos = source.get("fuente_datos")
+        self.id = source.get("id")
+        self.nombre = source.get("nombre")
+        self.apellidos = source.get("apellidos")
+        self.documento_identidad = source.get("documento_identidad")
+        self.email = source.get("email")
+        self.nacionalidad = source.get("nacionalidad")
+        self.sexo = source.get("sexo")
+        self.fecha_nacimiento = source.get("fecha_nacimiento")
+        self.contratos = DatosCargaContratoInvestigador.merged_from_dict(
+            source=source.get("contratos"), object_class=DatosCargaContratoInvestigador
+        )
+
+        return self
+
+    def to_json(self):
+        json_data = json.dumps(self.to_dict(), indent=4, ensure_ascii=False)
+        return json_data
+
+    def from_json(self, json_data: str) -> "DatosCargaInvestigador":
+        self.dict = json.loads(json_data)
+        self.from_dict(self.dict)
+        return self
+
+    def close(self):
+        self.calcular_estado_investigador()
+        self.dict = self.to_dict()
+
+    def __eq__(self, value: "DatosCargaInvestigador") -> bool:
+        return (
+            self.fuente_datos == value.fuente_datos
+            and self.id == value.id
+            and self.nombre == value.nombre
+            and self.apellidos == value.apellidos
+            and self.documento_identidad == value.documento_identidad
+            and self.email == value.email
+            and self.nacionalidad == value.nacionalidad
+            and self.sexo == value.sexo
+            and self.fecha_nacimiento == value.fecha_nacimiento
+            and self.contratos == value.contratos
+        )
+
+    def sanitize(self):
+        self.sanitize_dates()
+        for contrato in self.contratos:
+            contrato.sanitize()
+
+    def sanitize_dates(self):
+        campos_fecha = ["fecha_nacimiento"]
+        for campo in campos_fecha:
+            valor = getattr(self, campo)
+            if isinstance(valor, Timestamp):
+                valor = valor.date()
+            setattr(self, campo, valor)
+
+    def validation(self):
+        # TODO: Cuidado con los investigadores virtuales.
+        is_valid = True
+
+        # Validar DNI/NIE
+        is_valid = (
+            is_valid
+            and self.documento_identidad is not None
+            and self.documento_identidad != ""
+        )
+        is_valid = is_valid and validar_dni_nie(self.documento_identidad)
+
+        # Validar email (dominio por defecto: us.es)
+        is_valid = is_valid and self.email is not None and self.email != ""
+        is_valid = is_valid and validar_email(self.email)
+
+        return is_valid
+
+
+class DatosCargaContratoInvestigador(DatosCarga):
+    """
+    Clase que representa los datos de un contrato de un investigador en Prisma
+    """
+
+    def __init__(self) -> None:
+        self.categoria: DatosCargaCategoriaInvestigador = (
+            DatosCargaCategoriaInvestigador()
+        )
+        self.area: DatosCargaAreaInvestigador = DatosCargaAreaInvestigador()
+        self.departamento: DatosCargaDepartamentoInvestigador = (
+            DatosCargaDepartamentoInvestigador()
+        )
+        self.centro: DatosCargaCentroInvestigador = DatosCargaCentroInvestigador()
+        self.cese: DatosCargaCeseInvestigador = DatosCargaCeseInvestigador()
+        self.fecha_contratacion: datetime = None
+        self.fecha_fin_contratacion: datetime = None
+        self.fecha_nombramiento: datetime = None
+        self.dict: dict = {}
+
+    def set_categoria(self, categoria: "DatosCargaCategoriaInvestigador"):
+        self.categoria = categoria
+
+    def set_area(self, area: "DatosCargaAreaInvestigador"):
+        self.area = area
+
+    def set_departamento(self, departamento: "DatosCargaDepartamentoInvestigador"):
+        self.departamento = departamento
+
+    def set_centro(self, centro: "DatosCargaCentroInvestigador"):
+        self.centro = centro
+
+    def set_centro_censo(self, centro_censo: "DatosCargaCentroInvestigador"):
+        self.centro_censo = centro_censo
+
+    def set_cese(self, cese: "DatosCargaCeseInvestigador"):
+        self.cese = cese
+
+    def set_fecha_contratacion(self, fecha_contratacion: datetime):
+        self.fecha_contratacion = fecha_contratacion
+
+    def set_fecha_fin_contratacion(self, fecha_fin_contratacion: datetime):
+        self.fecha_fin_contratacion = fecha_fin_contratacion
+
+    def set_fecha_nombramiento(self, fecha_nombramiento: datetime):
+        self.fecha_nombramiento = fecha_nombramiento
+
+    def esta_cesado(self):
+        if not self.cese or not self.cese.fecha:
+            return False
+
+        return self.cese.fecha <= datetime.now().date()
+
+    def esta_vigente(self):
+        if self.esta_cesado():
+            return False
+
+        if not self.fecha_contratacion and not self.fecha_nombramiento:
+            return False
+
+        if not self.fecha_fin_contratacion:
+            return True
+
+        if self.fecha_contratacion:
+            return self.fecha_fin_contratacion > datetime.now().date()
+
+        if self.fecha_nombramiento:
+            return self.fecha_nombramiento > datetime.now().date()
+
+    def esta_activo(self):
+        if self.es_virtual():
+            return False
+
+        return self.esta_vigente() and not self.esta_cesado()
+
+    def get_fecha_inicio(self):
+        # Si el contrato es virtual, se asigna una fecha mínima para colocarlo al inicio del histórico de contratos del investigador
+        if self.es_virtual():
+            return datetime.min.date()
+
+        return self.fecha_contratacion
+
+    def get_fecha_cierre(self):
+        fecha_fin_contratacion = self.fecha_fin_contratacion
+        fecha_cese = self.cese.fecha if self.cese and self.cese.fecha else None
+
+        if not fecha_cese:
+            return fecha_fin_contratacion
+
+        if not fecha_fin_contratacion:
+            return fecha_cese
+
+        return min(fecha_fin_contratacion, fecha_cese)
+
+    def to_dict(self):
+        result = {
+            "categoria": self.categoria.to_dict(),
+            "area": self.area.to_dict(),
+            "departamento": self.departamento.to_dict(),
+            "centro": self.centro.to_dict(),
+            "cese": self.cese.to_dict(),
+            "fecha_contratacion": self.fecha_contratacion,
+            "fecha_fin_contratacion": self.fecha_fin_contratacion,
+            "fecha_nombramiento": self.fecha_nombramiento,
+            "fecha_cierre": self.get_fecha_cierre(),
+        }
+
+        return result
+
+    def from_dict(self, source: dict):
+        self.categoria = DatosCargaCategoriaInvestigador().from_dict(
+            source=source.get("categoria")
+        )
+        self.area = DatosCargaAreaInvestigador().from_dict(source=source.get("area"))
+        self.departamento = DatosCargaDepartamentoInvestigador().from_dict(
+            source=source.get("departamento")
+        )
+        self.centro = DatosCargaCentroInvestigador().from_dict(
+            source=source.get("centro")
+        )
+        self.cese = DatosCargaCeseInvestigador.from_dict(
+            source=source.get("cese"), object_class=DatosCargaCeseInvestigador
+        )
+        self.fecha_contratacion = source.get("fecha_contratacion")
+        self.fecha_fin_contratacion = source.get("fecha_fin_contratacion")
+        self.fecha_nombramiento = source.get("fecha_nombramiento")
+
+        return self
+
+    def to_json(self):
+        json_data = json.dumps(self.to_dict(), indent=4, ensure_ascii=False)
+        return json_data
+
+    def from_json(self, json_data: str) -> "DatosCargaContratoInvestigador":
+        self.dict = json.loads(json_data)
+        self.from_dict(self.dict)
+        return self
+
+    def close(self):
+        self.dict = self.to_dict()
+
+    def es_mismo_contrato(self, other: "DatosCargaContratoInvestigador") -> bool:
+        return (
+            self.categoria == other.categoria
+            and self.area == other.area
+            and self.departamento == other.departamento
+            and self.centro == other.centro
+        )
+
+    def __eq__(self, value: "DatosCargaContratoInvestigador") -> bool:
+        return (
+            self.categoria == value.categoria
+            and self.area == value.area
+            and self.departamento == value.departamento
+            and self.centro == value.centro
+            and self.cese == value.cese
+            and self.fecha_contratacion == value.fecha_contratacion
+            and self.fecha_fin_contratacion == value.fecha_fin_contratacion
+            and self.fecha_nombramiento == value.fecha_nombramiento
+        )
+
+    # funcion que devuelve si el contrato es virtual, es decir, cuando está
+    # creado especificamente para un cese de un investigador que no esté en la lista de investigadores activos
+    def es_virtual(self):
+        return (
+            not self.fecha_contratacion
+            and not self.fecha_fin_contratacion
+            and not self.fecha_nombramiento
+        )
+
+    def sanitize(self):
+        self.sanitize_dates()
+        self.categoria.sanitize()
+
+    def sanitize_dates(self):
+        # Si alguna de las fechas es una cadena vacía, se asigna None para evitar problemas de validación y comparación de fechas
+        for date_field in [
+            "fecha_contratacion",
+            "fecha_fin_contratacion",
+            "fecha_nombramiento",
+        ]:
+            date_value = getattr(self, date_field)
+            if date_value == "":
+                setattr(self, date_field, None)
+            elif isinstance(date_value, Timestamp):
+                setattr(self, date_field, date_value.date())
+
+    def validation(self):
+        is_valid = True
+
+        # Validar Departamento
+        is_valid = (
+            is_valid
+            and self.departamento.id is not None
+            and self.departamento.id != ""
+            and self.departamento.nombre is not None
+            and self.departamento.nombre != ""
+        )
+
+        # Validar fechas
+        is_valid = (
+            is_valid
+            and self.fecha_contratacion is not None
+            and self.fecha_contratacion != ""
+        )
+        is_valid = (
+            is_valid
+            and self.fecha_nombramiento is not None
+            and self.fecha_nombramiento != ""
+        )
+
+        return is_valid
+
+
+class DatosCargaCategoriaInvestigador(DatosCarga):
+    def __init__(
+        self, id: str = "", nombre: str = "", femenino: str = "", tipo_pp: str = ""
+    ) -> None:
+        self.id = id
+        self.nombre = nombre
+        self.femenino = femenino
+        self.tipo_pp = tipo_pp
+
+    def to_dict(self):
+        dict = {
+            "id": self.id,
+            "nombre": self.nombre,
+            "femenino": self.femenino,
+            "tipo_pp": self.tipo_pp,
+        }
+
+        return dict
+
+    def sanitize(self):
+        self.id = self.id.lstrip("0")
+
+    def from_dict(self, source: dict):
+        self.id = source.get("id")
+        self.nombre = source.get("nombre")
+        self.femenino = source.get("femenino")
+        self.tipo_pp = source.get("tipo_pp")
+
+        return self
+
+    def __eq__(self, value: "DatosCargaCategoriaInvestigador") -> bool:
+        return self.id == value.id
+
+    def __hash__(self) -> int:
+        return hash((self.id))
+
+
+class DatosCargaAreaInvestigador(DatosCarga):
+    def __init__(self, id: str = "", nombre: str = "") -> None:
+        self.id = id
+        self.nombre = nombre
+
+    def to_dict(self):
+        dict = {
+            "id": self.id,
+            "nombre": self.nombre,
+        }
+
+        return dict
+
+    def from_dict(self, source: dict):
+        self.id = source.get("id")
+        self.nombre = source.get("nombre")
+
+        return self
+
+    def __eq__(self, value: "DatosCargaAreaInvestigador") -> bool:
+        return self.id == value.id
+
+    def __hash__(self) -> int:
+        return hash((self.id))
+
+
+class DatosCargaDepartamentoInvestigador(DatosCarga):
+    def __init__(self, id: str = "", nombre: str = "") -> None:
+        self.id = id
+        self.nombre = nombre
+
+    def to_dict(self):
+        dict = {
+            "id": self.id,
+            "nombre": self.nombre,
+        }
+
+        return dict
+
+    def from_dict(self, source: dict):
+        self.id = source.get("id")
+        self.nombre = source.get("nombre")
+
+        return self
+
+    def __eq__(self, value: "DatosCargaDepartamentoInvestigador") -> bool:
+        return self.id == value.id
+
+    def __hash__(self) -> int:
+        return hash((self.id))
+
+
+class DatosCargaCentroInvestigador(DatosCarga):
+    def __init__(self, id: str = "", nombre: str = "") -> None:
+        self.id = id
+        self.nombre = nombre
+
+    def to_dict(self):
+        dict = {
+            "id": self.id,
+            "nombre": self.nombre,
+        }
+
+        return dict
+
+    def from_dict(self, source: dict):
+        self.id = source.get("id")
+        self.nombre = source.get("nombre")
+
+        return self
+
+    def __eq__(self, value: "DatosCargaCentroInvestigador") -> bool:
+        return self.id == value.id
+
+    def __hash__(self) -> int:
+        return hash((self.id))
+
+
+# ***********************
+# ****  CLASE CESE   ****
+# ***********************
+class DatosCargaCeseInvestigador(DatosCarga):
+    def __init__(self) -> None:
+        self.fuente_datos = ""
+        self.documento_identidad = ""
+        self.tipo = ""
+        self.valor = ""
+        self.fecha = None
+
+    def set_fuente_datos(self, fuente_datos: str):
+        self.fuente_datos = fuente_datos
+
+    def set_documento_identidad(self, documento_identidad: str):
+        self.documento_identidad = documento_identidad
+
+    def set_tipo(self, tipo: str):
+        self.tipo = tipo
+
+    def set_valor(self, valor: str):
+        self.valor = valor
+
+    def set_fecha(self, fecha: str):
+        self.fecha = fecha
+
+    def to_dict(self):
+        dict = {
+            "fuente_datos": self.fuente_datos,
+            "documento_identidad": self.documento_identidad,
+            "tipo": self.tipo,
+            "valor": self.valor,
+            "fecha": self.fecha,
+        }
+
+        return dict
+
+    def from_dict(self, source: dict):
+        self.fuente_datos = source.get("fuente_datos")
+        self.documento_identidad = source.get("documento_identidad")
+        self.tipo = source.get("tipo")
+        self.valor = source.get("valor")
+        self.fecha = source.get("fecha")
+
+        return self
+
+    def to_json(self):
+        json_data = json.dumps(self.to_dict(), indent=4, ensure_ascii=False)
+        return json_data
+
+    def from_json(self, json_data: str) -> "DatosCargaInvestigador":
+        self.dict = json.loads(json_data)
+        self.from_dict(self.dict)
+        return self
+
+    def __eq__(self, value: "DatosCargaCeseInvestigador") -> bool:
+        return (
+            self.fuente_datos == value.fuente_datos
+            and self.documento_identidad == value.documento_identidad
+            and self.tipo == value.tipo
+            and self.valor == value.valor
+            and self.fecha == value.fecha
+        )
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.fuente_datos,
+                self.documento_identidad,
+                self.tipo,
+                self.valor,
+                self.fecha,
+            )
+        )
+
+    def close(self):
+        self.dict = self.to_dict()

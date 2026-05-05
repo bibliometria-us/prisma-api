@@ -1,0 +1,2 @@
+class ErrorCargaInvestigador(Exception):
+    pass

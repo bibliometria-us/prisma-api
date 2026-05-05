@@ -321,4 +321,5 @@ routes/informes/acuerdos_transformativos/fuente/*
 tests/integration/*/*.json
 routes/carga/investigador/doctorado/fuentes/DIRECTORES.csv
 routes/carga/investigador/doctorado/fuentes/DIRECTORES.csv
+mapeo_publicaciones_antiguas
 mapeo_publicaciones_antiguas.py

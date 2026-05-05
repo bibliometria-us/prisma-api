@@ -73,6 +73,10 @@ class BaseDatos:
 
         self.connection.commit()
 
+    def start_transaction(self):
+        """Inicia una transacción."""
+        self.connection.start_transaction()
+
     def rollback(self):
         """
         Se realiza un rollback.
@@ -113,7 +117,8 @@ class BaseDatos:
         except Exception as e:
             self.error = True
             self.rowcount = 0
-            cursor.close()
+            if not self.keep_connection_alive:
+                cursor.close()
             return str(e.args)
 
         self.error == False

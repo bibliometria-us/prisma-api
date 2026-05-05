@@ -21,22 +21,17 @@ class Carga(ABC):
         self.datos_antiguos: DatosCarga = None
         self.auto_commit = auto_commit
         self.start_database(db)
-        self.id_publicacion = 0
         self.origen = None
         self.autor = autor
         self.tipo_carga = tipo_carga
+        self.tipos_carga_validos = []
         self.problemas_carga: list[ProblemaCarga] = []
         self.lista_registros: list[RegistroCambios] = []
 
-    @abstractmethod
-    def carga_publicacion(self):
-        pass
-
     def comprobar_tipo_carga(self):
-        tipos_validos = ["importacion"]
-        if self.tipo_carga not in tipos_validos:
+        if self.tipo_carga not in self.tipos_carga_validos:
             raise ErrorCargaPublicacion(
-                f"Tipo de carga no válido. Tipos válidos: {tipos_validos}"
+                f"Tipo de carga no válido. Tipos válidos: {self.tipos_carga_validos}"
             )
 
     def busqueda(func):
