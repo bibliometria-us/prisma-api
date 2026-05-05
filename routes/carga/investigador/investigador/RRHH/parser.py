@@ -7,7 +7,7 @@ from routes.carga.investigador.datos_carga_investigador import (
     DatosCargaCeseInvestigador,
     DatosCargaContratoInvestigador,
 )
-from routes.carga.investigador.parser import Parser
+from routes.carga.investigador.parser import ParserCese, ParserInvestigador
 from datetime import datetime
 import pandas as pd
 
@@ -15,7 +15,7 @@ import pandas as pd
 # *****************************
 # **** PARSER INVESTIGADOR ****
 # *****************************
-class ParserInvestigador:
+class ParserInvestigadorRRHH(ParserInvestigador):
     def __init__(self, data: dict, tipo_fichero: str = "pdi") -> None:
         # Se definen los atributos de la clase
         self.tipo_fichero = tipo_fichero
@@ -51,7 +51,10 @@ class ParserInvestigador:
         )
 
     def cargar_email(self):
-        self.datos_carga_investigador.set_email(self.data.get("CORREO_ELECTRÓNICO"))
+        email = self.data.get("CORREO_ELECTRÓNICO")
+        if pd.isna(email):
+            email = None
+        self.datos_carga_investigador.set_email(email)
 
     def cargar_nacionalidad(self):
         nacionalidad = self.data.get("NACIONALIDAD")
@@ -62,12 +65,8 @@ class ParserInvestigador:
 
     def cargar_sexo(self):
         sexo = self.data.get("SEXO")
-        sexo_bd = "3"
-        match sexo:
-            case "V":
-                sexo_bd = "1"
-            case "M":
-                sexo_bd = "0"
+        map_sexo = {"V": 1, "M": 0}
+        sexo_bd = map_sexo.get(sexo, 3)
         self.datos_carga_investigador.set_sexo(sexo_bd)
 
     def cargar_fecha_nacimiento(self):
@@ -77,13 +76,13 @@ class ParserInvestigador:
 
     def cargar_contrato(self):
         contrato = DatosCargaContratoInvestigador()
-        contrato.set_fecha_contratacion(self.data.get("F_INICIO"))
-        contrato.set_fecha_nombramiento(self.data.get("F_NOMBRAMIENTO"))
-        fecha_fin = self.data.get("F_FIN")
+        contrato.set_fecha_contratacion(self.data.get("F_INICIO").date())
+        contrato.set_fecha_nombramiento(self.data.get("F_NOMBRAMIENTO").date())
+        fecha_fin = self.data.get("F_FIN").date()
         if not pd.isna(fecha_fin):
             contrato.set_fecha_fin_contratacion(fecha_fin)
         else:
-            contrato.set_fecha_fin_contratacion("")
+            contrato.set_fecha_fin_contratacion(None)
         contrato.set_centro(
             DatosCargaCentroInvestigador(
                 id=self.data.get("CENTRO_DESTINO"),
@@ -101,35 +100,29 @@ class ParserInvestigador:
                 nombre=self.data.get("DES_DEPARTAMENTO"),
             )
         )
+
+        map_id_area = {"AREA00": 0}
         id_area = self.data.get("AREA")
         nombre_area = self.data.get("DES_AREA")
+        if pd.isna(id_area):
+            id_area = 0
+            nombre_area = "Sin área de conocimiento"
+        id_area = map_id_area.get(id_area, id_area)
+        id_area = int(id_area)
+
         area = DatosCargaAreaInvestigador(id="", nombre="")
         if not pd.isna(id_area) and not pd.isna(nombre_area):
-            area = DatosCargaAreaInvestigador(
-                id=self.data.get("AREA"), nombre=self.data.get("DES_AREA")
-            )
+            area = DatosCargaAreaInvestigador(id=id_area, nombre=nombre_area)
         contrato.set_area(area)
 
         # CENTRO CENSO --> pass
         self.datos_carga_investigador.add_contrato(contrato)
 
-    def carga(self):
-        self.set_fuente_datos()
-        self.cargar_nombre()
-        self.cargar_apellidos()
-        self.cargar_documento_identidad()
-        self.cargar_email()
-        self.cargar_nacionalidad()
-        self.cargar_sexo()
-        self.cargar_fecha_nacimiento()
-        self.cargar_contrato()
-        self.datos_carga_investigador.close()
-
 
 # *****************************
 # ******** PARSER CESE ********
 # *****************************
-class ParserCese:
+class ParserCeseRRHH(ParserCese):
     def __init__(self, data: dict, tipo_fichero: str = "pdi") -> None:
         # Se definen los atributos de la clase
         self.tipo_fichero = tipo_fichero
@@ -153,12 +146,4 @@ class ParserCese:
         self.datos_carga_cese_investigador.set_valor(self.data.get("DES_CESE"))
 
     def set_fecha(self):
-        self.datos_carga_cese_investigador.set_fecha(self.data.get("F_CESE"))
-
-    def carga(self):
-        self.set_fuente_datos()
-        self.set_documento_identidad()
-        self.set_tipo()
-        self.set_valor()
-        self.set_fecha()
-        self.datos_carga_cese_investigador.close()
+        self.datos_carga_cese_investigador.set_fecha(self.data.get("F_CESE").date())

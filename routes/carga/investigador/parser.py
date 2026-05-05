@@ -1,12 +1,21 @@
 from abc import ABC, abstractmethod
+from turtle import pd
 
-from routes.carga.investigador.datos_carga_investigador import DatosCargaInvestigador
+from routes.carga.investigador.datos_carga_investigador import (
+    DatosCargaCeseInvestigador,
+    DatosCargaContratoInvestigador,
+    DatosCargaInvestigador,
+)
 
 
 # TODO: LA clase parser debería ser una clase abstracta que implemente los métodos de la clase CargaInvestigador y quizás deba llamarse ParserInvestigador
-class Parser(ABC):
-    def __init__(self):
+class ParserInvestigador(ABC):
+    def __init__(self, data: dict, tipo_fichero: str = "pdi") -> None:
+        # Se definen los atributos de la clase
+        self.tipo_fichero = tipo_fichero
         self.datos_carga_investigador = DatosCargaInvestigador()
+        self.data: dict = data
+        self.carga()  # Con los datos recuperados, se rellena el objeto de investigador
 
     @abstractmethod
     def set_fuente_datos(self):
@@ -29,26 +38,6 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def cargar_categoria(self):
-        pass
-
-    @abstractmethod
-    def cargar_area(self):
-        pass
-
-    @abstractmethod
-    def cargar_departamento(self):
-        pass
-
-    @abstractmethod
-    def cargar_centro(self):
-        pass
-
-    @abstractmethod
-    def cargar_centro_censo(self):
-        pass
-
-    @abstractmethod
     def cargar_nacionalidad(self):
         pass
 
@@ -57,19 +46,11 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def cargar_fecha_contratacion(self):
-        pass
-
-    @abstractmethod
     def cargar_fecha_nacimiento(self):
         pass
 
     @abstractmethod
-    def cargar_fecha_nombramiento(self):
-        pass
-
-    @abstractmethod
-    def cargar_fecha_cese(self):
+    def cargar_contrato(self):
         pass
 
     def carga(self):
@@ -78,15 +59,45 @@ class Parser(ABC):
         self.cargar_apellidos()
         self.cargar_documento_identidad()
         self.cargar_email()
-        self.cargar_categoria()
-        self.cargar_area()
-        self.cargar_departamento()
-        self.cargar_centro()
-        self.cargar_centro_censo()
         self.cargar_nacionalidad()
         self.cargar_sexo()
-        self.cargar_fecha_contratacion()
         self.cargar_fecha_nacimiento()
-        self.cargar_fecha_nombramiento()
-        self.cargar_fecha_cese()
+        self.cargar_contrato()
         self.datos_carga_investigador.close()
+
+
+class ParserCese(ABC):
+    def __init__(self, data: dict, tipo_fichero: str = "pdi") -> None:
+        # Se definen los atributos de la clase
+        self.tipo_fichero = tipo_fichero
+        self.datos_carga_cese_investigador = DatosCargaCeseInvestigador()
+        self.data: dict = data
+        self.carga()  # Con los datos recuperados, se rellena el objeto de cese
+
+    @abstractmethod
+    def set_fuente_datos(self):
+        pass
+
+    @abstractmethod
+    def set_documento_identidad(self):
+        pass
+
+    @abstractmethod
+    def set_tipo(self):
+        pass
+
+    @abstractmethod
+    def set_valor(self):
+        pass
+
+    @abstractmethod
+    def set_fecha(self):
+        pass
+
+    def carga(self):
+        self.set_fuente_datos()
+        self.set_documento_identidad()
+        self.set_tipo()
+        self.set_valor()
+        self.set_fecha()
+        self.datos_carga_cese_investigador.close()

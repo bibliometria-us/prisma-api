@@ -18,7 +18,7 @@ from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
 )
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
-from routes.carga.investigador.investigador.RRHH.carga import CargaInvestigadorRRHH
+from routes.carga.investigador.investigador.RRHH.carga import ImportarInvestigadoresRRHH
 from routes.carga.investigador.grupos.carga_sica import carga_sica
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.importacion_publicacion import ImportacionPublicacion
@@ -219,6 +219,7 @@ class CargaInvestigadorRRHHEndpoint(Resource):
         args = request.args
         try:
             api_key = args.get("api_key")
+            dry_run = args.get("dry_run", "false").lower() == "true"
 
             # Verificar si el usuario es administrador (función de seguridad ya definida)
             if not es_admin(api_key=api_key):
@@ -235,8 +236,10 @@ class CargaInvestigadorRRHHEndpoint(Resource):
                 file_paths[key] = temp_file.name
 
             # Ejecutar la carga de investigadores desde RRHH
-            carga_investigador_rrhh = CargaInvestigadorRRHH()
-            carga_investigador_rrhh.cargar_investigador_RRHH(file_paths=file_paths)
+            carga_investigador_rrhh = ImportarInvestigadoresRRHH()
+            carga_investigador_rrhh.importar_investigadores_RRHH(
+                file_paths=file_paths, dry_run=dry_run
+            )
 
             return {
                 "message": "Carga de investigadores desde RRHH completada correctamente"

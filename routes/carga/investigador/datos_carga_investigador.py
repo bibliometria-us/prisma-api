@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import datetime
 import json
+
+from pandas import Timestamp
 from db.conexion import BaseDatos
 
 from routes.carga.investigador.utils import validar_dni_nie, validar_email
@@ -50,10 +52,10 @@ class DatosCargaInvestigador(DatosCarga):
 
     def __init__(self) -> None:
         self.fuente_datos = ""
-        self.id = ""
+        self.id = 0
         self.nombre = ""
         self.apellidos = ""
-        self.documento_identidad = ""
+        self.documento_identidad = None
         self.email = ""
         self.nacionalidad = ""
         self.sexo = ""
@@ -234,8 +236,17 @@ class DatosCargaInvestigador(DatosCarga):
         )
 
     def sanitize(self):
+        self.sanitize_dates()
         for contrato in self.contratos:
             contrato.sanitize()
+
+    def sanitize_dates(self):
+        campos_fecha = ["fecha_nacimiento"]
+        for campo in campos_fecha:
+            valor = getattr(self, campo)
+            if isinstance(valor, Timestamp):
+                valor = valor.date()
+            setattr(self, campo, valor)
 
     def validation(self):
         # TODO: Cuidado con los investigadores virtuales.
@@ -269,9 +280,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
         self.departamento: DatosCargaDepartamentoInvestigador = (
             DatosCargaDepartamentoInvestigador()
         )
-        # TODO: Los centros son parte de la estructura de un contrato?
         self.centro: DatosCargaCentroInvestigador = DatosCargaCentroInvestigador()
-        self.centro_censo: DatosCargaCentroInvestigador = DatosCargaCentroInvestigador()
         self.cese: DatosCargaCeseInvestigador = DatosCargaCeseInvestigador()
         self.fecha_contratacion: datetime = None
         self.fecha_fin_contratacion: datetime = None
@@ -309,16 +318,23 @@ class DatosCargaContratoInvestigador(DatosCarga):
         if not self.cese or not self.cese.fecha:
             return False
 
-        return self.cese.fecha <= datetime.now()
+        return self.cese.fecha <= datetime.now().date()
 
     def esta_vigente(self):
         if self.esta_cesado():
             return False
 
+        if not self.fecha_contratacion and not self.fecha_nombramiento:
+            return False
+
         if not self.fecha_fin_contratacion:
             return True
 
-        return self.fecha_fin_contratacion > datetime.now()
+        if self.fecha_contratacion:
+            return self.fecha_fin_contratacion > datetime.now().date()
+
+        if self.fecha_nombramiento:
+            return self.fecha_nombramiento > datetime.now().date()
 
     def esta_activo(self):
         if self.es_virtual():
@@ -329,7 +345,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
     def get_fecha_inicio(self):
         # Si el contrato es virtual, se asigna una fecha mínima para colocarlo al inicio del histórico de contratos del investigador
         if self.es_virtual():
-            return datetime.min
+            return datetime.min.date()
 
         return self.fecha_contratacion
 
@@ -351,7 +367,6 @@ class DatosCargaContratoInvestigador(DatosCarga):
             "area": self.area.to_dict(),
             "departamento": self.departamento.to_dict(),
             "centro": self.centro.to_dict(),
-            "centro_censo": self.centro_censo.to_dict(),
             "cese": self.cese.to_dict(),
             "fecha_contratacion": self.fecha_contratacion,
             "fecha_fin_contratacion": self.fecha_fin_contratacion,
@@ -371,9 +386,6 @@ class DatosCargaContratoInvestigador(DatosCarga):
         )
         self.centro = DatosCargaCentroInvestigador().from_dict(
             source=source.get("centro")
-        )
-        self.centro_censo = DatosCargaCentroInvestigador().from_dict(
-            source=source.get("centro_censo")
         )
         self.cese = DatosCargaCeseInvestigador.from_dict(
             source=source.get("cese"), object_class=DatosCargaCeseInvestigador
@@ -396,13 +408,20 @@ class DatosCargaContratoInvestigador(DatosCarga):
     def close(self):
         self.dict = self.to_dict()
 
+    def es_mismo_contrato(self, other: "DatosCargaContratoInvestigador") -> bool:
+        return (
+            self.categoria == other.categoria
+            and self.area == other.area
+            and self.departamento == other.departamento
+            and self.centro == other.centro
+        )
+
     def __eq__(self, value: "DatosCargaContratoInvestigador") -> bool:
         return (
             self.categoria == value.categoria
             and self.area == value.area
             and self.departamento == value.departamento
             and self.centro == value.centro
-            and self.centro_censo == value.centro_censo
             and self.cese == value.cese
             and self.fecha_contratacion == value.fecha_contratacion
             and self.fecha_fin_contratacion == value.fecha_fin_contratacion
@@ -420,6 +439,7 @@ class DatosCargaContratoInvestigador(DatosCarga):
 
     def sanitize(self):
         self.sanitize_dates()
+        self.categoria.sanitize()
 
     def sanitize_dates(self):
         # Si alguna de las fechas es una cadena vacía, se asigna None para evitar problemas de validación y comparación de fechas
@@ -431,6 +451,8 @@ class DatosCargaContratoInvestigador(DatosCarga):
             date_value = getattr(self, date_field)
             if date_value == "":
                 setattr(self, date_field, None)
+            elif isinstance(date_value, Timestamp):
+                setattr(self, date_field, date_value.date())
 
     def validation(self):
         is_valid = True
@@ -478,6 +500,9 @@ class DatosCargaCategoriaInvestigador(DatosCarga):
 
         return dict
 
+    def sanitize(self):
+        self.id = self.id.lstrip("0")
+
     def from_dict(self, source: dict):
         self.id = source.get("id")
         self.nombre = source.get("nombre")
@@ -487,15 +512,10 @@ class DatosCargaCategoriaInvestigador(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaCategoriaInvestigador") -> bool:
-        return (
-            self.id == value.id
-            and self.nombre == value.nombre
-            and self.femenino == value.femenino
-            and self.tipo_pp == value.tipo_pp
-        )
+        return self.id == value.id
 
     def __hash__(self) -> int:
-        return hash((self.id, self.nombre, self.femenino, self.tipo_pp))
+        return hash((self.id))
 
 
 class DatosCargaAreaInvestigador(DatosCarga):
@@ -518,10 +538,10 @@ class DatosCargaAreaInvestigador(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaAreaInvestigador") -> bool:
-        return self.id == value.id and self.nombre == value.nombre
+        return self.id == value.id
 
     def __hash__(self) -> int:
-        return hash((self.id, self.nombre))
+        return hash((self.id))
 
 
 class DatosCargaDepartamentoInvestigador(DatosCarga):
@@ -544,10 +564,10 @@ class DatosCargaDepartamentoInvestigador(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaDepartamentoInvestigador") -> bool:
-        return self.id == value.id and self.nombre == value.nombre
+        return self.id == value.id
 
     def __hash__(self) -> int:
-        return hash((self.id, self.nombre))
+        return hash((self.id))
 
 
 class DatosCargaCentroInvestigador(DatosCarga):
@@ -570,10 +590,10 @@ class DatosCargaCentroInvestigador(DatosCarga):
         return self
 
     def __eq__(self, value: "DatosCargaCentroInvestigador") -> bool:
-        return self.id == value.id and self.nombre == value.nombre
+        return self.id == value.id
 
     def __hash__(self) -> int:
-        return hash((self.id, self.nombre))
+        return hash((self.id))
 
 
 # ***********************

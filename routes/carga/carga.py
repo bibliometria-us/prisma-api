@@ -28,10 +28,6 @@ class Carga(ABC):
         self.problemas_carga: list[ProblemaCarga] = []
         self.lista_registros: list[RegistroCambios] = []
 
-    @abstractmethod
-    def carga_publicacion(self):
-        pass
-
     def comprobar_tipo_carga(self):
         if self.tipo_carga not in self.tipos_carga_validos:
             raise ErrorCargaPublicacion(
