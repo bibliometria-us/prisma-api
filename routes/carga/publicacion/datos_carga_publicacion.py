@@ -190,6 +190,11 @@ class DatosCargaPublicacion(DatosCarga):
         tipos = ["Libro"]
         return self.tipo in tipos
 
+    def tiene_doi(self) -> bool:
+        return any(
+            identificador.tipo == "doi" for identificador in self.identificadores
+        )
+
     def normalizar_fuente(self):
         if self.es_libro() and self.fuente.es_coleccion():
             self.fuente_a_coleccion()
@@ -201,6 +206,10 @@ class DatosCargaPublicacion(DatosCarga):
             and not self.fuente.tiene_issn()
         ):
             self.libro_como_fuente()
+
+        if self.es_libro() and not self.fuente.tiene_issn_e_isbn() and self.tiene_doi():
+            self.libro_como_fuente()
+            self.copiar_doi_a_fuente()
 
         if self.es_capitulo() and self.fuente.tiene_issn_e_isbn():
             self.fuente_a_coleccion()
@@ -218,6 +227,24 @@ class DatosCargaPublicacion(DatosCarga):
         self.fuente.tipo = self.tipo
         # Limpiar issns
         self.fuente.identificadores = self.fuente.get_isbns()
+
+    def copiar_doi_a_fuente(self):
+        doi_publicacion = self.get_doi()
+        if doi_publicacion:
+            doi_fuente = DatosCargaIdentificadorFuente(
+                tipo=doi_publicacion.tipo, valor=doi_publicacion.valor
+            )
+            self.fuente.identificadores.append(doi_fuente)
+
+    def get_doi(self):
+        return next(
+            (
+                identificador
+                for identificador in self.identificadores
+                if identificador.tipo == "doi"
+            ),
+            None,
+        )
 
     def sanitize(self):
         for financiacion in self.financiacion:
@@ -531,9 +558,9 @@ class DatosCargaFuente(DatosCarga):
             raise ErrorCargaPublicacion("La fuente no contiene título.")
         if not self.tipo:
             raise ErrorCargaPublicacion("La fuente no contiene un tipo.")
-        if not (self.tiene_issn() or self.tiene_isbn()):
+        if not (self.tiene_issn() or self.tiene_isbn() or self.tiene_doi()):
             raise ErrorCargaPublicacion(
-                "La fuente no contiene un identificador ISSN o ISBN."
+                "La fuente no contiene un identificador ISSN, ISBN o DOI."
             )
 
     def get_issns(self) -> list["DatosCargaIdentificadorFuente"]:
@@ -560,6 +587,11 @@ class DatosCargaFuente(DatosCarga):
         return any(
             identificador.tipo in ("isbn", "eisbn")
             for identificador in self.identificadores
+        )
+
+    def tiene_doi(self) -> bool:
+        return any(
+            identificador.tipo == "doi" for identificador in self.identificadores
         )
 
     def tiene_issn_e_isbn(self) -> bool:
