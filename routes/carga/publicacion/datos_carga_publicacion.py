@@ -660,7 +660,9 @@ class DatosCargaIdentificadorFuente(DatosCarga):
 
     def sanitize(self):
         if self.tipo in ("issn", "eissn", "isbn", "eisbn"):
-            self.valor = "".join(filter(str.isdigit, self.valor))
+            self.valor = "".join(
+                ch for ch in self.valor if ch.isdigit() or ch.upper() == "X"
+            )
         if self.tipo in ("issn", "eissn"):
             if len(self.valor) == 8:
                 self.valor = f"{self.valor[:4]}-{self.valor[4:]}"
