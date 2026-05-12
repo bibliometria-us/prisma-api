@@ -1429,7 +1429,7 @@ class pub_publicaciones_jcr_jci_sin_wos(Resource):
         if not es_visor(api_key=api_key):
             return {"message": "No autorizado"}, 401
         try:
-            incidencias = consultas.get_pub_Publicaciones_jcr_jci_sin_wos()
+            incidencias = consultas.get_pub_publicaciones_jcr_jci_sin_wos()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
