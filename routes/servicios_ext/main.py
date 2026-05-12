@@ -1390,7 +1390,7 @@ class pub_publicaciones_wos_sin_metrica_Revista(Resource):
 
 # Lista de publicaciones asociadas a una Revista con SJR/Citiscore y no tenga idScopus
 @servicios_ext_namespace.route(
-    "/reglas_validacion/pub_Publicaciones_sjr_citescore_sin_scopus",
+    "/reglas_validacion/pub_publicaciones_sjr_citescore_sin_scopus",
     doc=False,
     endpoint="pub_publicaciones_sjr_citescore_sin_scopus",
 )
@@ -1402,7 +1402,7 @@ class pub_publicaciones_sjr_citescore_sin_scopus(Resource):
         if not es_visor(api_key=api_key):
             return {"message": "No autorizado"}, 401
         try:
-            incidencias = consultas.get_pub_Publicaciones_sjr_citescore_sin_scopus()
+            incidencias = consultas.get_pub_publicaciones_sjr_citescore_sin_scopus()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
@@ -1417,7 +1417,7 @@ class pub_publicaciones_sjr_citescore_sin_scopus(Resource):
 
 # Lista de publicaciones asociadas a una Revista con JCR y no tenga idWOS
 @servicios_ext_namespace.route(
-    "/reglas_validacion/pub_Publicaciones_jcr_jci_sin_wos",
+    "/reglas_validacion/pub_publicaciones_jcr_jci_sin_wos",
     doc=False,
     endpoint="pub_publicaciones_jcr_jci_sin_wos",
 )
