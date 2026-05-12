@@ -33,6 +33,10 @@ class ImportarInvestigadoresRRHH:
         self.id_carga = RegistroCambios.generar_id_carga()
         self.errores_carga: list[str] = []
         self.advertencias_carga: list[str] = []
+
+        bd_temp = BaseDatos()
+        bd_temp.reset_auto_increment(table_name="i_investigador")
+
         self.db = BaseDatos(autocommit=False, keep_connection_alive=True)
         self.db.startConnection()
         self.db.start_transaction()
@@ -160,6 +164,7 @@ class ImportarInvestigadoresRRHH:
 
     def cargar_investigadores(self, dry_run: bool = False) -> None:
         try:
+
             for datos_investigador in self.datos_investigadores:
                 try:
                     carga_investigador = CargaInvestigador(
@@ -178,6 +183,8 @@ class ImportarInvestigadoresRRHH:
             self.generar_informe()
             self.generar_informe_gestion()
 
+            if dry_run:
+                self.db.rollback()
             if not dry_run:
                 self.db.commit()
 

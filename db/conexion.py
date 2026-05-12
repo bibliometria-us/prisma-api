@@ -164,3 +164,8 @@ class BaseDatos:
         valores = resultado[1]  # Segunda fila: primer registro de datos
 
         return dict(zip(columnas, valores))
+
+    def reset_auto_increment(self, table_name: str):
+
+        query = f"ALTER TABLE {table_name} AUTO_INCREMENT = 1;"
+        self.ejecutarConsulta(query)
