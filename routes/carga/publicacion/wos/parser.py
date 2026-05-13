@@ -51,8 +51,7 @@ class WosParser(Parser):
         if doctypes["count"] == 0:
             return "Otros"
 
-        tipos = doctypes["doctype"]
-        tipo = "Article" if "Article" in tipos else tipos[0]
+        tipo = doctypes["doctype"]
 
         return tipo
 
