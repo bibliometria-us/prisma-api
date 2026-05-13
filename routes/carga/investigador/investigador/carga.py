@@ -377,14 +377,25 @@ class CargaInvestigador(Carga):
         )
 
         self.guardar_datos_contrato(contrato)
+        self.eliminar_cese_investigador()
 
         if not self.db.error:
             self.lista_registros.append(registro)
+
+    def eliminar_cese_investigador(self):
+        query = """
+                DELETE FROM i_fecha_cese
+                WHERE idInvestigador = %(id_investigador)s
+                """
+        params = {"id_investigador": self.datos.id}
+
+        self.db.ejecutarConsulta(query, params=params)
 
     def actualizar_contrato_investigador(self):
         contrato = self.datos.get_last_contrato()
         contrato_antiguo = self.datos_antiguos.get_last_contrato()
 
+        self.eliminar_cese_investigador()
         if contrato.es_mismo_contrato(contrato_antiguo):
             return
 
