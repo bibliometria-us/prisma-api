@@ -79,7 +79,7 @@ class Miembro:
 
     def buscar_contrato_existente(self) -> None:
         query = """
-        SELECT id, rol FROM prisma_proyectos.proyecto_miembro 
+        SELECT id, rol, investigador_id FROM prisma_proyectos.proyecto_miembro 
         WHERE
         proyecto_id = %(proyecto_id)s AND firma = %(firma)s
         """
@@ -96,8 +96,22 @@ class Miembro:
 
         rol = result["rol"][0] if len(result) > 0 else None
 
+        investigador_id = result["investigador_id"][0] if len(result) > 0 else None
+
         self.id_miembro = id_miembro
         self.comprobar_actualizacion_rol(rol_existente=rol)
+        self.comprobar_actualizacion_id_investigador(
+            investigador_id_actual=investigador_id
+        )
+
+    def comprobar_actualizacion_id_investigador(self, investigador_id_actual):
+        if investigador_id_actual:
+            return
+
+        query = "UPDATE prisma_proyectos.proyecto_miembro SET investigador_id = %(investigador_id)s WHERE id = %(id)s"
+        params = {"investigador_id": self.investigador_id, "id": self.id_miembro}
+
+        self.bd.ejecutarConsulta(query, params=params)
 
     def comprobar_actualizacion_rol(self, rol_existente: str) -> bool:
         role_hierarchy = {"Responsable": 3, "Investigador/a": 2, "Contratado": 1}
