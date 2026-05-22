@@ -4,6 +4,9 @@ from flask import session
 
 
 def get_user_from_api_key(api_key: str) -> str:
+    if not api_key:
+        return
+
     db = BaseDatos("api")
     query = "SELECT uvus FROM api_key a WHERE a.api_key = %(api_key)s"
     params = {"api_key": api_key}
@@ -13,6 +16,13 @@ def get_user_from_api_key(api_key: str) -> str:
         return query_result[1][0]
     else:
         return None
+
+
+def get_email_from_api_key(api_key: str) -> str:
+    user = get_user_from_api_key(api_key=api_key)
+
+    if user:
+        return f"{user}@us.es"
 
 
 def tiene_rol(rol, api_key=None):

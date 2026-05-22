@@ -1,13 +1,14 @@
 from db.conexion import BaseDatos
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
 from routes.carga.publicacion.exception import ErrorCargaPublicacion
+from routes.carga.publicacion.extraccion_publicacion import ExtraccionPublicacion
 from routes.carga.publicacion.scopus.parser import ScopusParser
 from integration.apis.elsevier.scopus_search.scopus_search import ScopusSearch
 from utils import format
 import json
 
 
-class CargaPublicacionScopus(CargaPublicacion):
+class ExtraccionPublicacionScopus(ExtraccionPublicacion):
     def __init__(
         self,
         db: BaseDatos = None,
@@ -18,7 +19,10 @@ class CargaPublicacionScopus(CargaPublicacion):
     ) -> None:
 
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
-        self.origen = "Scopus"
+        self.carga.origen = "Scopus"
+        self.clase_api = ScopusSearch
+        self.clase_parser = ScopusParser
+        self.clase_extraccion = ExtraccionPublicacionScopus
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
@@ -41,9 +45,9 @@ class CargaPublicacionScopus(CargaPublicacion):
         for publicacion in records:
             parser = ScopusParser(data=publicacion)
             self.datos = parser.datos_carga_publicacion
-            self.cargar_publicacion()
+            self.carga.cargar_publicacion()
 
-        return self.id_publicacion
+        return self.carga.id_publicacion
 
     def cargar_publicacion_por_doi(self, id: str):
         api = ScopusSearch()
@@ -55,21 +59,27 @@ class CargaPublicacionScopus(CargaPublicacion):
         for publicacion in records:
             parser = ScopusParser(data=publicacion)
             self.datos = parser.datos_carga_publicacion
-            self.cargar_publicacion()
+            self.carga.cargar_publicacion()
 
-        return self.id_publicacion
+        return self.carga.id_publicacion
 
-    def cargar_publicaciones_por_investigador(
+    def get_registros_por_investigador(
         self, id_investigador: str, agno_inicio: str = None, agno_fin: str = None
     ):
+        if not self.carga.db:
+            self.carga.db = BaseDatos()
+
         api = ScopusSearch()
-        records = api.get_publicaciones_por_investigador_fecha(id_inves=id_investigador)
+        try:
+            records = api.get_publicaciones_por_investigador_fecha(
+                id_inves=id_investigador, agno_inicio=agno_inicio, agno_fin=agno_fin
+            )
 
-        if len(records) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
-        for publicacion in records:
-            parser = ScopusParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
-            self.cargar_publicacion()
+            if len(records) == 0:
+                raise ValueError(
+                    f"El id {id_investigador} no devuelve ningún resultado."
+                )
 
-        return None
+        except Exception as e:
+            self.carga.errores.append(str(e))
+            return

@@ -95,6 +95,12 @@ class BaseDatos:
         """
         self.ejecutarConsulta(f"ROLLBACK TO SAVEPOINT {savepoint}")
 
+    def release_savepoint(self, savepoint: str):
+        """
+        Se elimina el punto de guardado.
+        """
+        self.ejecutarConsulta(f"RELEASE SAVEPOINT {savepoint};")
+
     def ejecutarConsulta(self, consulta: str, params: str = []):
         """
         Ejecuta una consuta en la conexion de la base de datos.

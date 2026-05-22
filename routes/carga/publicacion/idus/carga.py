@@ -4,10 +4,11 @@ from routes.carga.publicacion.carga_publicacion import CargaPublicacion
 from routes.carga.publicacion.exception import (
     ErrorCargaPublicacion,
 )
+from routes.carga.publicacion.extraccion_publicacion import ExtraccionPublicacion
 from routes.carga.publicacion.idus.parser import IdusParser
 
 
-class CargaPublicacionIdus(CargaPublicacion):
+class ExtraccionPublicacionIdus(ExtraccionPublicacion):
     def __init__(
         self,
         db: BaseDatos = None,
@@ -18,7 +19,7 @@ class CargaPublicacionIdus(CargaPublicacion):
     ) -> None:
 
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
-        self.origen = "idUS"
+        self.carga.origen = "idUS"
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
@@ -51,7 +52,7 @@ class CargaPublicacionIdus(CargaPublicacion):
     def cargar_publicaciones_por_handle(self, handles: list[str], batch=True):
         """Para cada handle, instanciamos un nuevo objeto de carga y le pasamos el handle"""
         for handle in handles:
-            carga = CargaPublicacionIdus(
+            carga = ExtraccionPublicacionIdus(
                 db=self.db, id_carga=self.id_carga, auto_commit=False
             )
             carga.cargar_publicacion_por_handle(handle)
@@ -63,7 +64,7 @@ class CargaPublicacionIdus(CargaPublicacion):
     def cargar_publicaciones_por_dict(self, data_list: list[dict], batch=True):
         """Para cada diccionario, instanciamos un nuevo objeto de carga y le pasamos los datos"""
         for data in data_list:
-            carga = CargaPublicacionIdus(
+            carga = ExtraccionPublicacionIdus(
                 db=self.db, id_carga=self.id_carga, auto_commit=False
             )
             carga.cargar_publicacion_por_dict(data)
@@ -71,3 +72,6 @@ class CargaPublicacionIdus(CargaPublicacion):
                 carga.commit_database()
         if batch:
             self.commit_database()
+
+    def get_registros_por_investigador(self):
+        pass

@@ -2,10 +2,10 @@ import copy
 import json
 from db.conexion import BaseDatos
 from models.investigador import Investigador
-from routes.carga.publicacion.scopus.carga import CargaPublicacionScopus
-from routes.carga.publicacion.wos.carga import CargaPublicacionWos
-from routes.carga.publicacion.openalex.carga import CargaPublicacionOpenalex
-from routes.carga.publicacion.crossref.carga import CargaPublicacionCrossref
+from routes.carga.publicacion.scopus.carga import ExtraccionPublicacionScopus
+from routes.carga.publicacion.wos.carga import ExtraccionPublicacionWos
+from routes.carga.publicacion.openalex.carga import ExtraccionPublicacionOpenalex
+from routes.carga.publicacion.crossref.carga import ExtraccionPublicacionCrossref
 from routes.carga.publicacion.zenodo.carga import CargaPublicacionZenodo
 
 

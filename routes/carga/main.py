@@ -20,6 +20,9 @@ from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
 from routes.carga.investigador.investigador.RRHH.carga import ImportarInvestigadoresRRHH
 from routes.carga.investigador.grupos.carga_sica import carga_sica
+from routes.carga.publicacion.carga_publicacion_por_investigador import (
+    CargaPublicacionesBloque,
+)
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.importacion_publicacion import ImportacionPublicacion
 from routes.carga.publicacion.scopus.parser import ScopusParser
@@ -27,20 +30,19 @@ from routes.carga.investigador.centros_censo.procesado import procesado_fichero
 from routes.carga.investigador.erasmus_plus.procesado import (
     procesado_fichero_erasmus_plus,
 )
-from routes.carga.publicacion.carga_publicacion_por_investigador import (
-    carga_publicaciones_investigador,
-)
-from routes.carga.publicacion.idus.carga import CargaPublicacionIdus
+
+from routes.carga.publicacion.idus.carga import ExtraccionPublicacionIdus
 from routes.carga.publicacion.idus.parser import IdusParser
 from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
-from routes.carga.publicacion.scopus.carga import CargaPublicacionScopus
-from routes.carga.publicacion.wos.carga import CargaPublicacionWos
-from routes.carga.publicacion.openalex.carga import CargaPublicacionOpenalex
+from routes.carga.publicacion.scopus.carga import ExtraccionPublicacionScopus
+from routes.carga.publicacion.wos.carga import ExtraccionPublicacionWos
+from routes.carga.publicacion.openalex.carga import ExtraccionPublicacionOpenalex
 from routes.carga.publicacion.zenodo.carga import CargaPublicacionZenodo
-from routes.carga.publicacion.crossref.carga import CargaPublicacionCrossref
+from routes.carga.publicacion.crossref.carga import ExtraccionPublicacionCrossref
 
 from routes.usuario import get_user_data
-from security.check_users import es_admin, es_editor
+from saml.session_utils import get_email_from_session
+from security.check_users import es_admin, es_editor, get_email_from_api_key, tiene_rol
 from celery import current_app
 from routes.carga.investigador.erasmus_plus.carga import (
     carga_erasmus_plus,
@@ -371,28 +373,41 @@ class CargaPublicacionImportar(Resource):
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES POR INVESTIGADOR ****
 @carga_namespace.route(
-    "/publicacion/importar_publicaciones_por_investigador",
+    "/publicacion/carga_publicaciones_bloque",
     doc=False,
-    endpoint="importar_publicaciones_por_investigador",
+    endpoint="carga_publicaciones_bloque",
 )
 class CargaPublicacionImportar(Resource):
     def get(self):
 
         args = request.args
-        id = args.get("id", None).strip()
+        id_investigador = args.get("id_investigador", "").strip()
         api_key = args.get("api_key")
+        dry_run = args.get("dry_run", "false").lower() == "true"
 
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
+        if not (
+            es_admin(api_key=api_key)
+            or tiene_rol(rol="publicaciones_por_investigador", api_key=api_key)
+        ):
+            return {"error": "No autorizado"}, 401
+
+        email = get_email_from_api_key(api_key) or get_email_from_session()
+
         try:
-            carga_publicaciones_investigador(
-                id_investigador=id, agno_inicio=None, agno_fin=None
+            carga = CargaPublicacionesBloque()
+            thread = threading.Thread(
+                target=carga.carga_publicaciones_investigador,
+                kwargs={
+                    "id_investigador": id_investigador,
+                    "email": email,
+                    "dry_run": dry_run,
+                },
             )
 
-        except ValueError as e:
-            return {"message": str(e)}, 402
+            thread.start()
+            return {"message": "Carga iniciada satisfactoriamente"}, 200
         except Exception as e:
-            return {"message": "Error inesperado"}, 500
+            return {"error": "Error inesperado"}, 500
 
 
 # **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES INVESTIGADORES ACTIVOS +- 1 AÑO ****

@@ -1,13 +1,13 @@
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
-from routes.carga.publicacion.crossref.carga import CargaPublicacionCrossref
+from routes.carga.publicacion.crossref.carga import ExtraccionPublicacionCrossref
 from routes.carga.publicacion.exception import (
     ErrorCargaPublicacion,
     ErrorImportacionPublicacion,
 )
-from routes.carga.publicacion.idus.carga import CargaPublicacionIdus
-from routes.carga.publicacion.openalex.carga import CargaPublicacionOpenalex
-from routes.carga.publicacion.scopus.carga import CargaPublicacionScopus
-from routes.carga.publicacion.wos.carga import CargaPublicacionWos
+from routes.carga.publicacion.idus.carga import ExtraccionPublicacionIdus
+from routes.carga.publicacion.openalex.carga import ExtraccionPublicacionOpenalex
+from routes.carga.publicacion.scopus.carga import ExtraccionPublicacionScopus
+from routes.carga.publicacion.wos.carga import ExtraccionPublicacionWos
 
 
 class ImportacionPublicacion:
@@ -21,18 +21,18 @@ class ImportacionPublicacion:
         self.id_publicacion = 0
 
     mapa_fuentes = {
-        "wos": [CargaPublicacionWos],
-        "pubmed": [CargaPublicacionWos],
-        "scopus": [CargaPublicacionScopus],
-        "openalex": [CargaPublicacionOpenalex],
-        "crossref": [CargaPublicacionCrossref],
+        "wos": [ExtraccionPublicacionWos],
+        "pubmed": [ExtraccionPublicacionWos],
+        "scopus": [ExtraccionPublicacionScopus],
+        "openalex": [ExtraccionPublicacionOpenalex],
+        "crossref": [ExtraccionPublicacionCrossref],
         "doi": [
-            CargaPublicacionWos,
-            CargaPublicacionScopus,
-            CargaPublicacionOpenalex,
-            CargaPublicacionCrossref,
+            ExtraccionPublicacionWos,
+            ExtraccionPublicacionScopus,
+            ExtraccionPublicacionOpenalex,
+            ExtraccionPublicacionCrossref,
         ],
-        "idus": [CargaPublicacionIdus],
+        "idus": [ExtraccionPublicacionIdus],
     }
 
     def agregar_cargas(self):
