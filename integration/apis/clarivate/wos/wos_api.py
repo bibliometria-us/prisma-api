@@ -165,10 +165,6 @@ class WosAPI(API):
 
         body_args = {}
         if agno_inicio and agno_fin:
-            if int(agno_fin) - int(agno_inicio) > 5:
-                raise ValueError(
-                    f"El rango de años '{agno_inicio}-{agno_fin}' no debe ser superior a 5 años."
-                )
             query += f" AND PY=({agno_inicio}-{agno_fin})"
 
         body_args["usrQuery"] = query

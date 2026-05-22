@@ -5,9 +5,10 @@ from integration.apis.crossref.crossref.crossref import CrossrefAPI
 import json
 
 from routes.carga.publicacion.exception import ErrorCargaPublicacion
+from routes.carga.publicacion.extraccion_publicacion import ExtraccionPublicacion
 
 
-class CargaPublicacionCrossref(CargaPublicacion):
+class ExtraccionPublicacionCrossref(ExtraccionPublicacion):
     def __init__(
         self,
         db: BaseDatos = None,
@@ -18,7 +19,7 @@ class CargaPublicacionCrossref(CargaPublicacion):
     ) -> None:
 
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
-        self.origen = "Crossref"
+        self.carga.origen = "Crossref"
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
@@ -47,10 +48,10 @@ class CargaPublicacionCrossref(CargaPublicacion):
 
         return self.id_publicacion
 
-    def cargar_publicaciones_por_investigador(id_investigador: str):
-        pass
-
     def cargar_publicaciones_por_investigador_limitada_agnos(
         self, id_investigador: str, agno_inicio: str, agno_fin: str
     ):
+        pass
+
+    def get_registros_por_investigador(self):
         pass

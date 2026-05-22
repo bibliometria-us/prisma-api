@@ -16,6 +16,7 @@ class API:
         headers: dict = {},
         json: dict = {},
         response_type: str = None,
+        timeout: int = (10, 10),
     ):
         self.api_keys = api_keys
         self.uri_template = uri_template
@@ -29,7 +30,9 @@ class API:
         self.format_uri()
         self.response: dict = None
         self.api_key_index = 0
-        self.retries = 3
+        self.retries = 5
+        self.sleep_time = 3
+        self.timeout = timeout
         self.set_api_key()
         self.proxies = {
             "http": "http://proxy.int.local:3128",
@@ -90,7 +93,7 @@ class API:
                 headers=self.headers,
                 params=self.args,
                 json=json,
-                timeout=timeout or (5, 5),
+                timeout=timeout or self.timeout,
                 proxies=proxy_list,
                 **kwargs,
             )
@@ -106,7 +109,7 @@ class API:
             pass
         if response.status_code in [401, 429] and self.api_keys:
             self.roll_api_key()
-            sleep(1)
+            sleep(self.sleep_time)
             return self.get_respose(
                 request_method=request_method,
                 id=id,

@@ -27,6 +27,7 @@ class Carga(ABC):
         self.tipos_carga_validos = []
         self.problemas_carga: list[ProblemaCarga] = []
         self.lista_registros: list[RegistroCambios] = []
+        self.errores: list[str] = []
 
     def comprobar_tipo_carga(self):
         if self.tipo_carga not in self.tipos_carga_validos:
@@ -81,10 +82,14 @@ class Carga(ABC):
     def insertar_registros(self):
         self.procesar_registros()
         for registro in self.lista_registros:
+            registro.bd = self.db
+            registro.origen = self.origen
             registro.insertar(id_carga=self.id_carga)
 
     def insertar_problemas(self):
         for problema in self.problemas_carga:
+            problema.bd = self.db
+            problema.origen = self.origen
             problema.insertar(id_carga=self.id_carga)
 
     @abstractmethod

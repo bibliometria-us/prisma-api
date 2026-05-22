@@ -14,7 +14,7 @@ def get_investigadores_activos(bd: BaseDatos = None) -> dict:
     return metrica
 
 
-def get_id_investigadores(id_investigador, bd: BaseDatos = None) -> dict:
+def get_id_investigadores(id_investigador, bd: BaseDatos = None) -> dict[int, dict]:
     params_publicacion = {"idInvestigador": id_investigador}
 
     query_publicacion = """SELECT idIdentificador, idInvestigador, tipo, valor FROM i_identificador_investigador WHERE idInvestigador = %(idInvestigador)s;"""
@@ -22,7 +22,12 @@ def get_id_investigadores(id_investigador, bd: BaseDatos = None) -> dict:
         if bd is None:
             bd = BaseDatos()
         bd.ejecutarConsulta(query_publicacion, params_publicacion)
-        result = bd.get_dataframe().set_index("idIdentificador").to_dict(orient="index")
+        identificadores = (
+            bd.get_dataframe().set_index("idIdentificador").to_dict(orient="index")
+        )
+        result = {
+            value.get("tipo"): value.get("valor") for value in identificadores.values()
+        }
     except Exception as e:
         return {"error": e.message}, 400
     return result

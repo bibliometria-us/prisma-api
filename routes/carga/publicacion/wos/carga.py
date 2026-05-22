@@ -1,13 +1,14 @@
 from db.conexion import BaseDatos
 from routes.carga.publicacion.carga_publicacion import CargaPublicacion
 from routes.carga.publicacion.exception import ErrorCargaPublicacion
+from routes.carga.publicacion.extraccion_publicacion import ExtraccionPublicacion
 from routes.carga.publicacion.wos.parser import WosParser
 from integration.apis.clarivate.wos.wos_api import WosAPI
 from utils import format
 import json
 
 
-class CargaPublicacionWos(CargaPublicacion):
+class ExtraccionPublicacionWos(ExtraccionPublicacion):
     def __init__(
         self,
         db: BaseDatos = None,
@@ -18,7 +19,10 @@ class CargaPublicacionWos(CargaPublicacion):
     ) -> None:
 
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
-        self.origen = "WOS"
+        self.carga.origen = "WOS"
+        self.clase_api = WosAPI
+        self.clase_parser = WosParser
+        self.clase_extraccion = ExtraccionPublicacionWos
 
     def carga_publicacion(self, tipo: str, id: str):
         funciones = {
@@ -43,9 +47,9 @@ class CargaPublicacionWos(CargaPublicacion):
         # Se limpia "records" por problema de contaminacion de variables.
         records.clear()
         self.datos = parser.datos_carga_publicacion
-        self.cargar_publicacion()
+        self.carga.cargar_publicacion()
 
-        return self.id_publicacion
+        return self.carga.id_publicacion
 
     def cargar_publicacion_por_doi(self, id: str):
         api = WosAPI()
@@ -55,21 +59,9 @@ class CargaPublicacionWos(CargaPublicacion):
 
         parser = WosParser(data=records[0])
         self.datos = parser.datos_carga_publicacion
-        self.cargar_publicacion()
+        self.carga.cargar_publicacion()
 
-        return self.id_publicacion
+        return self.carga.id_publicacion
 
-    def cargar_publicaciones_por_investigador(
-        self, id_investigador: str, agno_inicio: str = None, agno_fin: str = None
-    ):
-        api = WosAPI()
-        records = api.get_publicaciones_por_investigador_fecha(id_inves=id_investigador)
-
-        if len(records) == 0:
-            raise ValueError(f"El id {id} no devuelve ningún resultado.")
-        for publicacion in records:
-            parser = WosParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
-            self.cargar_publicacion()
-
-        return None
+    def get_registros_por_investigador(self):
+        pass

@@ -64,42 +64,59 @@ class CargaPublicacion(Carga):
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.datos: DatosCargaPublicacion
         self.datos_antiguos: DatosCargaPublicacion
-        self.tipos_carga_validos = ["importacion"]
+        self.tipos_carga_validos = ["importacion", "bloque"]
         self.id_publicacion = 0
 
     def carga_publicacion(self):
         pass
 
+    def reset_datos(self):
+        self.id_publicacion = 0
+        self.datos = DatosCargaPublicacion()
+        self.datos_antiguos = DatosCargaPublicacion()
+
     def cargar_publicacion(self):
         """Realiza la carga de la publicación en la base de datos"""
-        # Comprobar que se ha establecido un tipo de carga
-        self.comprobar_tipo_carga()
-        # Validar los datos antes de la carga
-        self.validar_datos()
+        if self.tipo_carga == "bloque":
+            self.db.set_savepoint("carga_bloque")
+        try:
+            # Comprobar que se ha establecido un tipo de carga
+            self.comprobar_tipo_carga()
+            # Validar los datos antes de la carga
+            self.validar_datos()
 
-        # if self.datos_antiguos:
-        #    self.datos_antiguos.validate()
+            # if self.datos_antiguos:
+            #    self.datos_antiguos.validate()
 
-        self.datos.sanitize()
+            self.datos.sanitize()
 
-        self.guardar_publicacion()
+            self.guardar_publicacion()
 
-        self.insertar_fuente(tipo="fuente")
-        if self.datos.fuente.coleccion:
-            self.insertar_fuente(tipo="coleccion")
+            self.insertar_fuente(tipo="fuente")
+            if self.datos.fuente.coleccion:
+                self.insertar_fuente(tipo="coleccion")
 
-        self.insertar_financiaciones()
-        self.insertar_fechas_publicacion()
-        self.insertar_valores_acceso_abierto()
+            self.insertar_financiaciones()
+            self.insertar_fechas_publicacion()
+            self.insertar_valores_acceso_abierto()
 
-        self.insertar_registros()
-        self.insertar_problemas()
+            self.insertar_registros()
+            self.insertar_problemas()
 
-        self.commit_database()
+            if not self.tipo_carga == "bloque":
+                self.commit_database()
+
+        except Exception as e:
+            if self.tipo_carga == "bloque":
+                self.db.rollback_to_savepoint("carga_bloque")
+            raise e
+        finally:
+            if self.tipo_carga == "bloque":
+                self.db.release_savepoint("carga_bloque")
 
     def procesar_registros(self):
         # Procesar los registros de cambios según el tipo de carga
-        if self.tipo_carga == "importacion":
+        if self.tipo_carga in ["importacion", "bloque"]:
             self.limpiar_registros_importacion()
 
     def limpiar_registros_importacion(self):
