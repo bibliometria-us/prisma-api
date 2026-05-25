@@ -343,6 +343,7 @@ class CargaPublicacionImportar(Resource):
         args = request.args
         tipo = args.get("tipo", "").strip()
         id = args.get("id", "").strip()
+        api_key = args.get("api_key")
 
         if not (es_admin() or es_editor()):
             return {"error": "No autorizado."}, 401

@@ -46,7 +46,7 @@ class ExtraccionPublicacionWos(ExtraccionPublicacion):
         parser = WosParser(data=records[0])
         # Se limpia "records" por problema de contaminacion de variables.
         records.clear()
-        self.datos = parser.datos_carga_publicacion
+        self.carga.datos = parser.datos_carga_publicacion
         self.carga.cargar_publicacion()
 
         return self.carga.id_publicacion
@@ -58,9 +58,9 @@ class ExtraccionPublicacionWos(ExtraccionPublicacion):
             return None
 
         parser = WosParser(data=records[0])
-        self.datos = parser.datos_carga_publicacion
+        self.carga.datos = parser.datos_carga_publicacion
         self.carga.cargar_publicacion()
-
+        
         return self.carga.id_publicacion
 
     def get_registros_por_investigador(self):
