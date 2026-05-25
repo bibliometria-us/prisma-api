@@ -848,6 +848,29 @@ def get_pub_publicaciones_sin_autores_us(bd: BaseDatos = None) -> dict:
     return metrica
 
 
+# Lista de publicaciones sin autores
+def get_pub_publicaciones_sin_autores(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pp.idPublicacion AS ID_PUB, pp.tipo AS TIPO, pp.titulo AS TITULO,
+                            pp.agno AS AGNO
+                        FROM prisma.p_publicacion pp
+                        WHERE pp.eliminado = '0' 
+                        AND pp.tipo != 'Tesis'
+                        AND pp.idPublicacion NOT IN (
+                            SELECT DISTINCT idPublicacion
+                            FROM prisma.p_autor
+                            WHERE eliminado = '0'
+                        )
+                        ORDER BY pp.idPublicacion DESC;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
 # Lista de publicaciones con más de un Dato del mismo tipo
 def get_pub_publicaciones_mas_de_un_dato_mismo_tipo(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
@@ -1502,6 +1525,109 @@ def get_inv_investigadores_sin_orcid(bd: BaseDatos = None) -> dict:
                             AND idInvestigador IS NOT NULL
                         )
                         ORDER BY ic.idBiblioteca, i.apellidos;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# ****************************************
+# ************   PROYECTOS   *************
+# ****************************************
+
+
+def get_proyectos_referencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT   
+                            pp.id               AS ID_PROYECTO,      
+                            pp.nombre           AS NOMBRE,
+                            pp.tipo             AS TIPO,
+                            pp.referencia       AS REFERENCIA
+                        FROM prisma_proyectos.proyecto pp
+                        WHERE (pp.referencia IS NULL OR LENGTH(TRIM(pp.referencia)) < 5)
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_proyectos_importe_nulo_menor_100(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT   
+                            pp.id               AS ID_PROYECTO,      
+                            pp.nombre           AS NOMBRE,
+                            pp.tipo             AS TIPO,
+                            pp.concedido       AS CONCEDIDO 
+                            FROM prisma_proyectos.proyecto pp
+                        WHERE (pp.concedido < 100 OR pp.concedido IS NULL)"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+# ****************************************
+# ************   FINANCIACION   *************
+# ****************************************
+
+
+def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                            pf.idFinanciacion               AS ID_FINANCIACION,      
+                            pf.codigo           AS CODIGO,
+                            pf.publicacion_id       AS ID_PUB 
+                        FROM prisma.p_financiacion pf
+                        WHERE (pf.codigo  IS NULL OR LENGTH(TRIM(pf.codigo )) < 4)
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                            pf.idFinanciacion     AS ID_FINANCIACION,      
+                            pf.agencia           AS AGENCIA,
+                            pf.publicacion_id       AS ID_PUB 
+                        FROM prisma.p_financiacion pf
+                        WHERE (pf.agencia IS NULL OR LENGTH(TRIM(pf.agencia)) < 5)
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_financiacion_repetida_por_publicacion(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                            MIN(pf.idFinanciacion)  AS ID_FINANCIACION,
+                            pf.codigo               AS CODIGO,
+                            pf.agencia              AS AGENCIA,
+                            pf.publicacion_id       AS ID_PUB,
+                            COUNT(*)                AS REPETICIONES
+                        FROM prisma.p_financiacion pf
+                        GROUP BY pf.codigo, pf.agencia, pf.publicacion_id
+                        HAVING COUNT(*) > 1"""
     try:
         if bd is None:
             bd = BaseDatos()

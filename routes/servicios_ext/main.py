@@ -10,7 +10,6 @@ from logger.async_request import AsyncRequest
 import re
 from utils.format import dataframe_to_json
 
-
 servicios_ext_namespace = Namespace("servicios_ext", doc=False)
 
 
@@ -1141,6 +1140,33 @@ class pub_publicaciones_sin_autores_us(Resource):
             return {"message": "Error inesperado"}, 500
 
 
+#  Lista de publicaciones sin autores
+@servicios_ext_namespace.route(
+    "/reglas_validacion/pub_publicaciones_sin_autores",
+    doc=False,
+    endpoint="pub_publicaciones_sin_autores",
+)
+class pub_publicaciones_sin_autores(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_pub_publicaciones_sin_autores()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
 # Num Publicaciones por tipo y biblioteca
 @servicios_ext_namespace.route(
     "/reglas_validacion/pub_num_publicaciones_por_biblioteca",
@@ -1570,6 +1596,146 @@ class get_inv_investigadores_sin_orcid(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_orcid()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# ****************************************
+# ************ PROYECTOS *************
+# ****************************************
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_proyectos_referencia_nula_o_menos_5_caracteres",
+    doc=False,
+    endpoint="get_proyectos_referencia_nula_o_menos_5_caracteres",
+)
+class get_proyectos_referencia_nula_o_menos_5_caracteres(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_proyectos_referencia_nula_o_menos_5_caracteres()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_proyectos_importe_nulo_menor_100",
+    doc=False,
+    endpoint="get_proyectos_importe_nulo_menor_100",
+)
+class get_proyectos_importe_nulo_menor_100(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_proyectos_importe_nulo_menor_100()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# ****************************************
+# ************ FINANCIACION *************
+# ****************************************
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_financiacion_codigo_nulo_o_menos_4_caracteres",
+    doc=False,
+    endpoint="get_financiacion_codigo_nulo_o_menos_4_caracteres",
+)
+class get_financiacion_codigo_nulo_o_menos_4_caracteres(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_financiacion_codigo_nulo_o_menos_4_caracteres()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_financiacion_agencia_nula_o_menos_5_caracteres",
+    doc=False,
+    endpoint="get_financiacion_agencia_nula_o_menos_5_caracteres",
+)
+class get_financiacion_agencia_nula_o_menos_5_caracteres(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_financiacion_agencia_nula_o_menos_5_caracteres()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_financiacion_repetida_por_publicacion",
+    doc=False,
+    endpoint="get_financiacion_repetida_por_publicacion",
+)
+class get_financiacion_repetida_por_publicacion(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_financiacion_repetida_por_publicacion()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
