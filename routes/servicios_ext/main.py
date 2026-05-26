@@ -10,7 +10,6 @@ from logger.async_request import AsyncRequest
 import re
 from utils.format import dataframe_to_json
 
-
 servicios_ext_namespace = Namespace("servicios_ext", doc=False)
 
 
@@ -195,690 +194,6 @@ class investigadores(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_investigadores()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# *************************************
-# ********* QUALITY RULES  ************
-# *************************************
-
-
-# ************ PUBLICACIONES *****************
-# p_00
-# Publicación con tipo de Datos duplicado
-@servicios_ext_namespace.route(
-    "/qr/p_00",
-    doc=False,
-    endpoint="p_00",
-)
-class p_00(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_00()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_01
-# Publicación con tipo de Datos duplicado
-@servicios_ext_namespace.route(
-    "/qr/p_01",
-    doc=False,
-    endpoint="p_01",
-)
-class p_01(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_01()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_02
-# Publicación con tipo de Identificadores duplicado
-@servicios_ext_namespace.route(
-    "/qr/p_02",
-    doc=False,
-    endpoint="p_02",
-)
-class p_02(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_02()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_03
-# Autores duplicados en publicación con mismo rol
-@servicios_ext_namespace.route(
-    "/qr/p_03",
-    doc=False,
-    endpoint="p_03",
-)
-class p_03(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_03()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_04
-# Publicación sin autores US
-@servicios_ext_namespace.route(
-    "/qr/p_04",
-    doc=False,
-    endpoint="p_04",
-)
-class p_04(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_04()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_05
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/p_05",
-    doc=False,
-    endpoint="p_05",
-)
-class p_05(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_05()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_06
-# Publicación tipo capitulo cuya fuente sea tipo colección
-@servicios_ext_namespace.route(
-    "/qr/p_06",
-    doc=False,
-    endpoint="p_06",
-)
-class p_06(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_06()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_07
-# Publicación tipo capitulo cuya fuente sea tipo colección
-@servicios_ext_namespace.route(
-    "/qr/p_07",
-    doc=False,
-    endpoint="p_07",
-)
-class p_07(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_07()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_08
-# Publicación tipo capitulo cuya fuente sea tipo colección
-@servicios_ext_namespace.route(
-    "/qr/p_08",
-    doc=False,
-    endpoint="p_08",
-)
-class p_08(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_08()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_15
-# Últimas 100 publicaciones insertadas
-@servicios_ext_namespace.route(
-    "/qr/p_15",
-    doc=False,
-    endpoint="p_15",
-)
-class p_15(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_15()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# p_16
-# Publicación duplicada por título, año, tipo y fuente
-@servicios_ext_namespace.route(
-    "/qr/p_16",
-    doc=False,
-    endpoint="p_16",
-)
-class p_16(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_p_16()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# *************** FUENTES ************************
-
-
-# f_01
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_01",
-    doc=False,
-    endpoint="f_01",
-)
-class f_01(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_01()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_02
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_02",
-    doc=False,
-    endpoint="f_02",
-)
-class f_02(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_02()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_03
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_03",
-    doc=False,
-    endpoint="f_03",
-)
-class f_03(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_03()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_04
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_04",
-    doc=False,
-    endpoint="f_04",
-)
-class f_04(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_04()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_05
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_05",
-    doc=False,
-    endpoint="f_05",
-)
-class f_05(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_05()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_06
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_06",
-    doc=False,
-    endpoint="f_06",
-)
-class f_06(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_06()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_07
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_07",
-    doc=False,
-    endpoint="f_07",
-)
-class f_07(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_07()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_08
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_08",
-    doc=False,
-    endpoint="f_08",
-)
-class f_08(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_08()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_09
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_09",
-    doc=False,
-    endpoint="f_09",
-)
-class f_09(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_09()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_10
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_10",
-    doc=False,
-    endpoint="f_10",
-)
-class f_10(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_10()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_11
-# Publicaciones sin identificadores
-@servicios_ext_namespace.route(
-    "/qr/f_11",
-    doc=False,
-    endpoint="f_11",
-)
-class f_11(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_11()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# f_16
-# Fuentes con títulos vacíos
-@servicios_ext_namespace.route(
-    "/qr/f_16",
-    doc=False,
-    endpoint="f_16",
-)
-class f_16(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_f_16()
-            json = dataframe_to_json(incidencias, orient="records")
-            response = response = make_response(json)
-            response.headers["Content-Type"] = "application/json"
-
-            return response
-
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
-# *************************************
-# ****** INVESTIGADORES ***************
-# *************************************
-# i_02
-# 50 ultimos investigadores
-@servicios_ext_namespace.route(
-    "/qr/i_02",
-    doc=False,
-    endpoint="i_02",
-)
-class f_11(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_visor(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-        try:
-            incidencias = consultas.get_quality_rule_i_02()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
@@ -1129,6 +444,33 @@ class pub_publicaciones_sin_autores_us(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sin_autores_us()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+#  Lista de publicaciones sin autores
+@servicios_ext_namespace.route(
+    "/reglas_validacion/pub_publicaciones_sin_autores",
+    doc=False,
+    endpoint="pub_publicaciones_sin_autores",
+)
+class pub_publicaciones_sin_autores(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_pub_publicaciones_sin_autores()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
@@ -1570,6 +912,146 @@ class get_inv_investigadores_sin_orcid(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_orcid()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# ****************************************
+# ************ PROYECTOS *************
+# ****************************************
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_proyectos_referencia_nula_o_menos_5_caracteres",
+    doc=False,
+    endpoint="get_proyectos_referencia_nula_o_menos_5_caracteres",
+)
+class get_proyectos_referencia_nula_o_menos_5_caracteres(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_proyectos_referencia_nula_o_menos_5_caracteres()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_proyectos_importe_nulo_menor_100",
+    doc=False,
+    endpoint="get_proyectos_importe_nulo_menor_100",
+)
+class get_proyectos_importe_nulo_menor_100(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_proyectos_importe_nulo_menor_100()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# ****************************************
+# ************ FINANCIACION *************
+# ****************************************
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_financiacion_codigo_nulo_o_menos_4_caracteres",
+    doc=False,
+    endpoint="get_financiacion_codigo_nulo_o_menos_4_caracteres",
+)
+class get_financiacion_codigo_nulo_o_menos_4_caracteres(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_financiacion_codigo_nulo_o_menos_4_caracteres()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_financiacion_agencia_nula_o_menos_5_caracteres",
+    doc=False,
+    endpoint="get_financiacion_agencia_nula_o_menos_5_caracteres",
+)
+class get_financiacion_agencia_nula_o_menos_5_caracteres(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_financiacion_agencia_nula_o_menos_5_caracteres()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_financiacion_repetida_por_publicacion",
+    doc=False,
+    endpoint="get_financiacion_repetida_por_publicacion",
+)
+class get_financiacion_repetida_por_publicacion(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_financiacion_repetida_por_publicacion()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"

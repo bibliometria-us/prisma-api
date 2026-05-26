@@ -42,11 +42,16 @@ class ExtraccionPublicacionCrossref(ExtraccionPublicacion):
 
         parser = CrossrefParser(data=record)
         # Guardar los datos parseados
-        self.datos = parser.datos_carga_publicacion
+        self.carga.datos = parser.datos_carga_publicacion
         # Cargar la publicación en la base de datos
-        self.cargar_publicacion()
+        self.carga.cargar_publicacion()
 
-        return self.id_publicacion
+        return self.carga.id_publicacion
+    
+
+    
+
+
 
     def cargar_publicaciones_por_investigador_limitada_agnos(
         self, id_investigador: str, agno_inicio: str, agno_fin: str

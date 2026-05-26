@@ -39,39 +39,38 @@ class ExtraccionPublicacionIdus(ExtraccionPublicacion):
         if len(record) == 0:
             return None
         parser = IdusParser(data=record)
-        self.datos = parser.datos_carga_publicacion
-        self.cargar_publicacion()
-
-        return self.id_publicacion
+        self.carga.datos = parser.datos_carga_publicacion
+        self.carga.cargar_publicacion()
+        return self.carga.id_publicacion
 
     def cargar_publicacion_por_dict(self, data: dict):
         parser = IdusParser(data=data)
-        self.datos = parser.datos_carga_publicacion
-        self.cargar_publicacion()
+        self.carga.datos = parser.datos_carga_publicacion
+        self.carga.cargar_publicacion()
 
     def cargar_publicaciones_por_handle(self, handles: list[str], batch=True):
         """Para cada handle, instanciamos un nuevo objeto de carga y le pasamos el handle"""
         for handle in handles:
             carga = ExtraccionPublicacionIdus(
-                db=self.db, id_carga=self.id_carga, auto_commit=False
+                db=self.carga.db, id_carga=self.carga.id_carga, auto_commit=False
             )
             carga.cargar_publicacion_por_handle(handle)
             if not batch:
-                carga.commit_database()
+                carga.carga.commit_database()
         if batch:
-            self.commit_database()
+            self.carga.commit_database()
 
     def cargar_publicaciones_por_dict(self, data_list: list[dict], batch=True):
         """Para cada diccionario, instanciamos un nuevo objeto de carga y le pasamos los datos"""
         for data in data_list:
             carga = ExtraccionPublicacionIdus(
-                db=self.db, id_carga=self.id_carga, auto_commit=False
+                db=self.carga.db, id_carga=self.carga.id_carga, auto_commit=False
             )
             carga.cargar_publicacion_por_dict(data)
             if not batch:
-                carga.commit_database()
+                carga.carga.commit_database()
         if batch:
-            self.commit_database()
+            self.carga.commit_database()
 
     def get_registros_por_investigador(self):
         pass

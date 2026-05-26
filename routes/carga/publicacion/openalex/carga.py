@@ -43,7 +43,7 @@ class ExtraccionPublicacionOpenalex(ExtraccionPublicacion):
             return None
         for publicacion in records:
             parser = OpenalexParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
+            self.carga.datos = parser.datos_carga_publicacion
             self.carga.cargar_publicacion()
 
         return self.carga.id_publicacion
@@ -55,7 +55,7 @@ class ExtraccionPublicacionOpenalex(ExtraccionPublicacion):
             return None
         for publicacion in records:
             parser = OpenalexParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
+            self.carga.datos = parser.datos_carga_publicacion
             self.carga.cargar_publicacion()
 
         return self.carga.id_publicacion

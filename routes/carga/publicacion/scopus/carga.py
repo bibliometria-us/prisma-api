@@ -44,7 +44,7 @@ class ExtraccionPublicacionScopus(ExtraccionPublicacion):
             return None
         for publicacion in records:
             parser = ScopusParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
+            self.carga.datos = parser.datos_carga_publicacion
             self.carga.cargar_publicacion()
 
         return self.carga.id_publicacion
@@ -58,10 +58,11 @@ class ExtraccionPublicacionScopus(ExtraccionPublicacion):
             return None
         for publicacion in records:
             parser = ScopusParser(data=publicacion)
-            self.datos = parser.datos_carga_publicacion
+            self.carga.datos = parser.datos_carga_publicacion
             self.carga.cargar_publicacion()
-
+        
         return self.carga.id_publicacion
+
 
     def get_registros_por_investigador(
         self, id_investigador: str, agno_inicio: str = None, agno_fin: str = None
