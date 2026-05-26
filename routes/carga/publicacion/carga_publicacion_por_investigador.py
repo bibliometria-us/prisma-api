@@ -90,7 +90,8 @@ class CargaPublicacionesBloque:
         SELECT
         CONCAT('{local_config.prisma_url}', '/publicacion/', pp.idPublicacion) AS 'URL',
         CASE WHEN arcp_nuevo.id IS NOT NULL THEN 'Nueva' ELSE 'Actualizada' END AS 'Estado',
-        CASE WHEN COUNT(CASE WHEN pa.idInvestigador != 0 THEN 1 END) > 0 THEN "Sí" ELSE "No" END AS "Enlazado",
+        CASE WHEN COUNT(CASE WHEN pa.idInvestigador != 0 THEN 1 END) > 0 THEN "Sí" ELSE "No" END AS "Enlazado al menos un autor",
+        CASE WHEN COUNT(CASE WHEN pa.idInvestigador = %(id_investigador)s THEN 1 END) > 0 THEN "Sí" ELSE "No" END AS "Enlazado este autor",
         CAST(CONCAT(COUNT(CASE WHEN pa.idInvestigador != 0 THEN 1 END), "/", COUNT(pa.idInvestigador)) AS CHAR CHARACTER SET utf8mb4) AS "Enlazados/Autores totales",
         GROUP_CONCAT(CASE WHEN ii.idInvestigador != 0 THEN CONCAT(pa.orden, ". ", ii.apellidos, ", ", ii.nombre, " (", ii.idInvestigador, ")") END SEPARATOR "; ") AS "Autores US",
         id_wos.valor AS 'WOS',
@@ -114,7 +115,10 @@ class CargaPublicacionesBloque:
         GROUP BY pp.idPublicacion
         """
 
-        params = {"id_carga": self.id_carga}
+        params = {
+            "id_carga": self.id_carga,
+            "id_investigador": self.id_investigador,
+        }
         self.bd.ejecutarConsulta(query, params=params)
 
         result = self.bd.get_dataframe()

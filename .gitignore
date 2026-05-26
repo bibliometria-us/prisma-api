@@ -293,7 +293,9 @@ pyrightconfig.json
 
 claves.py
 db/claves.py
-saml/
+!saml/
+saml/*
+!saml/session_utils.py
 config/dummy.py
 .vscode/launch.json
 temp/*
