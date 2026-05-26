@@ -253,6 +253,7 @@ class DatosCargaPublicacion(DatosCarga):
             autor.sanitize()
         self.fuente.sanitize()
         self.sanitize_autores()
+        self.sanitize_financiacion()
 
     def sanitize_autores(self):
         # Group authors by their 'tipo'
@@ -267,6 +268,16 @@ class DatosCargaPublicacion(DatosCarga):
             autores.sort(key=lambda x: x.orden)
             for index, autor in enumerate(autores, start=1):
                 autor.orden = index
+
+    def sanitize_financiacion(self):
+        financiacion = list(set(self.financiacion))
+        financiacion_filtrada = [
+            proyecto for proyecto in financiacion if proyecto.proyecto
+        ]
+
+        self.financiacion = financiacion_filtrada
+
+        return
 
     def validate(self):
         """Valida que los datos mínimos para una publicación estén presentes.
@@ -804,9 +815,7 @@ class DatosCargaFinanciacion(DatosCarga):
             self.agencia = self.agencia[:300]
 
     def __eq__(self, value: "DatosCargaFinanciacion") -> bool:
-        return (self.proyecto == value.proyecto and self.agencia == value.agencia) or (
-            self.ror == value.ror
-        )
+        return self.proyecto == value.proyecto and self.agencia == value.agencia
 
     def __hash__(self) -> int:
         return hash((self.proyecto))
