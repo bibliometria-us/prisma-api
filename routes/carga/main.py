@@ -387,7 +387,7 @@ class CargaPublicacionImportar(Resource):
         dry_run = args.get("dry_run", "false").lower() == "true"
 
         if not (
-            es_admin(api_key=api_key)
+            es_editor(api_key=api_key)
             or tiene_rol(rol="publicaciones_por_investigador", api_key=api_key)
         ):
             return {"error": "No autorizado"}, 401
