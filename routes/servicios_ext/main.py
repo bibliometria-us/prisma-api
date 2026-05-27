@@ -57,7 +57,7 @@ class get_centros(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_centros()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -84,7 +84,7 @@ class get_centros(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_departamentos()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -111,7 +111,7 @@ class get_areas(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_areas()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -138,7 +138,7 @@ class get_institutos(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_institutos()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -165,7 +165,7 @@ class get_centros_exelecia(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_centros_excelencia()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -194,7 +194,7 @@ class investigadores(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_investigadores()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -227,7 +227,7 @@ class get_bibliotecas(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_bibliotecas()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -254,7 +254,7 @@ class get_tipos_publicacion_permitidos(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_tipos_publicaciones_permitidos()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -282,7 +282,7 @@ class pub_publicaciones_con_tipos_no_permitidos(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_con_tipos_no_permitidos()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -309,7 +309,7 @@ class pub_publicaciones_con_tipos_otros(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_con_tipos_otros()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -336,7 +336,7 @@ class pub_publicaciones_mas_de_un_id_mismo_tipo(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_mas_de_un_id_mismo_tipo()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -363,7 +363,7 @@ class pub_publicaciones_sin_id(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sin_id()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -390,7 +390,7 @@ class pub_publicaciones_autores_repetidos(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_autores_repetidos()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -417,7 +417,7 @@ class pub_publicaciones_sin_fuente(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sin_fuente()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -444,7 +444,7 @@ class pub_publicaciones_sin_autores_us(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sin_autores_us()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -498,7 +498,7 @@ class pub_num_publicaciones_por_biblioteca(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_num_publicaciones_por_biblioteca()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -525,7 +525,7 @@ class pub_publicaciones_repetidas_titulo_tipo_agno(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_repetidas_titulo_tipo_agno()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -552,7 +552,7 @@ class pub_publicaciones_repetidas_titulo_tipo_fuente(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_repetidas_titulo_tipo_fuente()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -581,7 +581,7 @@ class pub_publicaciones_tipo_capitulo_fuente_coleccion(Resource):
             incidencias = (
                 consultas.get_pub_publicaciones_tipo_capitulo_fuente_coleccion()
             )
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -610,7 +610,7 @@ class pub_publicaciones_asociadas_a_fuentes_eliminadas(Resource):
             incidencias = (
                 consultas.get_pub_publicaciones_asociadas_a_fuentes_eliminadas()
             )
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -637,7 +637,7 @@ class pub_ultimas_200(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_ultimas_200()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -664,7 +664,7 @@ class pub_publicaciones_mas_de_un_dato_mismo_tipo(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_mas_de_un_dato_mismo_tipo()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -691,7 +691,7 @@ class pub_publicaciones_scopus_sin_metrica_Revista(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_scopus_sin_metrica_Revista()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -718,7 +718,7 @@ class pub_publicaciones_wos_sin_metrica_Revista(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_wos_sin_metrica_Revista()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -745,7 +745,7 @@ class pub_publicaciones_sjr_citescore_sin_scopus(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sjr_citescore_sin_scopus()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -772,7 +772,7 @@ class pub_publicaciones_jcr_jci_sin_wos(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_jcr_jci_sin_wos()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -804,7 +804,7 @@ class inv_investigadores_sin_email(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_email()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -831,7 +831,7 @@ class get_inv_investigadores_sin_identificadores(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_identificadores()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -858,7 +858,7 @@ class get_inv_investigadores_sin_publicaciones(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_publicaciones()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -885,7 +885,7 @@ class get_inv_investigadores_20_ultimos_insertados(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_20_ultimos_insertados()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -912,7 +912,7 @@ class get_inv_investigadores_sin_orcid(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_orcid()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -943,7 +943,7 @@ class get_fuentes_sin_identificadores(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_fuentes_sin_identificadores()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -969,7 +969,7 @@ class get_fuentes_sin_tipo_admitido(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_fuentes_sin_tipo_admitido()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -982,7 +982,7 @@ class get_fuentes_sin_tipo_admitido(Resource):
 
 
 @servicios_ext_namespace.route(
-    "/reglas_validacion/get_fuentes_coleccion_con_issn_y_isbn ",
+    "/reglas_validacion/get_fuentes_coleccion_con_issn_y_isbn",
     doc=False,
     endpoint="get_fuentes_coleccion_con_issn_y_isbn",
 )
@@ -995,7 +995,7 @@ class get_fuentes_coleccion_con_issn_y_isbn(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_fuentes_coleccion_con_issn_y_isbn()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1023,7 +1023,7 @@ class get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion(Resource):
             incidencias = (
                 consultas.get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion()
             )
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1049,7 +1049,7 @@ class get_fuentes_con_coleccion_a_si_misma(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_fuentes_con_coleccion_a_si_misma()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1075,7 +1075,7 @@ class get_fuentes_no_tipo_libro_con_colecciones(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_fuentes_no_tipo_libro_con_colecciones()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1106,7 +1106,7 @@ class get_proyectos_referencia_nula_o_menos_5_caracteres(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_proyectos_referencia_nula_o_menos_5_caracteres()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1132,7 +1132,7 @@ class get_proyectos_importe_nulo_menor_100(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_proyectos_importe_nulo_menor_100()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1163,7 +1163,7 @@ class get_financiacion_codigo_nulo_o_menos_4_caracteres(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_financiacion_codigo_nulo_o_menos_4_caracteres()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1189,7 +1189,7 @@ class get_financiacion_agencia_nula_o_menos_5_caracteres(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_financiacion_agencia_nula_o_menos_5_caracteres()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -1215,7 +1215,7 @@ class get_financiacion_repetida_por_publicacion(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_financiacion_repetida_por_publicacion()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
