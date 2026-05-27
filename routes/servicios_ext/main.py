@@ -471,7 +471,7 @@ class pub_publicaciones_sin_autores(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sin_autores()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 

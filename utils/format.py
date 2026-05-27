@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+from turtle import pd
 from typing import List
 import xml.etree.ElementTree as ET
 
@@ -231,11 +232,15 @@ def json_to_dict(json_path: str) -> dict:
         print("Error: ", e)
 
 
-def dataframe_to_json(df, orient="index", indent=4):
+def dataframe_to_json(df, orient="index", indent=4, empty=False):
     try:
+        if df.empty and empty:
+            df = pandas.DataFrame([{col: None for col in df.columns}])
         return df.to_json(orient=orient, indent=indent, force_ascii=False)
     except Exception as e:
         print("Error: ", e)
+
+
 
 
 def truncate_string(s: str, length: int) -> str:
