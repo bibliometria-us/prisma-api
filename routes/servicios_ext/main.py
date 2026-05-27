@@ -471,7 +471,7 @@ class pub_publicaciones_sin_autores(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_pub_publicaciones_sin_autores()
-            json = dataframe_to_json(incidencias, orient="records")
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"
 
@@ -912,6 +912,169 @@ class get_inv_investigadores_sin_orcid(Resource):
             return {"message": "No autorizado"}, 401
         try:
             incidencias = consultas.get_inv_investigadores_sin_orcid()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+# ****************************************
+# ************ FUENTES *************
+# ****************************************
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuentes_sin_identificadores",
+    doc=False,
+    endpoint="get_fuentes_sin_identificadores",
+)
+class get_fuentes_sin_identificadores(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuentes_sin_identificadores()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuentes_sin_tipo_admitido",
+    doc=False,
+    endpoint="get_fuentes_sin_tipo_admitido",
+)
+class get_fuentes_sin_tipo_admitido(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuentes_sin_tipo_admitido()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuentes_coleccion_con_issn_y_isbn ",
+    doc=False,
+    endpoint="get_fuentes_coleccion_con_issn_y_isbn",
+)
+class get_fuentes_coleccion_con_issn_y_isbn(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuentes_coleccion_con_issn_y_isbn()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion",
+    doc=False,
+    endpoint="get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion",
+)
+class get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = (
+                consultas.get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion()
+            )
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuentes_con_coleccion_a_si_misma",
+    doc=False,
+    endpoint="get_fuentes_con_coleccion_a_si_misma",
+)
+class get_fuentes_con_coleccion_a_si_misma(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuentes_con_coleccion_a_si_misma()
+            json = dataframe_to_json(incidencias, orient="records")
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuentes_no_tipo_libro_con_colecciones",
+    doc=False,
+    endpoint="get_fuentes_no_tipo_libro_con_colecciones",
+)
+class get_fuentes_no_tipo_libro_con_colecciones(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuentes_no_tipo_libro_con_colecciones()
             json = dataframe_to_json(incidencias, orient="records")
             response = response = make_response(json)
             response.headers["Content-Type"] = "application/json"

@@ -953,7 +953,152 @@ def get_inv_investigadores_sin_orcid(bd: BaseDatos = None) -> dict:
 # ****************************************
 # ************   FUENTES     *************
 # ****************************************
-# (Esta sección puede contener funciones relacionadas con fuentes en el futuro)
+
+
+def get_fuentes_sin_identificadores(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT  pf.idFuente   AS ID_FUENTE,     
+                                    pf.titulo            AS TITULO,
+                                    pf.tipo             AS TIPO
+                            FROM p_fuente pf
+                            WHERE pf.eliminado = 0 AND pf.idFuente != 0
+                            AND pf.idFuente NOT IN (
+                                SELECT pif.idFuente 
+                                FROM p_identificador_fuente pif
+                                WHERE pif.eliminado = 0
+                            )
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_fuentes_sin_tipo_admitido(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT  pf.idFuente   AS ID_FUENTE,     
+                                pf.titulo            AS TITULO,
+                                pf.tipo             AS TIPO
+                        FROM p_fuente pf
+                        WHERE pf.eliminado = 0 AND pf.idFuente != 0 
+                        AND pf.tipo NOT IN (SELECT tf.nombre FROM config.tipos_fuente tf WHERE tf.activo = '1')
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_fuentes_coleccion_con_issn_y_isbn(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT  
+                            pf.idFuente   AS ID_FUENTE,     
+                            pf.titulo     AS TITULO,
+                            pf.tipo       AS TIPO
+                        FROM p_fuente pf
+                        WHERE pf.eliminado = 0 AND pf.idFuente != 0
+                        AND pf.idFuente IN (
+                            SELECT pif.idFuente 
+                            FROM p_identificador_fuente pif
+                            WHERE pif.eliminado = 0
+                            AND pif.tipo IN ('issn', 'eissn')
+                            GROUP BY pif.idFuente
+                            HAVING COUNT(*) > 0
+                        )
+                        AND pf.idFuente IN (
+                            SELECT pif.idFuente 
+                            FROM p_identificador_fuente pif
+                            WHERE pif.eliminado = 0
+                            AND pif.tipo IN ('isbn', 'eisbn')
+                            GROUP BY pif.idFuente
+                            HAVING COUNT(*) > 0
+                        )
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_fuentes_dato_coleccion_enlazado_a_fuente_no_coleccion(
+    bd: BaseDatos = None,
+) -> dict:
+    query_publicacion = """SELECT 
+                            pf.idFuente   AS ID_FUENTE,
+                            pf.titulo     AS TITULO,
+                            pf.tipo       AS TIPO
+                        FROM p_fuente pf
+                        JOIN p_dato_fuente pdf 
+                            ON pdf.idFuente = pf.idFuente 
+                            AND pdf.tipo = 'coleccion'
+                        JOIN p_fuente pf_col 
+                            ON pf_col.idFuente = pdf.valor
+                            AND pf_col.tipo != 'coleccion'
+                        WHERE pf.eliminado = 0
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_fuentes_con_coleccion_a_si_misma(
+    bd: BaseDatos = None,
+) -> dict:
+    query_publicacion = """SELECT 
+                        pf.idFuente   AS ID_FUENTE,
+                        pf.titulo     AS TITULO,
+                        pf.tipo       AS TIPO
+                    FROM p_fuente pf
+                    JOIN p_dato_fuente pdf 
+                        ON pdf.idFuente = pf.idFuente 
+                        AND pdf.tipo = 'coleccion'
+                    WHERE pf.eliminado = 0
+                    AND pdf.valor = pf.idFuente """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_fuentes_no_tipo_libro_con_colecciones(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                                pf.idFuente   AS ID_FUENTE,
+                                pf.titulo     AS TITULO,
+                                pf.tipo       AS TIPO
+                            FROM p_fuente pf
+                            JOIN p_dato_fuente pdf 
+                                ON pdf.idFuente = pf.idFuente 
+                                AND pdf.tipo = 'coleccion'
+                            JOIN p_fuente pf_col 
+                                ON pf_col.idFuente = pdf.valor
+                            WHERE pf.eliminado = 0
+                            AND pf.tipo != 'libro'"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
 
 
 # ****************************************
