@@ -4,6 +4,7 @@ from routes.carga.publicacion.exception import (
     ErrorCargaPublicacion,
     ErrorImportacionPublicacion,
 )
+from routes.carga.publicacion.extraccion_publicacion import ExtraccionPublicacion
 from routes.carga.publicacion.idus.carga import ExtraccionPublicacionIdus
 from routes.carga.publicacion.openalex.carga import ExtraccionPublicacionOpenalex
 from routes.carga.publicacion.scopus.carga import ExtraccionPublicacionScopus
@@ -15,7 +16,7 @@ class ImportacionPublicacion:
         self.id = id
         self.tipo_id = tipo_id
         self.autor = autor
-        self.cargas: list[type[CargaPublicacion]] = []
+        self.cargas: list[type[ExtraccionPublicacion]] = []
         self.agregar_cargas()
         self.errores = []
         self.id_publicacion = 0
@@ -42,11 +43,15 @@ class ImportacionPublicacion:
         self.cargas = clases_carga
 
     def importar(self):
-        for clase_carga in self.cargas:
-            carga = clase_carga(autor=self.autor, tipo_carga="importacion")
+        for clase_extraccion in self.cargas:
+            extraccion = clase_extraccion(autor=self.autor, tipo_carga="importacion")
             try:
-                id_publicacion = carga.carga_publicacion(tipo=self.tipo_id, id=self.id)
+                id_publicacion = extraccion.carga_publicacion(
+                    tipo=self.tipo_id, id=self.id
+                )
                 if id_publicacion:
                     self.id_publicacion = id_publicacion
             except ErrorCargaPublicacion as e:
-                self.errores.append(f"Error al importar desde {carga.origen}. {str(e)}")
+                self.errores.append(
+                    f"Error al importar desde {extraccion.carga.origen}. {str(e)}"
+                )
