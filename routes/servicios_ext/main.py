@@ -1087,6 +1087,32 @@ class get_fuentes_no_tipo_libro_con_colecciones(Resource):
             return {"message": "Error inesperado"}, 500
 
 
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuente_sin_publicaciones_no_APC",
+    doc=False,
+    endpoint="get_fuente_sin_publicaciones_no_APC",
+)
+class get_fuente_sin_publicaciones_no_APC(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuente_sin_publicaciones_no_APC()
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
 # ****************************************
 # ************ PROYECTOS *************
 # ****************************************

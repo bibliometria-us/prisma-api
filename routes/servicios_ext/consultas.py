@@ -1101,6 +1101,30 @@ def get_fuentes_no_tipo_libro_con_colecciones(bd: BaseDatos = None) -> dict:
     return metrica
 
 
+def get_fuente_sin_publicaciones_no_APC(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT pf.idFuente, pf.titulo, pf.tipo
+                        FROM p_fuente pf
+                        WHERE pf.eliminado = 0
+                        AND pf.tipo = 'revista'
+                        AND pf.idFuente NOT IN (
+                            SELECT DISTINCT idFuente
+                            FROM p_publicacion
+                            WHERE eliminado = 0
+                        )
+                        AND pf.idFuente NOT IN (
+                            SELECT DISTINCT idFuente
+                            FROM m_at
+                        )"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
 # ****************************************
 # ************   PROYECTOS   *************
 # ****************************************
