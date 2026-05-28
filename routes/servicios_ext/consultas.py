@@ -204,12 +204,35 @@ pp.agno AS AGNO, ic.idBiblioteca AS ID_BIBLIOTECA , ib.nombre  AS BIBLIOTECA
 
 # Lista de publicaciones con más de un ID del mismo tipo
 def get_pub_publicaciones_mas_de_un_id_mismo_tipo(bd: BaseDatos = None) -> dict:
+    # query_publicacion = """SELECT
+    #                     pp.idPublicacion        AS ID_PUB,
+    #                     pp.titulo               AS TITULO,
+    #                     pp.tipo               AS TIPO,
+    #                     pp.agno                 AS AGNO,
+    #                     pip.tipo                AS TIPO_ID,
+    #                     ic.idBiblioteca         AS ID_BIBLIOTECA,
+    #                     ib.nombre               AS BIBLIOTECA
+    #                 FROM prisma.publicacionesXcentro pp
+    #                 LEFT JOIN p_identificador_publicacion pip ON pip.idPublicacion = pp.idPublicacion
+    #                 LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
+    #                 LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
+    #                 WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
+    #                 AND (pp.idPublicacion, pip.tipo) IN (
+    #                     SELECT idPublicacion, tipo
+    #                     FROM p_identificador_publicacion
+    #                     GROUP BY idPublicacion, tipo
+    #                     HAVING COUNT(*) > 1
+    #                 )
+    #                 GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, ic.idBiblioteca, ib.nombre
+    #                 ORDER BY pp.idPublicacion DESC, pip.tipo;"""
     query_publicacion = """SELECT 
                         pp.idPublicacion        AS ID_PUB,
                         pp.titulo               AS TITULO,
-                        pp.tipo               AS TIPO,
+                        pp.tipo                 AS TIPO,
                         pp.agno                 AS AGNO,
                         pip.tipo                AS TIPO_ID,
+                        pip.valor               AS VALOR_ID,
+                        SUBSTRING_INDEX(pip.valor, ':', 1) AS PREFIJO,
                         ic.idBiblioteca         AS ID_BIBLIOTECA,
                         ib.nombre               AS BIBLIOTECA
                     FROM prisma.publicacionesXcentro pp
@@ -217,13 +240,13 @@ def get_pub_publicaciones_mas_de_un_id_mismo_tipo(bd: BaseDatos = None) -> dict:
                     LEFT JOIN prisma.i_centro ic ON ic.idCentro = pp.idCentro
                     LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
                     WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis'
-                    AND (pp.idPublicacion, pip.tipo) IN (
-                        SELECT idPublicacion, tipo
+                    AND (pp.idPublicacion, pip.tipo, SUBSTRING_INDEX(pip.valor, ':', 1)) IN (
+                        SELECT idPublicacion, tipo, SUBSTRING_INDEX(valor, ':', 1)
                         FROM p_identificador_publicacion
-                        GROUP BY idPublicacion, tipo
+                        GROUP BY idPublicacion, tipo, SUBSTRING_INDEX(valor, ':', 1)
                         HAVING COUNT(*) > 1
                     )
-                    GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, ic.idBiblioteca, ib.nombre 
+                    GROUP BY pp.idPublicacion, pp.titulo, pp.agno, pip.tipo, SUBSTRING_INDEX(pip.valor, ':', 1), ic.idBiblioteca, ib.nombre
                     ORDER BY pp.idPublicacion DESC, pip.tipo;"""
     try:
         if bd is None:
@@ -1137,7 +1160,7 @@ def get_proyectos_referencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> 
                             pp.tipo             AS TIPO,
                             pp.referencia       AS REFERENCIA
                         FROM prisma_proyectos.proyecto pp
-                        WHERE (pp.referencia IS NULL OR LENGTH(TRIM(pp.referencia)) < 5)
+                        WHERE (pp.referencia IS NULL OR LENGTH(TRIM(pp.referencia)) < 5) AND pp.visible != '0'
                         """
     try:
         if bd is None:
@@ -1156,7 +1179,7 @@ def get_proyectos_importe_nulo_menor_100(bd: BaseDatos = None) -> dict:
                             pp.tipo             AS TIPO,
                             pp.concedido       AS CONCEDIDO 
                             FROM prisma_proyectos.proyecto pp
-                        WHERE (pp.concedido < 100 OR pp.concedido IS NULL)"""
+                        WHERE (pp.concedido < 100 OR pp.concedido IS NULL) AND pp.visible != '0'"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -1174,11 +1197,13 @@ def get_proyectos_importe_nulo_menor_100(bd: BaseDatos = None) -> dict:
 
 def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
-                            pf.idFinanciacion               AS ID_FINANCIACION,      
-                            pf.codigo           AS CODIGO,
-                            pf.publicacion_id       AS ID_PUB 
-                        FROM prisma.p_financiacion pf
-                        WHERE (pf.codigo  IS NULL OR LENGTH(TRIM(pf.codigo )) < 4)
+                                pf.idFinanciacion       AS ID_FINANCIACION,      
+                                pf.codigo               AS CODIGO,
+                                pf.publicacion_id       AS ID_PUB,
+                                pp.titulo               AS TITULO
+                            FROM prisma.p_financiacion pf
+                            LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
+                            WHERE (pf.codigo IS NULL OR LENGTH(TRIM(pf.codigo)) < 4)
                         """
     try:
         if bd is None:
@@ -1194,8 +1219,10 @@ def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> 
     query_publicacion = """SELECT 
                             pf.idFinanciacion     AS ID_FINANCIACION,      
                             pf.agencia           AS AGENCIA,
-                            pf.publicacion_id       AS ID_PUB 
+                            pf.publicacion_id       AS ID_PUB,
+                            pp.titulo               AS TITULO
                         FROM prisma.p_financiacion pf
+                        LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
                         WHERE (pf.agencia IS NULL OR LENGTH(TRIM(pf.agencia)) < 5)
                         """
     try:
@@ -1214,10 +1241,47 @@ def get_financiacion_repetida_por_publicacion(bd: BaseDatos = None) -> dict:
                             pf.codigo               AS CODIGO,
                             pf.agencia              AS AGENCIA,
                             pf.publicacion_id       AS ID_PUB,
-                            COUNT(*)                AS REPETICIONES
+                            COUNT(*)                AS REPETICIONES,
+                            pp.titulo               AS TITULO
                         FROM prisma.p_financiacion pf
+                        LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
                         GROUP BY pf.codigo, pf.agencia, pf.publicacion_id
                         HAVING COUNT(*) > 1"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_num_proyectos_con_financiacion(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                            COUNT(DISTINCT pf.idProyecto)                                       AS PROYECTOS_CON_FINANCIACION,
+                            (SELECT COUNT(*) FROM prisma_proyectos.proyecto) AS TOTAL_PROYECTOS
+                        FROM prisma_proyectos.proyecto pr
+                        INNER JOIN prisma.p_financiacion pf ON pf.idProyecto = pr.id AND pr.visible = 1
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+def get_num_financiacion_con_proyectos(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                                COUNT(DISTINCT pf_con.idFinanciacion)                           AS FINANCIACIONES_CON_PROYECTO,
+                                (SELECT COUNT(*) FROM prisma.p_financiacion) AS TOTAL_FINANCIACIONES
+                            FROM prisma.p_financiacion pf_con
+                            INNER JOIN prisma_proyectos.proyecto pr ON pr.id = pf_con.idProyecto
+                            AND pr.visible = 1
+                        """
     try:
         if bd is None:
             bd = BaseDatos()

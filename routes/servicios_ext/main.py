@@ -1251,3 +1251,55 @@ class get_financiacion_repetida_por_publicacion(Resource):
             return {"message": str(e)}, 402
         except Exception as e:
             return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_num_proyectos_con_financiacion",
+    doc=False,
+    endpoint="get_num_proyectos_con_financiacion",
+)
+class get_num_proyectos_con_financiacion(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_num_proyectos_con_financiacion()
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_num_financiacion_con_proyectos",
+    doc=False,
+    endpoint="get_num_financiacion_con_proyectos",
+)
+class get_num_financiacion_con_proyectos(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_num_financiacion_con_proyectos()
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
