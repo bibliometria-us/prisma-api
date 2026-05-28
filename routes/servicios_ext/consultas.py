@@ -347,7 +347,7 @@ def get_pub_publicaciones_sin_autores(bd: BaseDatos = None) -> dict:
                             SELECT DISTINCT idPublicacion
                             FROM prisma.p_autor
                             WHERE eliminado = '0'
-                        )
+                        ) AND FALSE 
                         ORDER BY pp.idPublicacion DESC;"""
     try:
         if bd is None:
