@@ -376,7 +376,7 @@ def get_pub_publicaciones_mas_de_un_dato_mismo_tipo(bd: BaseDatos = None) -> dic
                     WHERE pp.eliminado = '0' AND pp.tipo != 'Tesis' 
                     AND (pp.idPublicacion, pip.tipo) IN (
                         SELECT idPublicacion, tipo
-                        FROM p_dato_publicacion
+                        FROM p_dato_publicacion WHERE tipo != 'titulo_alt'
                         GROUP BY idPublicacion, tipo
                         HAVING COUNT(*) > 1
                     )
