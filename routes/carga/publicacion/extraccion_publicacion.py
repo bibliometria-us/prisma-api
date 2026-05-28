@@ -21,6 +21,10 @@ class ExtraccionPublicacion(ABC):
         self.clase_parser: Parser.__class__ = None
         self.clase_extraccion: ExtraccionPublicacion.__class__ = None
 
+    @abstractmethod
+    def carga_publicacion():
+        pass
+
     def cargar_publicaciones_por_investigador(
         self,
         id_investigador: str,
