@@ -1113,6 +1113,32 @@ class get_fuente_sin_publicaciones_no_APC(Resource):
             return {"message": "Error inesperado"}, 500
 
 
+@servicios_ext_namespace.route(
+    "/reglas_validacion/get_fuente_con_issn_e_isbn",
+    doc=False,
+    endpoint="get_fuente_con_issn_e_isbn",
+)
+class get_fuente_con_issn_e_isbn(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_fuente_con_issn_e_isbn()
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
+
 # ****************************************
 # ************ PROYECTOS *************
 # ****************************************

@@ -345,7 +345,7 @@ def get_pub_publicaciones_sin_autores_us(bd: BaseDatos = None) -> dict:
                             AND pp.idPublicacion NOT IN (
                                 SELECT DISTINCT idPublicacion
                                 FROM prisma.p_autor
-                                WHERE idInvestigador IS NOT NULL
+                                WHERE idInvestigador > '0'
                                 AND eliminado = '0'
                             )
                             ORDER BY pp.idPublicacion DESC;"""
@@ -370,7 +370,7 @@ def get_pub_publicaciones_sin_autores(bd: BaseDatos = None) -> dict:
                             SELECT DISTINCT idPublicacion
                             FROM prisma.p_autor
                             WHERE eliminado = '0'
-                        ) AND FALSE 
+                        )
                         ORDER BY pp.idPublicacion DESC;"""
     try:
         if bd is None:
@@ -983,7 +983,7 @@ def get_fuentes_sin_identificadores(bd: BaseDatos = None) -> dict:
                                     pf.titulo            AS TITULO,
                                     pf.tipo             AS TIPO
                             FROM p_fuente pf
-                            WHERE pf.eliminado = 0 AND pf.idFuente != 0
+                            WHERE pf.eliminado = 0 AND pf.idFuente != 0 AND pf.tipo != 'Congreso'
                             AND pf.idFuente NOT IN (
                                 SELECT pif.idFuente 
                                 FROM p_identificador_fuente pif
@@ -1024,7 +1024,7 @@ def get_fuentes_coleccion_con_issn_y_isbn(bd: BaseDatos = None) -> dict:
                             pf.titulo     AS TITULO,
                             pf.tipo       AS TIPO
                         FROM p_fuente pf
-                        WHERE pf.eliminado = 0 AND pf.idFuente != 0
+                        WHERE pf.eliminado = 0 AND pf.idFuente != 0 AND pf.tipo = 'Coleccion'
                         AND pf.idFuente IN (
                             SELECT pif.idFuente 
                             FROM p_identificador_fuente pif
@@ -1148,6 +1148,37 @@ def get_fuente_sin_publicaciones_no_APC(bd: BaseDatos = None) -> dict:
     return metrica
 
 
+def get_fuente_con_issn_e_isbn(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT  
+                            pf.idFuente   AS ID_FUENTE,     
+                            pf.titulo     AS TITULO,
+                            pf.tipo       AS TIPO
+                        FROM p_fuente pf
+                        WHERE pf.eliminado = 0 
+                        AND pf.idFuente != 0 
+                        AND pf.tipo != 'Coleccion'
+                        AND pf.idFuente IN (
+                            SELECT pif.idFuente 
+                            FROM p_identificador_fuente pif
+                            WHERE pif.eliminado = 0
+                            AND pif.tipo IN ('issn', 'eissn')
+                        )
+                        AND pf.idFuente IN (
+                            SELECT pif.idFuente 
+                            FROM p_identificador_fuente pif
+                            WHERE pif.eliminado = 0
+                            AND pif.tipo IN ('isbn', 'eisbn')
+                        )"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
 # ****************************************
 # ************   PROYECTOS   *************
 # ****************************************
@@ -1259,7 +1290,7 @@ def get_financiacion_repetida_por_publicacion(bd: BaseDatos = None) -> dict:
 
 def get_num_proyectos_con_financiacion(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
-                            COUNT(DISTINCT pf.idProyecto)                                       AS PROYECTOS_CON_FINANCIACION,
+                            COUNT(DISTINCT pf.idProyecto)    AS PROYECTOS_CON_FINANCIACION,
                             (SELECT COUNT(*) FROM prisma_proyectos.proyecto) AS TOTAL_PROYECTOS
                         FROM prisma_proyectos.proyecto pr
                         INNER JOIN prisma.p_financiacion pf ON pf.idProyecto = pr.id AND pr.visible = 1
