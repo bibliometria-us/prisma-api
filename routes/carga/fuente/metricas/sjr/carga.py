@@ -149,14 +149,14 @@ class CargaSJR(Carga):
     def buscar_sjr(self, dato: DatosCargaSJR) -> DatosCargaSJR:
         query = """
             SELECT * FROM m_sjr
-            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s AND issn = %(issn)s AND issn_2 = %(issn_2)s
+            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s AND issn = %(issn)s AND COALESCE(issn_2, '') = %(issn_2)s
         """
         params = {
             "journal": dato.journal,
             "year": dato.year,
             "category": dato.category,
             "issn": dato.issn,
-            "issn_2": dato.issn_2,
+            "issn_2": dato.issn_2 or "",
         }
 
         self.db.ejecutarConsulta(query, params)
