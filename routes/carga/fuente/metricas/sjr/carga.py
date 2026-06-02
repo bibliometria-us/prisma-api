@@ -25,7 +25,6 @@ class CargaSJR(Carga):
         extraccion = ExtraccionSJR()
         extraccion.leer_datos(data, self.year)
 
-        datos = []
         for categoria in extraccion.categorias.values():
             for dato in categoria.datos:
                 self.guardar_dato(dato)
@@ -33,9 +32,9 @@ class CargaSJR(Carga):
     def guardar_dato(self, dato: DatosCargaSJR):
         dato.id_fuente = self.buscar_id_fuente(dato)
 
-        dato_existente = self.buscar_sjr(dato) if dato.id_fuente else None
+        dato_existente = self.buscar_sjr(dato)
 
-        if dato_existente and dato_existente != dato:
+        if dato_existente:
             self.actualizar_dato(dato=dato, dato_existente=dato_existente)
         else:
             self.guardar_nuevo_dato(dato)
@@ -46,12 +45,13 @@ class CargaSJR(Carga):
     def actualizar_dato(self, dato: DatosCargaSJR, dato_existente: DatosCargaSJR):
         query = """
             UPDATE m_sjr
-            SET impact_factor = %(impact_factor)s, rank = %(rank)s, quartile = %(quartile)s, decil = %(decil)s, tercil = %(tercil)s
-            WHERE idFuente = %(id_fuente)s AND year = %(year)s AND category = %(category)s
+            SET idFuente = %(id_fuente)s, impact_factor = %(impact_factor)s, rank = %(rank)s, quartile = %(quartile)s, decil = %(decil)s, tercil = %(tercil)s
+            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s
         """
 
         params = {
             "id_fuente": dato.id_fuente,
+            "journal": dato.journal,
             "year": dato.year,
             "category": dato.category,
             "impact_factor": dato.impact_factor,
@@ -64,12 +64,16 @@ class CargaSJR(Carga):
         self.db.ejecutarConsulta(query, params)
 
         atributos_a_actualizar = [
+            "id_fuente",
             "impact_factor",
             "rank",
             "quartile",
             "decil",
             "tercil",
         ]
+
+        if not dato.id_fuente:
+            return
 
         for atributo in atributos_a_actualizar:
             valor = getattr(dato, atributo)
@@ -123,8 +127,9 @@ class CargaSJR(Carga):
 
     def buscar_id_fuente(self, dato: DatosCargaSJR):
         query = """
-            SELECT idFuente FROM p_identificador_fuente
-            WHERE tipo IN ('issn', 'eissn') AND valor IN (%(issn)s, %(issn_2)s)
+            SELECT pif.idFuente FROM p_identificador_fuente pif
+            INNER JOIN p_fuente pf ON pf.idFuente = pif.idFuente
+            WHERE pif.tipo IN ('issn', 'eissn') AND pif.valor IN (%(issn)s, %(issn_2)s)
             LIMIT 1
         """
 
@@ -139,10 +144,10 @@ class CargaSJR(Carga):
     def buscar_sjr(self, dato: DatosCargaSJR) -> DatosCargaSJR:
         query = """
             SELECT * FROM m_sjr
-            WHERE idFuente = %(id_fuente)s AND year = %(year)s AND category = %(category)s
+            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s
         """
         params = {
-            "id_fuente": dato.id_fuente,
+            "journal": dato.journal,
             "year": dato.year,
             "category": dato.category,
         }
@@ -152,7 +157,9 @@ class CargaSJR(Carga):
 
         dato = (
             DatosCargaSJR(
-                id_fuente=int(df["idFuente"].iloc[0]),
+                id_fuente=(
+                    int(df["idFuente"].iloc[0]) if df["idFuente"].iloc[0] else None
+                ),
                 journal=df["journal"].iloc[0],
                 issn=df["issn"].iloc[0],
                 issn_2=df["issn_2"].iloc[0],

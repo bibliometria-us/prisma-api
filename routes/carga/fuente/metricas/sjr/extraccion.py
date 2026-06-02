@@ -64,10 +64,7 @@ class ExtraccionSJR:
             for i, dato in enumerate(categoria.datos):
                 dato.rank = f"{i + 1}/{total_datos}"
                 percentil = (i + 1) / total_datos * 100
-                percentil = int(percentil)
 
-                if not dato.quartile:
-                    dato.quartile = f"Q{min(4, ceil(percentil / 25))}"
-
-                dato.tercil = f"T{min(3, ceil(percentil / (100/3)))}"
-                dato.decil = f"D{min(10, ceil(percentil / 10))}"
+                if dato.quartile:
+                    dato.tercil = f"T{min(3, ceil(percentil / (100/3)))}"
+                    dato.decil = f"D{min(10, ceil(percentil / 10))}"
