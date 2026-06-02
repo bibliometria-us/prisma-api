@@ -545,10 +545,14 @@ class CargaMetricasSJR(Resource):
         if not file.filename.endswith((".csv")):
             return {"error": "Formato de fichero erróneo"}, 400
 
-        carga_sjr = ImportarSJR(year=year)
-        data = pd.read_csv(file, sep=";")
+        try:
+            carga_sjr = ImportarSJR(year=year)
+            data = pd.read_csv(file, sep=";")
 
-        thread = threading.Thread(
-            target=carga_sjr.importar, kwargs={"data": data, "dry_run": dry_run}
-        )
-        thread.start()
+            thread = threading.Thread(
+                target=carga_sjr.importar, kwargs={"data": data, "dry_run": dry_run}
+            )
+            thread.start()
+            return {"message": "Carga iniciada satisfactoriamente"}, 200
+        except Exception as e:
+            return {"error": "Error inesperado"}, 502
