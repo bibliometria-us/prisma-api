@@ -30,6 +30,9 @@ class CargaSJR(Carga):
                 self.guardar_dato(dato)
 
     def guardar_dato(self, dato: DatosCargaSJR):
+        if not dato.quartile:
+            return
+
         dato.id_fuente = self.buscar_id_fuente(dato)
 
         dato_existente = self.buscar_sjr(dato)
