@@ -49,7 +49,7 @@ class CargaSJR(Carga):
         query = """
             UPDATE m_sjr
             SET idFuente = %(id_fuente)s, impact_factor = %(impact_factor)s, rank = %(rank)s, quartile = %(quartile)s, decil = %(decil)s, tercil = %(tercil)s
-            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s
+            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s AND issn = %(issn)s AND issn_2 = %(issn_2)s
         """
 
         params = {
@@ -57,6 +57,8 @@ class CargaSJR(Carga):
             "journal": dato.journal,
             "year": dato.year,
             "category": dato.category,
+            "issn": dato.issn,
+            "issn_2": dato.issn_2,
             "impact_factor": dato.impact_factor,
             "rank": dato.rank,
             "quartile": dato.quartile,
@@ -147,12 +149,14 @@ class CargaSJR(Carga):
     def buscar_sjr(self, dato: DatosCargaSJR) -> DatosCargaSJR:
         query = """
             SELECT * FROM m_sjr
-            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s
+            WHERE journal = %(journal)s AND year = %(year)s AND category = %(category)s AND issn = %(issn)s AND issn_2 = %(issn_2)s
         """
         params = {
             "journal": dato.journal,
             "year": dato.year,
             "category": dato.category,
+            "issn": dato.issn,
+            "issn_2": dato.issn_2,
         }
 
         self.db.ejecutarConsulta(query, params)
