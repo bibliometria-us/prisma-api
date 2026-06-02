@@ -12,6 +12,7 @@ class RegistroCambiosFuente(RegistroCambios):
         autor,
         origen,
         bd=None,
+        valor_antiguo=None,
     ):
         super().__init__(
             tabla="a_registro_cambios_fuente",
@@ -23,6 +24,7 @@ class RegistroCambiosFuente(RegistroCambios):
             valor=valor,
             autor=autor,
             bd=bd,
+            valor_antiguo=valor_antiguo,
         )
 
 
