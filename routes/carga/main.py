@@ -17,6 +17,8 @@ from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
     ErrorTransformacionFicheroAT,
 )
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
+from routes.carga.fuente.metricas.sjr.carga import CargaSJR
+from routes.carga.fuente.metricas.sjr.importar import ImportarSJR
 from routes.carga.investigador.centros_censo.carga import carga_centros_censados
 from routes.carga.investigador.investigador.RRHH.carga import ImportarInvestigadoresRRHH
 from routes.carga.investigador.grupos.carga_sica import carga_sica
@@ -514,5 +516,43 @@ class CargaAT(Resource):
 
         except ErrorAT as e:
             return {"error": str(e)}, 400
+        except Exception as e:
+            return {"error": "Error inesperado"}, 502
+
+
+@carga_namespace.route(
+    "/metricas/carga_sjr",
+    doc=False,
+    endpoint="carga_sjr",
+)
+class CargaMetricasSJR(Resource):
+    def post(self):
+        args = request.args
+        api_key = args.get("api_key")
+        year = args.get("year", int(args.get("year", datetime.now().year - 1)))
+        dry_run = args.get("dry_run", "false").lower() == "true"
+
+        if not es_admin(api_key=api_key):
+            return {"error": "No autorizado"}, 401
+
+        files = request.files.getlist("files[]")
+
+        if len(files) == 0:
+            return {"error": "No se han adjuntado ficheros adecuadamente"}, 400
+
+        file = files[0]
+
+        if not file.filename.endswith((".csv")):
+            return {"error": "Formato de fichero erróneo"}, 400
+
+        try:
+            carga_sjr = ImportarSJR(year=year)
+            data = pd.read_csv(file, sep=";")
+
+            thread = threading.Thread(
+                target=carga_sjr.importar, kwargs={"data": data, "dry_run": dry_run}
+            )
+            thread.start()
+            return {"message": "Carga iniciada satisfactoriamente"}, 200
         except Exception as e:
             return {"error": "Error inesperado"}, 502
