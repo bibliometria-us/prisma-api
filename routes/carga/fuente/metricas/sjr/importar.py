@@ -76,6 +76,7 @@ class ImportarSJR:
         AND arcf.id_carga = %(id_carga)s
         AND ms.year = %(year)s
         GROUP BY ms.idFuente, ms.category, ms.year
+        ORDER BY ms.category, ms.impact_factor DESC
         """
 
         params = {"id_carga": self.id_carga, "year": self.year}
