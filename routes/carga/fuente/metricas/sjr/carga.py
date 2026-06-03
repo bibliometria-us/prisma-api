@@ -121,8 +121,8 @@ class CargaSJR(Carga):
 
         registro = RegistroCambiosSJR(
             id=dato.id_fuente,
-            atributo="impact_factor",
-            valor=dato.impact_factor,
+            atributo="nuevo_sjr",
+            valor=f"SJR {dato.impact_factor}: {dato.rank} ({dato.category})",
             valor_antiguo=None,
             year=self.year,
             bd=self.db,

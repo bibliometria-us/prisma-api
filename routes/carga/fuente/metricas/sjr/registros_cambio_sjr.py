@@ -21,6 +21,4 @@ class RegistroCambiosSJR(RegistroCambiosFuente):
         if self.valor_antiguo:
             self.comentario = f"{self.tipo_dato.upper()} {self.tipo_dato_3} ({self.tipo_dato_2}): Actualizado de {self.valor_antiguo} a {self.valor}"
         else:
-            self.comentario = (
-                f"{self.tipo_dato.upper()} {self.tipo_dato_2}: {self.valor}"
-            )
+            self.comentario = self.valor

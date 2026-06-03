@@ -71,10 +71,11 @@ class ImportarSJR:
         FROM m_sjr ms
         INNER JOIN a_registro_cambios_fuente arcf ON arcf.id = ms.idFuente
         WHERE arcf.tipo_dato = 'sjr'
-        AND arcf.tipo_dato_3 = 'impact_factor'
+        AND arcf.tipo_dato_3 = 'nuevo_sjr'
         AND arcf.valor_antiguo IS NULL
         AND arcf.id_carga = %(id_carga)s
         AND ms.year = %(year)s
+        GROUP BY ms.idFuente, ms.category, ms.year
         """
 
         params = {"id_carga": self.id_carga, "year": self.year}
