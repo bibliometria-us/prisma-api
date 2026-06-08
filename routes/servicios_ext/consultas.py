@@ -1274,19 +1274,26 @@ def get_proyectos_importe_nulo_menor_100(bd: BaseDatos = None) -> dict:
 
 def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
-                            pf.idFinanciacion       AS ID_FINANCIACION,      
-                            pf.codigo               AS CODIGO,
-                            pf.publicacion_id       AS ID_PUB,
-                            pp.titulo               AS TITULO,
-                            ic.idBiblioteca         AS ID_BIBLIOTECA,
-                            ib.nombre               AS BIBLIOTECA
-                        FROM prisma.p_financiacion pf
-                        LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
-                        LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = pf.publicacion_id
+                            sub.ID_FINANCIACION,
+                            sub.CODIGO,
+                            sub.ID_PUB,
+                            sub.TITULO,
+                            MIN(ic.idBiblioteca)    AS ID_BIBLIOTECA,
+                            MIN(ib.nombre)          AS BIBLIOTECA
+                        FROM (
+                            SELECT 
+                                pf.idFinanciacion       AS ID_FINANCIACION,      
+                                pf.codigo               AS CODIGO,
+                                pf.publicacion_id       AS ID_PUB,
+                                pp.titulo               AS TITULO
+                            FROM prisma.p_financiacion pf
+                            LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
+                            WHERE (pf.codigo IS NULL OR LENGTH(TRIM(pf.codigo)) < 4)
+                        ) sub
+                        LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = sub.ID_PUB
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = pxc.idCentro
                         LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
-                        WHERE (pf.codigo IS NULL OR LENGTH(TRIM(pf.codigo)) < 4)
-                        GROUP BY pf.codigo, pf.publicacion_id, pp.titulo, ic.idBiblioteca, ib.nombre
+                        GROUP BY sub.ID_FINANCIACION, sub.CODIGO, sub.ID_PUB, sub.TITULO
                         """
     try:
         if bd is None:
@@ -1300,19 +1307,26 @@ def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> d
 
 def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
-                            MIN(pf.idFinanciacion)  AS ID_FINANCIACION,      
-                            pf.agencia              AS AGENCIA,
-                            pf.publicacion_id       AS ID_PUB,
-                            pp.titulo               AS TITULO,
-                            ic.idBiblioteca         AS ID_BIBLIOTECA,
-                            ib.nombre               AS BIBLIOTECA
-                        FROM prisma.p_financiacion pf
-                        LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
-                        LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = pf.publicacion_id
+                            sub.ID_FINANCIACION,
+                            sub.AGENCIA,
+                            sub.ID_PUB,
+                            sub.TITULO,
+                            MIN(ic.idBiblioteca)    AS ID_BIBLIOTECA,
+                            MIN(ib.nombre)          AS BIBLIOTECA
+                        FROM (
+                            SELECT 
+                                pf.idFinanciacion       AS ID_FINANCIACION,      
+                                pf.agencia              AS AGENCIA,
+                                pf.publicacion_id       AS ID_PUB,
+                                pp.titulo               AS TITULO
+                            FROM prisma.p_financiacion pf
+                            LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
+                            WHERE (pf.agencia IS NULL OR LENGTH(TRIM(pf.agencia)) < 5)
+                        ) sub
+                        LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = sub.ID_PUB
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = pxc.idCentro
                         LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca
-                        WHERE (pf.agencia IS NULL OR LENGTH(TRIM(pf.agencia)) < 5)
-                        GROUP BY pf.publicacion_id, pf.agencia, pp.titulo, ic.idBiblioteca, ib.nombre
+                        GROUP BY sub.ID_FINANCIACION, sub.AGENCIA, sub.ID_PUB, sub.TITULO
                         """
     try:
         if bd is None:
@@ -1326,16 +1340,30 @@ def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> 
 
 def get_financiacion_repetida_por_publicacion(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
-                            MIN(pf.idFinanciacion)  AS ID_FINANCIACION,
-                            pf.codigo               AS CODIGO,
-                            pf.agencia              AS AGENCIA,
-                            pf.publicacion_id       AS ID_PUB,
-                            COUNT(*)                AS REPETICIONES,
-                            pp.titulo               AS TITULO
-                        FROM prisma.p_financiacion pf
-                        LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
-                        GROUP BY pf.codigo, pf.agencia, pf.publicacion_id
-                        HAVING COUNT(*) > 1"""
+                            duplicados.ID_FINANCIACION,
+                            duplicados.CODIGO,
+                            duplicados.AGENCIA,
+                            duplicados.ID_PUB,
+                            duplicados.REPETICIONES,
+                            duplicados.TITULO,
+                            ic.idBiblioteca         AS ID_BIBLIOTECA,
+                            ib.nombre               AS BIBLIOTECA
+                        FROM (
+                            SELECT 
+                                MIN(pf.idFinanciacion)  AS ID_FINANCIACION,
+                                pf.codigo               AS CODIGO,
+                                pf.agencia              AS AGENCIA,
+                                pf.publicacion_id       AS ID_PUB,
+                                COUNT(*)                AS REPETICIONES,
+                                pp.titulo               AS TITULO
+                            FROM prisma.p_financiacion pf
+                            LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
+                            GROUP BY pf.codigo, pf.agencia, pf.publicacion_id
+                            HAVING COUNT(*) > 1
+                        ) duplicados
+                        LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = duplicados.ID_PUB
+                        LEFT JOIN prisma.i_centro ic ON ic.idCentro = pxc.idCentro
+                        LEFT JOIN prisma.i_biblioteca ib ON ib.idBiblioteca = ic.idBiblioteca"""
     try:
         if bd is None:
             bd = BaseDatos()
