@@ -46,7 +46,7 @@ joins = [
     # Fuente de la publicación
     "LEFT JOIN p_fuente f ON f.idFuente = p.idFuente",
     # Métricas SJR de la revista de la publicación
-    f"LEFT JOIN m_sjr sjr ON sjr.idFuente = f.idFuente AND sjr.year = LEAST(p.agno, {config.max_jcr_year})",
+    f"LEFT JOIN m_sjr sjr ON sjr.idFuente = f.idFuente AND sjr.year = LEAST(p.agno, {config.max_sjr_year})",
 ]
 
 
