@@ -22,7 +22,7 @@ def eliminar_autores_pub(id_publicacion: int, bd: BaseDatos = None) -> dict:
 # ****************************************
 # Obtiene la lista de los centros
 def get_centros(bd: BaseDatos = None) -> dict:
-    query = """SELECT ic.idCentro, ib.nombre  AS CENTRO FROM i_centro ic;"""
+    query = """SELECT ic.idCentro AS ID_CENTRO, ib.nombre AS CENTRO FROM i_centro ic;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -35,7 +35,7 @@ def get_centros(bd: BaseDatos = None) -> dict:
 
 # Obtiene la lista de los departamentos
 def get_departamentos(bd: BaseDatos = None) -> dict:
-    query = """SELECT id.idDepartamento, id.nombre AS DEPARTAMENTO FROM i_departamento id;"""
+    query = """SELECT id.idDepartamento AS ID_DEPARTAMENTO, id.nombre AS DEPARTAMENTO FROM i_departamento id;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -48,7 +48,7 @@ def get_departamentos(bd: BaseDatos = None) -> dict:
 
 # Obtiene la lista de las areas
 def get_areas(bd: BaseDatos = None) -> dict:
-    query = """SELECT ia.idArea, ia.nombre AS AREA FROM i_area ia;"""
+    query = """SELECT ia.idArea AS ID_AREA, ia.nombre AS AREA FROM i_area ia;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -61,7 +61,7 @@ def get_areas(bd: BaseDatos = None) -> dict:
 
 # Obtiene la lista de los institutos
 def get_institutos(bd: BaseDatos = None) -> dict:
-    query = """SELECT ii.idInstituto , ii.nombre AS INSTITUTO FROM i_instituto ii;"""
+    query = """SELECT ii.idInstituto AS ID_INSTITUTO, ii.nombre AS INSTITUTO FROM i_instituto ii;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -74,7 +74,7 @@ def get_institutos(bd: BaseDatos = None) -> dict:
 
 # Obtiene la lista de centros de excelencia
 def get_centros_excelencia(bd: BaseDatos = None) -> dict:
-    query = """SELECT iue.idUdExcelencia, iue.nombre AS UD_EXELENCIA FROM i_unidad_excelencia iue;"""
+    query = """SELECT iue.idUdExcelencia AS ID_UD_EXCELENCIA, iue.nombre AS UD_EXCELENCIA FROM i_unidad_excelencia iue;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -152,6 +152,20 @@ def get_bibliotecas(bd: BaseDatos = None) -> dict:
 def get_tipos_publicaciones_permitidos(bd: BaseDatos = None) -> dict:
     query = (
         """SELECT tp.nombre FROM config.tipos_publicacion tp WHERE tp.activo = '1'"""
+    )
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
+
+# Obtiene la lista de los tipo permitidos de fuentes (incluidos en la tabla de configuración de tipos de fuente)
+def get_tipos_fuente_permitidos(bd: BaseDatos = None) -> dict:
+    query = (
+        """SELECT tf.nombre FROM config.tipos_fuente tf WHERE tf.activo = '1'"""
     )
     try:
         if bd is None:
@@ -1373,6 +1387,7 @@ def get_financiacion_repetida_por_publicacion(bd: BaseDatos = None) -> dict:
         return {"error": e.message}, 400
     return metrica
 
+#--------- Metricas financiacion-------
 
 def get_num_proyectos_con_financiacion(bd: BaseDatos = None) -> dict:
     query_publicacion = """SELECT 
@@ -1398,6 +1413,74 @@ def get_num_financiacion_con_proyectos(bd: BaseDatos = None) -> dict:
                             FROM prisma.p_financiacion pf_con
                             INNER JOIN prisma_proyectos.proyecto pr ON pr.id = pf_con.idProyecto
                             AND pr.visible = 1
+                        """
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query_publicacion)
+        metrica = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return metrica
+
+
+#############################################
+################# RANKING ###################
+#############################################
+
+def get_listado_metricas_investigadores(bd: BaseDatos = None) -> dict:
+    query_publicacion = """SELECT 
+                            iia.nombre              AS NOMBRE,
+                            iia.apellidos           AS APELLIDOS,
+                            id.idDepartamento       AS ID_DEPARTAMENTO,
+                            id.nombre               AS DEPARTAMENTO,
+                            ig.idGrupo              AS ID_GRUPO,
+                            ig.nombre               AS GRUPO,
+                            ic.idCentro             AS ID_CENTRO,
+                            ic.nombre               AS CENTRO,
+                            ii.idInstituto          AS ID_INSTITUTO,
+                            ii.nombre               AS INSTITUTO,
+                            iia.idInvestigador      AS Id_Prisma,
+                            MAX(CASE WHEN iii.tipo = 'scopus'       THEN iii.valor END) AS Id_Scopus,
+                            MAX(CASE WHEN iii.tipo = 'researcherId' THEN iii.valor END) AS Id_Wos,
+                            MAX(CASE WHEN iii.tipo = 'openalex'     THEN iii.valor END) AS Id_Openalex,
+                            MAX(CASE WHEN mi.tipo = 'num_pub'      AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_Total_Scopus,
+                            MAX(CASE WHEN mi.tipo = 't_citas'      AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_Total_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'indice_h'     AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_Total_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'num_pub_10'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_10_Scopus,
+                            MAX(CASE WHEN mi.tipo = 't_citas_10'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_10_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'indice_h_10'  AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_10_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'num_pub_5'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_5_Scopus,
+                            MAX(CASE WHEN mi.tipo = 't_citas_5'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_5_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'indice_h_5'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_5_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'num_pub_3'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_3_Scopus,
+                            MAX(CASE WHEN mi.tipo = 't_citas_3'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_3_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'indice_h_3'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_3_Scopus,
+                            MAX(CASE WHEN mi.tipo = 'num_pub'      AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_Total_Wos,
+                            MAX(CASE WHEN mi.tipo = 't_citas'      AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_Total_Wos,
+                            MAX(CASE WHEN mi.tipo = 'indice_h'     AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_Total_Wos,
+                            MAX(CASE WHEN mi.tipo = 'num_pub_10'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_10_Wos,
+                            MAX(CASE WHEN mi.tipo = 't_citas_10'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_10_Wos,
+                            MAX(CASE WHEN mi.tipo = 'indice_h_10'  AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_10_Wos,
+                            MAX(CASE WHEN mi.tipo = 'num_pub_5'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_5_Wos,
+                            MAX(CASE WHEN mi.tipo = 't_citas_5'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_5_Wos,
+                            MAX(CASE WHEN mi.tipo = 'indice_h_5'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_5_Wos,
+                            MAX(CASE WHEN mi.tipo = 'num_pub_3'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_3_Wos,
+                            MAX(CASE WHEN mi.tipo = 't_citas_3'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_3_Wos,
+                            MAX(CASE WHEN mi.tipo = 'indice_h_3'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_3_Wos,
+                            ir.nombre               AS Rama
+                        FROM i_investigador_activo iia
+                        LEFT JOIN i_departamento id          ON id.idDepartamento = iia.idDepartamento
+                        LEFT JOIN i_rama_us iru              ON iru.idDepartamento = id.idDepartamento
+                        LEFT JOIN i_rama ir                  ON ir.idRama = iru.idRama
+                        LEFT JOIN i_grupo_investigador igi   ON igi.idInvestigador = iia.idInvestigador
+                        LEFT JOIN i_grupo ig                 ON ig.idGrupo = igi.idGrupo
+                        LEFT JOIN i_centro ic                ON ic.idCentro = iia.idCentro
+                        LEFT JOIN i_miembro_instituto imi    ON imi.idInvestigador = iia.idInvestigador
+                        LEFT JOIN i_instituto ii             ON ii.idInstituto = imi.idInstituto
+                        LEFT JOIN i_identificador_investigador iii ON iii.idInvestigador = iia.idInvestigador
+                        LEFT JOIN (SELECT * FROM m_informes WHERE ambito = 'investigador') mi ON mi.identificadorInt = iia.idInvestigador
+                        GROUP BY iia.idInvestigador
                         """
     try:
         if bd is None:
