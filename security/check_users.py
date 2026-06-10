@@ -57,7 +57,7 @@ def check_endpoint_permissions(endpoint: str, action: str, user: str, prefix: st
         return True
     
     endpoint_permissions = get_permissions_from_endpoint(endpoint, action, prefix=prefix)
-    if len(endpoint_permissions) > 1:
+    if len(endpoint_permissions) == 1:
         return True
 
     return any(role in user_roles for role in endpoint_permissions)
