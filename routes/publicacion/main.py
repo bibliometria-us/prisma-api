@@ -7,15 +7,9 @@ from logger.async_request import AsyncRequest
 from routes.publicacion.busqueda_identificadores.busqueda_identificadores import (
     buscar_publicaciones,
 )
-from routes.publicacion.citas_perdidas.citas_perdidas import buscar_citas_perdidas
 from security.api_key import comprobar_api_key
-from security.check_users import es_admin, es_editor, tiene_rol
 from utils.exceptions import FileFormatError
-from utils.format import (
-    flask_csv_to_df,
-    flask_xls_to_df,
-)
-from utils.timing import func_timer as timer
+
 import utils.pages as pages
 import utils.response as response
 import utils.date as date_utils
@@ -111,12 +105,9 @@ def get_publicacion_from_id(columns: list[str], left_joins: list[str], id: int):
 
 
 # Función para, dado un rango de tiempo, buscar todas las publicaciones con DOI que no tengan un identificador dado (por ejemplo, Openalex), y usar su API para buscar estos identificadores
-@publicacion_namespace.route("/busqueda-identificadores")
+@publicacion_namespace.route("/busqueda-identificadores", endpoint="busqueda_identificadores")
 class BusquedaIdentificadores(Resource):
     def post(self):
-        if not es_admin():
-            return {"message": "No autorizado"}, 401
-
         current_year = date_utils.get_current_year()
 
         inicio = int(request.headers.get("inicio", current_year))
@@ -135,12 +126,9 @@ class BusquedaIdentificadores(Resource):
             buscar_publicaciones(inicio=inicio, fin=fin, tipo=tipo)
 
 
-@publicacion_namespace.route("/citas-perdidas")
+@publicacion_namespace.route("/citas-perdidas", endpoint="citas_perdidas")
 class CitasPerdidas(Resource):
     def post(self):
-
-        if not (es_admin() | tiene_rol("citas_perdidas")):
-            return {"message": "No autorizado"}, 401
 
         id_publicacion = request.headers.get("id_publicacion", None)
         citas_scopus = request.headers.get("citas_scopus", None)

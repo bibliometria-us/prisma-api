@@ -654,12 +654,10 @@ class ProgramasDoctoradoInvestigador(Resource):
         )
 
 
-@investigador_namespace.route("/colectivos/carga")
+@investigador_namespace.route("/colectivos/carga", endpoint="carga_colectivos_investigador")
 class ColectivosInvestigador(Resource):
     @investigador_namespace.doc(doc=False)
     def post(self):
-        if not es_admin():
-            return {"message": "No autorizado"}, 401
         if "files[]" not in request.files:
             return {"error": "No se han encontrado archivos en la petición"}, 400
 
