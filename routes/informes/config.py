@@ -26,3 +26,9 @@ query_jci = """SELECT MAX(agno) FROM m_jci"""
 bd.ejecutarConsulta(query_jci)
 
 max_jci_year = bd.get_first_cell()
+
+bd = BaseDatos()
+query_citescore = """SELECT MAX(agno) FROM m_citescore"""
+bd.ejecutarConsulta(query_citescore)
+
+max_citescore_year = bd.get_first_cell()

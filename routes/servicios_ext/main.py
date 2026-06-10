@@ -176,6 +176,32 @@ class get_centros_exelecia(Resource):
         except Exception as e:
             return {"message": "Error inesperado"}, 500
 
+            # CENTROS DE EXCELENCIA
+@servicios_ext_namespace.route(
+    "/grupos",
+    doc=False,
+    endpoint="lista_grupos",
+)
+class get_grupos(Resource):
+    def get(self):
+        args = request.args
+        api_key = args.get("api_key")
+
+        if not es_visor(api_key=api_key):
+            return {"message": "No autorizado"}, 401
+        try:
+            incidencias = consultas.get_grupos()
+            json = dataframe_to_json(incidencias, orient="records", empty=True)
+            response = response = make_response(json)
+            response.headers["Content-Type"] = "application/json"
+
+            return response
+
+        except ValueError as e:
+            return {"message": str(e)}, 402
+        except Exception as e:
+            return {"message": "Error inesperado"}, 500
+
 
 # *************************************
 # ******** INF. BIBLIOMETRICO *********

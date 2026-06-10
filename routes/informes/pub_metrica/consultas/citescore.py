@@ -46,7 +46,7 @@ joins = [
     # Fuente de la publicación
     "LEFT JOIN p_fuente f ON f.idFuente = p.idFuente",
     # Métricas CiteScore de la revista de la publicación
-    f"LEFT JOIN m_citescore citescore ON citescore.idFuente = f.idFuente AND citescore.agno = LEAST(p.agno, {config.max_jci_year})",
+    f"LEFT JOIN m_citescore citescore ON citescore.idFuente = f.idFuente AND citescore.agno = LEAST(p.agno, {config.max_citescore_year})",
 ]
 
 

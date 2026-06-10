@@ -84,6 +84,34 @@ def get_centros_excelencia(bd: BaseDatos = None) -> dict:
         return {"error": e.message}, 400
     return consulta
 
+# Obtiene la lista de grupos
+def get_grupos(bd: BaseDatos = None) -> dict:
+    query = """SELECT ig.idGrupo AS ID_Grupo, ig.nombre AS GRUPO FROM i_grupo ig WHERE estado="Válido";"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
+
+
+
+# *** BASICO ***
+# Obtiene la lista de las bibliotecas
+def get_bibliotecas(bd: BaseDatos = None) -> dict:
+    query = """SELECT ib.idBiblioteca AS ID_BIBLIOTECA, ib.nombre AS BIBLIOTECA FROM i_biblioteca ib;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
+
+
 
 # ****************************************
 # ********** INF. BIBLIOMETRICO **********
@@ -134,19 +162,6 @@ def get_investigadores(bd: BaseDatos = None) -> dict:
 # ****************************************
 # ************ PUBLICACIONES *************
 # ****************************************
-# *** BASICO ***
-# Obtiene la lista de las bibliotecas
-def get_bibliotecas(bd: BaseDatos = None) -> dict:
-    query = """SELECT ib.idBiblioteca AS ID_BIBLIOTECA, ib.nombre AS BIBLIOTECA FROM i_biblioteca ib;"""
-    try:
-        if bd is None:
-            bd = BaseDatos()
-        bd.ejecutarConsulta(query)
-        consulta = bd.get_dataframe()
-    except Exception as e:
-        return {"error": e.message}, 400
-    return consulta
-
 
 # Obtiene la lista de los tipo permitidos de publicaciones (incluidos en la tabla de configuración de tipos de publicación)
 def get_tipos_publicaciones_permitidos(bd: BaseDatos = None) -> dict:
@@ -1292,6 +1307,7 @@ def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> d
                             sub.CODIGO,
                             sub.ID_PUB,
                             sub.TITULO,
+                            sub.AGNO,
                             MIN(ic.idBiblioteca)    AS ID_BIBLIOTECA,
                             MIN(ib.nombre)          AS BIBLIOTECA
                         FROM (
@@ -1299,7 +1315,8 @@ def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> d
                                 pf.idFinanciacion       AS ID_FINANCIACION,      
                                 pf.codigo               AS CODIGO,
                                 pf.publicacion_id       AS ID_PUB,
-                                pp.titulo               AS TITULO
+                                pp.titulo               AS TITULO,
+                                pp.agno                 AS AGNO
                             FROM prisma.p_financiacion pf
                             LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
                             WHERE (pf.codigo IS NULL OR LENGTH(TRIM(pf.codigo)) < 4)
@@ -1325,6 +1342,7 @@ def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> 
                             sub.AGENCIA,
                             sub.ID_PUB,
                             sub.TITULO,
+                            sub.AGNO,
                             MIN(ic.idBiblioteca)    AS ID_BIBLIOTECA,
                             MIN(ib.nombre)          AS BIBLIOTECA
                         FROM (
@@ -1332,7 +1350,8 @@ def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> 
                                 pf.idFinanciacion       AS ID_FINANCIACION,      
                                 pf.agencia              AS AGENCIA,
                                 pf.publicacion_id       AS ID_PUB,
-                                pp.titulo               AS TITULO
+                                pp.titulo               AS TITULO,
+                                pp.agno                 AS AGNO
                             FROM prisma.p_financiacion pf
                             LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
                             WHERE (pf.agencia IS NULL OR LENGTH(TRIM(pf.agencia)) < 5)
