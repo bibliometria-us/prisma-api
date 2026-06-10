@@ -90,7 +90,11 @@ def get_roles():
     user = None
 
     session_user = get_user_from_session()
+    endpoint = request.endpoint
     
+    if not endpoint:
+        return 
+
     api_key = request.headers.get('X-API-Key')
     api_key_user = get_user_from_api_key(api_key=api_key)
 
@@ -100,13 +104,13 @@ def get_roles():
     if api_key_user:
         user = api_key_user
 
-    endpoint = request.endpoint
+    
     action = request.method
     
     if not check_endpoint_permissions(endpoint, action, user):
         return {"error": "No tienes permisos para acceder a este recurso"}, 403
     
-    pass
+    
 
 @app.after_request
 def after_request(response):
