@@ -14,8 +14,7 @@ from routes.carga.fuente.metricas.acuerdos_transformativos.acuerdos_transformati
 )
 from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
     ErrorAT,
-    ErrorTransformacionFicheroAT,
-)
+    )
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.fuente.metricas.sjr.carga import CargaSJR
 from routes.carga.fuente.metricas.sjr.importar import ImportarSJR
@@ -33,18 +32,9 @@ from routes.carga.investigador.erasmus_plus.procesado import (
     procesado_fichero_erasmus_plus,
 )
 
-from routes.carga.publicacion.idus.carga import ExtraccionPublicacionIdus
-from routes.carga.publicacion.idus.parser import IdusParser
-from routes.carga.publicacion.idus.xml_doi import xmlDoiIdus
-from routes.carga.publicacion.scopus.carga import ExtraccionPublicacionScopus
-from routes.carga.publicacion.wos.carga import ExtraccionPublicacionWos
-from routes.carga.publicacion.openalex.carga import ExtraccionPublicacionOpenalex
-from routes.carga.publicacion.zenodo.carga import CargaPublicacionZenodo
-from routes.carga.publicacion.crossref.carga import ExtraccionPublicacionCrossref
-
 from routes.usuario import get_user_data
 from saml.session_utils import get_email_from_session
-from security.check_users import es_admin, es_editor, get_email_from_api_key, tiene_rol
+from security.check_users import get_email_from_api_key
 from celery import current_app
 from routes.carga.investigador.erasmus_plus.carga import (
     carga_erasmus_plus,
@@ -67,8 +57,6 @@ class CargaGrupos(Resource):
         args = request.args
         api_key = args.get("api_key")
 
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
         if "files[]" not in request.files:
             return {"error": "No se han encontrado archivos en la petición"}, 400
 
@@ -125,8 +113,6 @@ class CargaCentrosCenso(Resource):
         try:
             api_key = args.get("api_key")
 
-            if not es_admin(api_key=api_key):
-                return {"message": "No autorizado"}, 401
             if "files[]" not in request.files:
                 return {"error": "No se han encontrado archivos en la petición"}, 400
 
@@ -163,10 +149,6 @@ class CargaErasmusPlus(Resource):
         args = request.args
         try:
             api_key = args.get("api_key")
-
-            # Verificar si el usuario es administrador (función de seguridad ya definida)
-            if not es_admin(api_key=api_key):
-                return {"message": "No autorizado"}, 401
 
             # Verificar que se haya enviado un archivo con la clave esperada
             if "files[]" not in request.files:
@@ -225,10 +207,6 @@ class CargaInvestigadorRRHHEndpoint(Resource):
             api_key = args.get("api_key")
             dry_run = args.get("dry_run", "false").lower() == "true"
 
-            # Verificar si el usuario es administrador (función de seguridad ya definida)
-            if not es_admin(api_key=api_key):
-                return {"message": "No autorizado"}, 401
-
             # Obtener los archivos enviados y guardarlos temporalmente
             files = request.files
             file_paths = {}
@@ -264,7 +242,6 @@ class CargaWosJournals(Resource):
     def get(self):
 
         args = request.args
-        api_key = args.get("api_key")
 
         current_year = datetime.now().year
 
@@ -272,62 +249,9 @@ class CargaWosJournals(Resource):
         inicio = int(args.get("inicio", current_year - 1))
         fin = int(args.get("fin", current_year - 1))
 
-        if not es_admin(api_key=api_key) or (
-            es_editor(api_key=api_key) and fuentes != "todas"
-        ):
-            return {"message": "No autorizado"}, 401
-
         result = iniciar_carga(fuentes, inicio, fin)
 
         return {"message": result}, 200
-
-
-# ********************************
-# **** CARGA DE PUBLICACIONES IDUS ****
-# ********************************
-@carga_namespace.route(
-    "/publicacion/idus/", doc=False, endpoint="carga_publicacion_idus"
-)
-class CargarPublicacionIdus(Resource):
-    def get(self):
-        args = request.args
-
-        handle = args.get("handle", None)
-
-        try:
-            parser = IdusParser(handle=handle)
-            json = parser.datos_carga_publicacion.to_json()
-
-            return Response(json, content_type="application/json; charset=utf-8")
-
-        except Exception:
-            return {"message": "Error inesperado"}, 500
-
-
-@carga_namespace.route(
-    "/publicacion/idus/doi_xml/", doc=False, endpoint="carga_doi_xml"
-)
-class CargaDoiIdus(Resource):
-    def get(self):
-        args = request.args
-
-        handle = args.get("handle", None)
-
-        try:
-            xml_doi = xmlDoiIdus(handle=handle)
-            xml = xml_doi.xml
-            response = make_response(xml)
-
-            filename = xml_doi.handle.replace("/", "_")
-            response.headers["Content-Disposition"] = (
-                f"attachment; filename={filename}.xml"
-            )
-            response.headers["Content-Type"] = "application/xml"
-
-            return response
-
-        except Exception:
-            return {"message": "Error inesperado"}, 500
 
 
 # ********************************
@@ -345,10 +269,6 @@ class CargaPublicacionImportar(Resource):
         args = request.args
         tipo = args.get("tipo", "").strip()
         id = args.get("id", "").strip()
-        api_key = args.get("api_key")
-
-        if not (es_admin() or es_editor()):
-            return {"error": "No autorizado."}, 401
 
         try:
             saml_user_data = get_user_data()
@@ -388,12 +308,6 @@ class CargaPublicacionImportar(Resource):
         api_key = args.get("api_key")
         dry_run = args.get("dry_run", "false").lower() == "true"
 
-        if not (
-            es_editor(api_key=api_key)
-            or tiene_rol(rol="publicaciones_por_investigador", api_key=api_key)
-        ):
-            return {"error": "No autorizado"}, 401
-
         email = get_email_from_api_key(api_key) or get_email_from_session()
 
         try:
@@ -413,36 +327,6 @@ class CargaPublicacionImportar(Resource):
             return {"error": "Error inesperado"}, 500
 
 
-# **** CARGA DE PUBLICACIONES MASIVO: TODAS LAS PUBLICACIONES INVESTIGADORES ACTIVOS +- 1 AÑO ****
-@carga_namespace.route(
-    "/publicacion/importar_publicaciones_masivo",
-    doc=False,
-    endpoint="importar_publicaciones_masivo",
-)
-class ImportarPublicacionesMasivo(Resource):
-    def get(self):
-        args = request.args
-        api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
-
-        agno_actual = current_year = datetime.now().year
-        agno_inicio = agno_actual - 1
-        agno_fin = agno_actual + 1
-        try:
-            investigadores = consultas_cargas.get_investigadores_activos()
-            for key, value in investigadores.items():
-                carga_publicaciones_investigador(
-                    id_investigador=key, agno_inicio=agno_inicio, agno_fin=agno_fin
-                )
-                pass
-        except ValueError as e:
-            return {"message": str(e)}, 402
-        except Exception as e:
-            return {"message": "Error inesperado"}, 500
-
-
 @carga_namespace.route(
     "/financiacion/carga_proyectos",
     doc=False,
@@ -452,9 +336,6 @@ class CargaProyectos(Resource):
     def post(self):
         args = request.args
         api_key = args.get("api_key")
-
-        if not es_admin(api_key=api_key):
-            return {"message": "No autorizado"}, 401
 
         request_files = request.files
 
@@ -492,9 +373,6 @@ class CargaAT(Resource):
         args = request.args
         api_key = args.get("api_key")
 
-        if not es_admin(api_key=api_key):
-            return {"error": "No autorizado"}, 401
-
         try:
             files = request.files.getlist("files[]")
 
@@ -531,9 +409,6 @@ class CargaMetricasSJR(Resource):
         api_key = args.get("api_key")
         year = args.get("year", int(args.get("year", datetime.now().year - 1)))
         dry_run = args.get("dry_run", "false").lower() == "true"
-
-        if not es_admin(api_key=api_key):
-            return {"error": "No autorizado"}, 401
 
         files = request.files.getlist("files[]")
 

@@ -34,8 +34,6 @@ tipo_colectivo_to_type = {
 )
 class CargaGrupos(Resource):
     def post(self):
-        if not es_admin():
-            return {"message": "No autorizado"}, 401
         if "files[]" not in request.files:
             return {"error": "No se han encontrado archivos en la petición"}, 400
 

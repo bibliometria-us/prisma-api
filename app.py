@@ -40,6 +40,8 @@ import logging
 import urllib.parse as urlparse
 
 import config.local_config as local_config
+from saml.session_utils import get_user_from_session
+from security.check_users import check_endpoint_permissions, get_user_from_api_key
 from security.protected_routes import mandatory_auth_endpoints
 from celery import Celery
 
@@ -83,6 +85,28 @@ celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
 celery.set_default()
 
+@app.before_request
+def get_roles():
+    user = None
+
+    session_user = get_user_from_session()
+    
+    api_key = request.headers.get('X-API-Key')
+    api_key_user = get_user_from_api_key(api_key=api_key)
+
+    if session_user:
+        user = session_user
+
+    if api_key_user:
+        user = api_key_user
+
+    endpoint = request.endpoint
+    action = request.method
+    
+    if not check_endpoint_permissions(endpoint, action, user):
+        return {"error": "No tienes permisos para acceder a este recurso"}, 403
+    
+    pass
 
 @app.after_request
 def after_request(response):

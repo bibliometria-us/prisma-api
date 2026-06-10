@@ -244,12 +244,7 @@ class InformeMediasDepartamento(Resource):
 @informe_namespace.route("/calidad/", endpoint="calidad", doc=False)
 class InformeCalidad(Resource):
     def get(self):
-        args = request.args
-        api_key = args.get("api_key", None)
-        try:
-            assert es_admin(api_key=api_key)
-        except:
-            return {"message": "No autorizado"}, 401
+
         try:
             bd_object = BaseDatos()
             response = get_metrica_calidad(bd=bd_object)
@@ -263,12 +258,6 @@ class InformeCalidad(Resource):
 class PublicacionesAT(Resource):
     def get(self):
         args = request.args
-        api_key = args.get("api_key", None)
-
-        try:
-            assert es_admin(api_key=api_key)
-        except:
-            return {"message": "No autorizado"}, 401
 
         try:
             año_metricas = args.get("año_metricas", None)
@@ -297,12 +286,6 @@ class PublicacionesAT(Resource):
 class RevistasAT(Resource):
     def get(self):
         args = request.args
-        api_key = args.get("api_key", None)
-
-        try:
-            assert es_admin(api_key=api_key)
-        except:
-            return {"message": "No autorizado"}, 401
 
         try:
             año_metricas = args.get("año_metricas", None)

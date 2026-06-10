@@ -24,6 +24,43 @@ def get_email_from_api_key(api_key: str) -> str:
     if user:
         return f"{user}@us.es"
 
+def get_user_roles(user: str):
+    db = BaseDatos("api")
+    query = """SELECT rol FROM permisos WHERE usuario = %(usuario)s"""
+    params = {"usuario": user}
+    
+    db.ejecutarConsulta(query, params)
+    df = db.get_dataframe()
+    
+    return df["rol"].tolist()
+
+def get_permissions_from_endpoint(endpoint: str, action: str, prefix: str = "api."):
+    if endpoint.startswith(prefix):
+        endpoint = endpoint[len(prefix):]
+
+
+    db = BaseDatos("api")
+    query = """SELECT rol FROM permisos_endpoint WHERE endpoint = %(endpoint)s AND accion = %(accion)s"""
+    params = {"endpoint": endpoint, "accion": action}
+
+    db.ejecutarConsulta(query, params)
+    df = db.get_dataframe()
+    
+    result = df["rol"].tolist()
+    result.append(endpoint)
+    
+    return result
+
+def check_endpoint_permissions(endpoint: str, action: str, user: str, prefix: str = "api."):
+    user_roles = get_user_roles(user)
+    if "admin" in user_roles:
+        return True
+    
+    endpoint_permissions = get_permissions_from_endpoint(endpoint, action, prefix=prefix)
+    if not endpoint_permissions:
+        return True
+
+    return any(role in user_roles for role in endpoint_permissions)
 
 def tiene_rol(rol, api_key=None):
     db = BaseDatos("api")
