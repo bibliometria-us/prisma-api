@@ -97,6 +97,18 @@ def get_grupos(bd: BaseDatos = None) -> dict:
     return consulta
 
 
+# Obtiene la lista de programas de doctorado
+def get_programa_doctorado(bd: BaseDatos = None) -> dict:
+    query = """SELECT id.idDoctorado AS ID_DOCTORADO, id.nombre AS DOCTORADO FROM i_doctorado id ;"""
+    try:
+        if bd is None:
+            bd = BaseDatos()
+        bd.ejecutarConsulta(query)
+        consulta = bd.get_dataframe()
+    except Exception as e:
+        return {"error": e.message}, 400
+    return consulta
+
 
 # *** BASICO ***
 # Obtiene la lista de las bibliotecas
@@ -1453,12 +1465,20 @@ def get_listado_metricas_investigadores(bd: BaseDatos = None) -> dict:
                             iia.apellidos           AS APELLIDOS,
                             id.idDepartamento       AS ID_DEPARTAMENTO,
                             id.nombre               AS DEPARTAMENTO,
+                            iia.idCategoria      	AS ID_CATEGORIA,
+                            ic2.nombre               AS CATEGORIA,
                             ig.idGrupo              AS ID_GRUPO,
                             ig.nombre               AS GRUPO,
                             ic.idCentro             AS ID_CENTRO,
                             ic.nombre               AS CENTRO,
+                            ia.idArea               AS ID_AREA,
+                            ia.nombre               AS AREA,
                             ii.idInstituto          AS ID_INSTITUTO,
                             ii.nombre               AS INSTITUTO,
+                            iue.idUdExcelencia      AS ID_UDEXELENCIA,
+                            iue.nombre              AS UDEXELENCIA,
+                            ipd.idDoctorado         AS ID_DOCTORANDO,
+                            id2.nombre              AS DOCTORANDO,
                             iia.idInvestigador      AS Id_Prisma,
                             MAX(CASE WHEN iii.tipo = 'scopus'       THEN iii.valor END) AS Id_Scopus,
                             MAX(CASE WHEN iii.tipo = 'researcherId' THEN iii.valor END) AS Id_Wos,
@@ -1488,18 +1508,24 @@ def get_listado_metricas_investigadores(bd: BaseDatos = None) -> dict:
                             MAX(CASE WHEN mi.tipo = 't_citas_3'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_3_Wos,
                             MAX(CASE WHEN mi.tipo = 'indice_h_3'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_3_Wos,
                             ir.nombre               AS Rama
-                        FROM i_investigador_activo iia
-                        LEFT JOIN i_departamento id          ON id.idDepartamento = iia.idDepartamento
-                        LEFT JOIN i_rama_us iru              ON iru.idDepartamento = id.idDepartamento
-                        LEFT JOIN i_rama ir                  ON ir.idRama = iru.idRama
-                        LEFT JOIN i_grupo_investigador igi   ON igi.idInvestigador = iia.idInvestigador
-                        LEFT JOIN i_grupo ig                 ON ig.idGrupo = igi.idGrupo
-                        LEFT JOIN i_centro ic                ON ic.idCentro = iia.idCentro
-                        LEFT JOIN i_miembro_instituto imi    ON imi.idInvestigador = iia.idInvestigador
-                        LEFT JOIN i_instituto ii             ON ii.idInstituto = imi.idInstituto
-                        LEFT JOIN i_identificador_investigador iii ON iii.idInvestigador = iia.idInvestigador
-                        LEFT JOIN (SELECT * FROM m_informes WHERE ambito = 'investigador') mi ON mi.identificadorInt = iia.idInvestigador
-                        GROUP BY iia.idInvestigador
+                            FROM i_investigador_activo iia
+                            LEFT JOIN i_departamento id          ON id.idDepartamento = iia.idDepartamento
+                            LEFT JOIN i_categoria ic2            ON ic2.idCategoria  = iia.idCategoria
+                            LEFT JOIN i_rama_us iru              ON iru.idDepartamento = id.idDepartamento
+                            LEFT JOIN i_rama ir                  ON ir.idRama = iru.idRama
+                            LEFT JOIN i_grupo_investigador igi   ON igi.idInvestigador = iia.idInvestigador
+                            LEFT JOIN i_grupo ig                 ON ig.idGrupo = igi.idGrupo
+                            LEFT JOIN i_centro ic                ON ic.idCentro = iia.idCentro
+                            LEFT JOIN i_area ia                	 ON ia.idArea  = iia.idArea 
+                            LEFT JOIN i_miembro_instituto imi    ON imi.idInvestigador = iia.idInvestigador
+                            LEFT JOIN i_instituto ii             ON ii.idInstituto = imi.idInstituto
+                            LEFT JOIN i_miembro_unidad_excelencia imue ON imue.idInvestigador = iia.idInvestigador
+                            LEFT JOIN i_unidad_excelencia iue ON imue.idUdExcelencia = iue.idUdExcelencia         
+                            LEFT JOIN i_profesor_doctorado ipd ON ipd.idInvestigador = iia.idInvestigador
+                            LEFT JOIN i_doctorado id2 ON id2.idDoctorado = ipd.idDoctorado   
+                            LEFT JOIN i_identificador_investigador iii ON iii.idInvestigador = iia.idInvestigador
+                            LEFT JOIN (SELECT * FROM m_informes WHERE ambito = 'investigador') mi ON mi.identificadorInt = iia.idInvestigador
+                            GROUP BY iia.idInvestigador
                         """
     try:
         if bd is None:
