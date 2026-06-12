@@ -2,9 +2,10 @@ import mysql.connector
 from mysql.connector.errors import OperationalError
 from pandas import DataFrame
 import db.claves as claves
+from db.redis import ConexionRedis
 from utils.format import table_to_pandas
 from utils.timing import func_timer as timer
-
+import pandas as pd
 
 class BaseDatos:
     """
@@ -101,7 +102,7 @@ class BaseDatos:
         """
         self.ejecutarConsulta(f"RELEASE SAVEPOINT {savepoint};")
 
-    def ejecutarConsulta(self, consulta: str, params: str = []):
+    def ejecutarConsulta(self, consulta: str, params: dict = {}):
         """
         Ejecuta una consuta en la conexion de la base de datos.
         """
@@ -136,6 +137,26 @@ class BaseDatos:
 
         self.result = result
         return result
+
+    def cache_query_redis(self, query: str, tracking_key: str, params: dict = {}, ttl: int = 3600):
+        tracking_key = f"db_query:{tracking_key}"
+
+        redis = ConexionRedis()
+
+        result = redis.r.get(tracking_key)
+        
+        if result:
+            dict_result = eval(result)
+            df = pd.DataFrame(dict_result)
+            result = [df.columns.tolist()] + df.values.tolist()
+            self.result = result
+            return result
+        
+        self.ejecutarConsulta(query, params)
+        df = self.get_dataframe()
+        result = df.to_dict(orient="records")
+        
+        redis.r.set(tracking_key, str(result), ex=ttl)
 
     def get_first_cell(self):
         """

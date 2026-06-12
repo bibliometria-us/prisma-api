@@ -94,28 +94,18 @@ celery.set_default()
 def get_api_key_limit_rate(api_key: str, redis: ConexionRedis):
     cfg_key = f"cfg:rate_limit:{api_key}"
 
-    config = redis.r.hgetall(cfg_key)
+    bd = BaseDatos("api")
+    query = "SELECT * FROM api_key WHERE api_key = %(api_key)s"
+    params = {"api_key": api_key}
 
-    if config:
-        max_requests = int(config["max_requests"])
-        window_seconds = int(config["window_seconds"])
-    
-    if not config:
-        bd = BaseDatos("api")
-        query = "SELECT * FROM api_key WHERE api_key = %(api_key)s"
-        params = {"api_key": api_key}
-
-        bd.ejecutarConsulta(query, params=params)
-        df = bd.get_dataframe()
-
-        if df.empty:
-            return {"error": "API key no válida"}, 401
+    bd.cache_query_redis(query, cfg_key, params=params)
+    df = bd.get_dataframe()
         
-        max_requests = int(df["max_requests"].iloc[0])
-        window_seconds = int(df["window_seconds"].iloc[0])
-
-        redis.r.hset(cfg_key, mapping={"max_requests": max_requests, "window_seconds": window_seconds})
-        redis.r.expire(cfg_key, 3600)
+    if df.empty:    
+        return {"error": "API key no válida"}, 401
+        
+    max_requests = int(df["max_requests"].iloc[0])
+    window_seconds = int(df["window_seconds"].iloc[0])
     
     return max_requests, window_seconds
 

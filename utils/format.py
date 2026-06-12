@@ -186,7 +186,6 @@ def save_excel_to_file(workbook: openpyxl.Workbook, output_file):
 
 def table_to_pandas(table: list):
     result = pandas.DataFrame(table[1:], columns=table[0]).replace({np.nan: None})
-    table.clear()
 
     return result
 

@@ -29,8 +29,11 @@ def get_user_roles(user: str):
     query = """SELECT rol FROM permisos WHERE usuario = %(usuario)s"""
     params = {"usuario": user}
     
-    db.ejecutarConsulta(query, params)
+    db.cache_query_redis(query, f"user_role:{user}", params)
     df = db.get_dataframe()
+    
+    if df.empty:
+        return []
     
     return df["rol"].tolist()
 
@@ -38,13 +41,15 @@ def get_permissions_from_endpoint(endpoint: str, action: str, prefix: str = "api
     if endpoint.startswith(prefix):
         endpoint = endpoint[len(prefix):]
 
-
     db = BaseDatos("api")
     query = """SELECT rol FROM permisos_endpoint WHERE endpoint = %(endpoint)s AND accion = %(accion)s"""
     params = {"endpoint": endpoint, "accion": action}
 
-    db.ejecutarConsulta(query, params)
+    db.cache_query_redis(query, f"endpoint_permissions:{endpoint}:{action}", params)
     df = db.get_dataframe()
+    
+    if df.empty:
+        return [endpoint]
     
     result = df["rol"].tolist()
     result.append(endpoint)
