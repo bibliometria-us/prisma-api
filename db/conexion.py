@@ -1,3 +1,5 @@
+from wsgiref import headers
+
 import mysql.connector
 from mysql.connector.errors import OperationalError
 from pandas import DataFrame
@@ -146,9 +148,16 @@ class BaseDatos:
         result = redis.r.get(tracking_key)
         
         if result:
-            dict_result = eval(result)
-            df = pd.DataFrame(dict_result)
-            result = [df.columns.tolist()] + df.values.tolist()
+            result = eval(result)
+            
+            if not result:
+                self.result = []
+                return []
+            
+            headers = list(result[0].keys())
+            rows = [[row.get(key) for key in headers] for row in result]
+            result = [headers] + rows
+            
             self.result = result
             return result
         
