@@ -305,7 +305,7 @@ class CargaPublicacionImportar(Resource):
 
         args = request.args
         id_investigador = args.get("id_investigador", "").strip()
-        api_key = args.get("api_key")
+        api_key = request.headers.get("X-API-Key")
         dry_run = args.get("dry_run", "false").lower() == "true"
 
         email = get_email_from_api_key(api_key) or get_email_from_session()
