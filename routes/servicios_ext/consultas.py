@@ -22,7 +22,7 @@ def eliminar_autores_pub(id_publicacion: int, bd: BaseDatos = None) -> dict:
 # ****************************************
 # Obtiene la lista de los centros
 def get_centros(bd: BaseDatos = None) -> dict:
-    query = """SELECT ic.idCentro AS ID_CENTRO, ib.nombre AS CENTRO FROM i_centro ic;"""
+    query = """SELECT ic.idCentro AS ID_CENTRO, ic.nombre AS CENTRO FROM i_centro ic;"""
     try:
         if bd is None:
             bd = BaseDatos()
@@ -1460,13 +1460,14 @@ def get_num_financiacion_con_proyectos(bd: BaseDatos = None) -> dict:
 #############################################
 
 def get_listado_metricas_investigadores(bd: BaseDatos = None) -> dict:
-    query_publicacion = """SELECT 
+    query_publicacion = """
+                        SELECT 
                             iia.nombre              AS NOMBRE,
                             iia.apellidos           AS APELLIDOS,
                             id.idDepartamento       AS ID_DEPARTAMENTO,
                             id.nombre               AS DEPARTAMENTO,
-                            iia.idCategoria      	AS ID_CATEGORIA,
-                            ic2.nombre               AS CATEGORIA,
+                            iia.idCategoria         AS ID_CATEGORIA,
+                            ic2.nombre              AS CATEGORIA,
                             ig.idGrupo              AS ID_GRUPO,
                             ig.nombre               AS GRUPO,
                             ic.idCentro             AS ID_CENTRO,
@@ -1480,52 +1481,88 @@ def get_listado_metricas_investigadores(bd: BaseDatos = None) -> dict:
                             ipd.idDoctorado         AS ID_DOCTORANDO,
                             id2.nombre              AS DOCTORANDO,
                             iia.idInvestigador      AS Id_Prisma,
-                            MAX(CASE WHEN iii.tipo = 'scopus'       THEN iii.valor END) AS Id_Scopus,
-                            MAX(CASE WHEN iii.tipo = 'researcherId' THEN iii.valor END) AS Id_Wos,
-                            MAX(CASE WHEN iii.tipo = 'openalex'     THEN iii.valor END) AS Id_Openalex,
-                            MAX(CASE WHEN mi.tipo = 'num_pub'      AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_Total_Scopus,
-                            MAX(CASE WHEN mi.tipo = 't_citas'      AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_Total_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'indice_h'     AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_Total_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'num_pub_10'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_10_Scopus,
-                            MAX(CASE WHEN mi.tipo = 't_citas_10'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_10_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'indice_h_10'  AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_10_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'num_pub_5'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_5_Scopus,
-                            MAX(CASE WHEN mi.tipo = 't_citas_5'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_5_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'indice_h_5'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_5_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'num_pub_3'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Pubs_3_Scopus,
-                            MAX(CASE WHEN mi.tipo = 't_citas_3'    AND mi.basedatos = 'scopus' THEN mi.valor END) AS N_Total_Citas_3_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'indice_h_3'   AND mi.basedatos = 'scopus' THEN mi.valor END) AS Indice_H_3_Scopus,
-                            MAX(CASE WHEN mi.tipo = 'num_pub'      AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_Total_Wos,
-                            MAX(CASE WHEN mi.tipo = 't_citas'      AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_Total_Wos,
-                            MAX(CASE WHEN mi.tipo = 'indice_h'     AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_Total_Wos,
-                            MAX(CASE WHEN mi.tipo = 'num_pub_10'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_10_Wos,
-                            MAX(CASE WHEN mi.tipo = 't_citas_10'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_10_Wos,
-                            MAX(CASE WHEN mi.tipo = 'indice_h_10'  AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_10_Wos,
-                            MAX(CASE WHEN mi.tipo = 'num_pub_5'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_5_Wos,
-                            MAX(CASE WHEN mi.tipo = 't_citas_5'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_5_Wos,
-                            MAX(CASE WHEN mi.tipo = 'indice_h_5'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_5_Wos,
-                            MAX(CASE WHEN mi.tipo = 'num_pub_3'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Pubs_3_Wos,
-                            MAX(CASE WHEN mi.tipo = 't_citas_3'    AND mi.basedatos = 'wos'    THEN mi.valor END) AS N_Total_Citas_3_Wos,
-                            MAX(CASE WHEN mi.tipo = 'indice_h_3'   AND mi.basedatos = 'wos'    THEN mi.valor END) AS Indice_H_3_Wos,
+                            ids.Id_Scopus,
+                            ids.Id_Wos,
+                            ids.Id_Openalex,
+                            met.N_Pubs_Total_Scopus,
+                            met.N_Total_Citas_Total_Scopus,
+                            met.Indice_H_Total_Scopus,
+                            met.N_Pubs_10_Scopus,
+                            met.N_Total_Citas_10_Scopus,
+                            met.Indice_H_10_Scopus,
+                            met.N_Pubs_5_Scopus,
+                            met.N_Total_Citas_5_Scopus,
+                            met.Indice_H_5_Scopus,
+                            met.N_Pubs_3_Scopus,
+                            met.N_Total_Citas_3_Scopus,
+                            met.Indice_H_3_Scopus,
+                            met.N_Pubs_Total_Wos,
+                            met.N_Total_Citas_Total_Wos,
+                            met.Indice_H_Total_Wos,
+                            met.N_Pubs_10_Wos,
+                            met.N_Total_Citas_10_Wos,
+                            met.Indice_H_10_Wos,
+                            met.N_Pubs_5_Wos,
+                            met.N_Total_Citas_5_Wos,
+                            met.Indice_H_5_Wos,
+                            met.N_Pubs_3_Wos,
+                            met.N_Total_Citas_3_Wos,
+                            met.Indice_H_3_Wos,
                             ir.nombre               AS Rama
-                            FROM i_investigador_activo iia
-                            LEFT JOIN i_departamento id          ON id.idDepartamento = iia.idDepartamento
-                            LEFT JOIN i_categoria ic2            ON ic2.idCategoria  = iia.idCategoria
-                            LEFT JOIN i_rama_us iru              ON iru.idDepartamento = id.idDepartamento
-                            LEFT JOIN i_rama ir                  ON ir.idRama = iru.idRama
-                            LEFT JOIN i_grupo_investigador igi   ON igi.idInvestigador = iia.idInvestigador
-                            LEFT JOIN i_grupo ig                 ON ig.idGrupo = igi.idGrupo
-                            LEFT JOIN i_centro ic                ON ic.idCentro = iia.idCentro
-                            LEFT JOIN i_area ia                	 ON ia.idArea  = iia.idArea 
-                            LEFT JOIN i_miembro_instituto imi    ON imi.idInvestigador = iia.idInvestigador
-                            LEFT JOIN i_instituto ii             ON ii.idInstituto = imi.idInstituto
-                            LEFT JOIN i_miembro_unidad_excelencia imue ON imue.idInvestigador = iia.idInvestigador
-                            LEFT JOIN i_unidad_excelencia iue ON imue.idUdExcelencia = iue.idUdExcelencia         
-                            LEFT JOIN i_profesor_doctorado ipd ON ipd.idInvestigador = iia.idInvestigador
-                            LEFT JOIN i_doctorado id2 ON id2.idDoctorado = ipd.idDoctorado   
-                            LEFT JOIN i_identificador_investigador iii ON iii.idInvestigador = iia.idInvestigador
-                            LEFT JOIN (SELECT * FROM m_informes WHERE ambito = 'investigador') mi ON mi.identificadorInt = iia.idInvestigador
-                            GROUP BY iia.idInvestigador
+                        FROM i_investigador_activo iia
+                        LEFT JOIN i_departamento id                 ON id.idDepartamento = iia.idDepartamento
+                        LEFT JOIN i_categoria ic2                   ON ic2.idCategoria = iia.idCategoria
+                        LEFT JOIN i_rama_us iru                     ON iru.idDepartamento = id.idDepartamento AND iru.idArea = iia.idArea
+                        LEFT JOIN i_rama ir                         ON ir.idRama = iru.idRama
+                        LEFT JOIN i_grupo_investigador igi          ON igi.idInvestigador = iia.idInvestigador
+                        LEFT JOIN i_grupo ig                        ON ig.idGrupo = igi.idGrupo
+                        LEFT JOIN i_centro ic                       ON ic.idCentro = iia.idCentro
+                        LEFT JOIN i_area ia                         ON ia.idArea = iia.idArea
+                        LEFT JOIN i_miembro_instituto imi           ON imi.idInvestigador = iia.idInvestigador
+                        LEFT JOIN i_instituto ii                    ON ii.idInstituto = imi.idInstituto
+                        LEFT JOIN i_miembro_unidad_excelencia imue  ON imue.idInvestigador = iia.idInvestigador
+                        LEFT JOIN i_unidad_excelencia iue           ON imue.idUdExcelencia = iue.idUdExcelencia
+                        LEFT JOIN i_profesor_doctorado ipd          ON ipd.idInvestigador = iia.idInvestigador
+                        LEFT JOIN i_doctorado id2                   ON id2.idDoctorado = ipd.idDoctorado
+                        LEFT JOIN (
+                            SELECT idInvestigador,
+                                MAX(CASE WHEN tipo = 'scopus'       THEN valor END) AS Id_Scopus,
+                                MAX(CASE WHEN tipo = 'researcherId' THEN valor END) AS Id_Wos,
+                                MAX(CASE WHEN tipo = 'openalex'     THEN valor END) AS Id_Openalex
+                            FROM i_identificador_investigador
+                            GROUP BY idInvestigador
+                        ) ids ON ids.idInvestigador = iia.idInvestigador
+                        LEFT JOIN (
+                            SELECT identificadorInt,
+                                MAX(CASE WHEN tipo = 'num_pub'      AND basedatos = 'scopus' THEN valor END) AS N_Pubs_Total_Scopus,
+                                MAX(CASE WHEN tipo = 't_citas'      AND basedatos = 'scopus' THEN valor END) AS N_Total_Citas_Total_Scopus,
+                                MAX(CASE WHEN tipo = 'indice_h'     AND basedatos = 'scopus' THEN valor END) AS Indice_H_Total_Scopus,
+                                MAX(CASE WHEN tipo = 'num_pub_10'   AND basedatos = 'scopus' THEN valor END) AS N_Pubs_10_Scopus,
+                                MAX(CASE WHEN tipo = 't_citas_10'   AND basedatos = 'scopus' THEN valor END) AS N_Total_Citas_10_Scopus,
+                                MAX(CASE WHEN tipo = 'indice_h_10'  AND basedatos = 'scopus' THEN valor END) AS Indice_H_10_Scopus,
+                                MAX(CASE WHEN tipo = 'num_pub_5'    AND basedatos = 'scopus' THEN valor END) AS N_Pubs_5_Scopus,
+                                MAX(CASE WHEN tipo = 't_citas_5'    AND basedatos = 'scopus' THEN valor END) AS N_Total_Citas_5_Scopus,
+                                MAX(CASE WHEN tipo = 'indice_h_5'   AND basedatos = 'scopus' THEN valor END) AS Indice_H_5_Scopus,
+                                MAX(CASE WHEN tipo = 'num_pub_3'    AND basedatos = 'scopus' THEN valor END) AS N_Pubs_3_Scopus,
+                                MAX(CASE WHEN tipo = 't_citas_3'    AND basedatos = 'scopus' THEN valor END) AS N_Total_Citas_3_Scopus,
+                                MAX(CASE WHEN tipo = 'indice_h_3'   AND basedatos = 'scopus' THEN valor END) AS Indice_H_3_Scopus,
+                                MAX(CASE WHEN tipo = 'num_pub'      AND basedatos = 'wos'    THEN valor END) AS N_Pubs_Total_Wos,
+                                MAX(CASE WHEN tipo = 't_citas'      AND basedatos = 'wos'    THEN valor END) AS N_Total_Citas_Total_Wos,
+                                MAX(CASE WHEN tipo = 'indice_h'     AND basedatos = 'wos'    THEN valor END) AS Indice_H_Total_Wos,
+                                MAX(CASE WHEN tipo = 'num_pub_10'   AND basedatos = 'wos'    THEN valor END) AS N_Pubs_10_Wos,
+                                MAX(CASE WHEN tipo = 't_citas_10'   AND basedatos = 'wos'    THEN valor END) AS N_Total_Citas_10_Wos,
+                                MAX(CASE WHEN tipo = 'indice_h_10'  AND basedatos = 'wos'    THEN valor END) AS Indice_H_10_Wos,
+                                MAX(CASE WHEN tipo = 'num_pub_5'    AND basedatos = 'wos'    THEN valor END) AS N_Pubs_5_Wos,
+                                MAX(CASE WHEN tipo = 't_citas_5'    AND basedatos = 'wos'    THEN valor END) AS N_Total_Citas_5_Wos,
+                                MAX(CASE WHEN tipo = 'indice_h_5'   AND basedatos = 'wos'    THEN valor END) AS Indice_H_5_Wos,
+                                MAX(CASE WHEN tipo = 'num_pub_3'    AND basedatos = 'wos'    THEN valor END) AS N_Pubs_3_Wos,
+                                MAX(CASE WHEN tipo = 't_citas_3'    AND basedatos = 'wos'    THEN valor END) AS N_Total_Citas_3_Wos,
+                                MAX(CASE WHEN tipo = 'indice_h_3'   AND basedatos = 'wos'    THEN valor END) AS Indice_H_3_Wos
+                            FROM m_informes
+                            WHERE ambito = 'investigador'
+                            GROUP BY identificadorInt
+                        ) met ON met.identificadorInt = iia.idInvestigador
+                        ORDER BY iia.idInvestigador
                         """
     try:
         if bd is None:

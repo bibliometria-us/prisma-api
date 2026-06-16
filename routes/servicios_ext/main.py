@@ -75,7 +75,7 @@ class get_centros(Resource):
     doc=False,
     endpoint="lista_departamentos",
 )
-class get_centros(Resource):
+class get_departamentos(Resource):
     def get(self):
         args = request.args
         api_key = args.get("api_key")
