@@ -138,6 +138,22 @@ def check_api_key_ip_usage(api_key: str, redis: ConexionRedis):
     except Exception as e:
         app.logger.error(f"Error en el seguimiento de uso de IPs de Redis: {e}")
         return
+    
+@app.before_request
+def check_disabled_endpoint():
+    if request.method == "OPTIONS":
+        return
+    
+    if not request.endpoint:
+        return
+    
+    endpoint = request.endpoint.replace("api.","")
+    disabled_endpoints = local_config.disabled_endpoints or []
+
+    if endpoint in disabled_endpoints:
+        return {"error": "Este servicio está desactivado temporalmente por tareas de mantenimiento."}, 503 
+    
+    return
 
 @app.before_request
 def check_limit_rate():
@@ -303,9 +319,8 @@ def index():
     success_slo = False
     attributes = False
     paint_logout = False
-    redirect_url = urlparse.quote(
-        request.args.get("redirect_url") or local_config.prisma_url
-    )
+    redirect_url = request.args.get("redirect_url") or local_config.prisma_url
+    
     if "sso" in request.args:
         return redirect(auth.login(return_to=redirect_url))
         # If AuthNRequest ID need to be stored in order to later validate it, do instead
