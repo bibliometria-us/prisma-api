@@ -16,9 +16,17 @@ class ExtraccionPublicacionIdus(ExtraccionPublicacion):
         auto_commit=True,
         autor=None,
         tipo_carga=None,
+        id_investigador=None,
     ) -> None:
 
-        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
+        super().__init__(
+            db,
+            id_carga,
+            auto_commit,
+            autor=autor,
+            tipo_carga=tipo_carga,
+            id_investigador=id_investigador,
+        )
         self.carga.origen = "idUS"
 
     def carga_publicacion(self, tipo: str, id: str):

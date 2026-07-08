@@ -24,7 +24,6 @@ from routes.carga.investigador.investigador.carga import CargaInvestigador
 from routes.carga.registro_cambios import RegistroCambios
 import tempfile
 import pandas as pd
-import tests.integration.utils.utils_investigador as utils_investigador
 
 
 class ImportarInvestigadoresRRHH:

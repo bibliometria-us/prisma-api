@@ -16,9 +16,17 @@ class ExtraccionPublicacionScopus(ExtraccionPublicacion):
         auto_commit=True,
         autor=None,
         tipo_carga=None,
+        id_investigador=None,
     ) -> None:
 
-        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
+        super().__init__(
+            db,
+            id_carga,
+            auto_commit,
+            autor=autor,
+            tipo_carga=tipo_carga,
+            id_investigador=id_investigador,
+        )
         self.carga.origen = "Scopus"
         self.clase_api = ScopusSearch
         self.clase_parser = ScopusParser
@@ -60,9 +68,8 @@ class ExtraccionPublicacionScopus(ExtraccionPublicacion):
             parser = ScopusParser(data=publicacion)
             self.carga.datos = parser.datos_carga_publicacion
             self.carga.cargar_publicacion()
-        
-        return self.carga.id_publicacion
 
+        return self.carga.id_publicacion
 
     def get_registros_por_investigador(
         self, id_investigador: str, agno_inicio: str = None, agno_fin: str = None

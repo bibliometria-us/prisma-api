@@ -86,6 +86,7 @@ def buscar_autores(
         dato_autor = DatosCargaAutor()
 
         dato_autor.id_autor = autor["idAutor"]
+        dato_autor.id_investigador = autor["idInvestigador"]
         dato_autor.firma = autor["firma"]
         dato_autor.tipo = autor["rol"]
         dato_autor.orden = autor["orden"]

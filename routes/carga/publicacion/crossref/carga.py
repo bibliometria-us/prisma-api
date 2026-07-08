@@ -16,9 +16,17 @@ class ExtraccionPublicacionCrossref(ExtraccionPublicacion):
         auto_commit=True,
         autor=None,
         tipo_carga=None,
+        id_investigador=None,
     ) -> None:
 
-        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
+        super().__init__(
+            db,
+            id_carga,
+            auto_commit,
+            autor=autor,
+            tipo_carga=tipo_carga,
+            id_investigador=id_investigador,
+        )
         self.carga.origen = "Crossref"
 
     def carga_publicacion(self, tipo: str, id: str):
@@ -47,11 +55,6 @@ class ExtraccionPublicacionCrossref(ExtraccionPublicacion):
         self.carga.cargar_publicacion()
 
         return self.carga.id_publicacion
-    
-
-    
-
-
 
     def cargar_publicaciones_por_investigador_limitada_agnos(
         self, id_investigador: str, agno_inicio: str, agno_fin: str

@@ -14,7 +14,7 @@ from routes.carga.fuente.metricas.acuerdos_transformativos.acuerdos_transformati
 )
 from routes.carga.fuente.metricas.acuerdos_transformativos.exception import (
     ErrorAT,
-    )
+)
 from routes.carga.fuente.metricas.clarivate_journals import iniciar_carga
 from routes.carga.fuente.metricas.sjr.carga import CargaSJR
 from routes.carga.fuente.metricas.sjr.importar import ImportarSJR

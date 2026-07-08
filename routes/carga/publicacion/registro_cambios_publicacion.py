@@ -94,6 +94,26 @@ class RegistroCambiosPublicacionCantidadAutores(RegistroCambiosPublicacion):
         self.comentario = f"{self.tipo_dato}: {self.valor} ({self.origen})"
 
 
+class RegistroCambiosPublicacionInvestigadorAutor(RegistroCambiosPublicacion):
+    def __init__(self, id, valor, firma, autor=None, origen=None, bd=None):
+        self.firma = firma
+        super().__init__(
+            id=id,
+            tipo_dato="autor",
+            tipo_dato_2="id_investigador",
+            tipo_dato_3=firma,
+            valor=valor,
+            origen=origen,
+            autor=autor,
+            bd=bd,
+        )
+
+    def generar_comentario(self):
+        self.comentario = (
+            f"Firma de autor {self.firma}: vinculado al investigador {self.valor}"
+        )
+
+
 class RegistroCambiosPublicacionFecha(RegistroCambiosPublicacion):
     def __init__(self, id, tipo_fecha, valor, autor=None, origen=None, bd=None):
         super().__init__(

@@ -91,6 +91,7 @@ celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery.conf.update(app.config)
 celery.set_default()
 
+
 def get_api_key_limit_rate(api_key: str, redis: ConexionRedis):
     cfg_key = f"cfg:rate_limit:{api_key}"
 
@@ -100,40 +101,45 @@ def get_api_key_limit_rate(api_key: str, redis: ConexionRedis):
 
     bd.cache_query_redis(query, cfg_key, params=params)
     df = bd.get_dataframe()
-        
-    if df.empty:    
+
+    if df.empty:
         return {"error": "API key no válida"}, 401
-        
+
     max_requests = int(df["max_requests"].iloc[0])
     window_seconds = int(df["window_seconds"].iloc[0])
-    
+
     return max_requests, window_seconds
+
 
 def check_api_key_ip_usage(api_key: str, redis: ConexionRedis):
     tracking_key = f"ip_usage:{api_key}"
-    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
 
     try:
         pipe = redis.r.pipeline()
-        
+
         pipe.zadd(tracking_key, {client_ip: time.time()})
-        
+
         pipe.zremrangebyscore(tracking_key, 0, time.time() - 3600)
-        
+
         pipe.zcard(tracking_key)
-        
+
         pipe.expire(tracking_key, 3600 + 10)
-        
+
         results = pipe.execute()
         unique_ips = results[2]
 
         if unique_ips > 2:
-            app.logger.warning(f"API key {api_key} ha sido usada desde {unique_ips} IPs diferentes en la última hora.")
-        if unique_ips > 3:  
-            return ({
-                "error": "Uso excesivo de IPs", 
-                "message": f"Tu API key ha sido usada desde {unique_ips} IPs diferentes en la última hora. Por favor contacta al soporte si necesitas acceso desde múltiples ubicaciones."
-            }), 429
+            app.logger.warning(
+                f"API key {api_key} ha sido usada desde {unique_ips} IPs diferentes en la última hora."
+            )
+        if unique_ips > 3:
+            return (
+                {
+                    "error": "Uso excesivo de IPs",
+                    "message": f"Tu API key ha sido usada desde {unique_ips} IPs diferentes en la última hora. Por favor contacta al soporte si necesitas acceso desde múltiples ubicaciones.",
+                }
+            ), 429
 
     except Exception as e:
         app.logger.error(f"Error en el seguimiento de uso de IPs de Redis: {e}")
@@ -155,52 +161,58 @@ def check_disabled_endpoint():
     
     return
 
+
 @app.before_request
 def check_limit_rate():
-    api_key = request.headers.get('X-API-Key')
-    
+    api_key = request.headers.get("X-API-Key")
+
     if not api_key:
         return
-    
+
     redis = ConexionRedis()
-    
+
     check_api_key_ip_usage(api_key, redis)
     max_requests, window_seconds = get_api_key_limit_rate(api_key, redis)
-    
+
     if max_requests == 0:
         return
-    
+
     tracking_key = f"rate_limit:{api_key}"
     current_time = time.time()
     clear_before = current_time - window_seconds
 
     try:
         pipe = redis.r.pipeline()
-        
+
         pipe.zremrangebyscore(tracking_key, 0, clear_before)
-        
+
         pipe.zadd(tracking_key, {f"{current_time}": current_time})
-        
+
         pipe.zcard(tracking_key)
-        
+
         pipe.expire(tracking_key, window_seconds + 10)
-        
+
         results = pipe.execute()
         total_requests = results[2]
 
-        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
 
         if total_requests > max_requests:
-            app.logger.warning(f"API key {api_key} desde {client_ip} ha excedido el límite de {max_requests} peticiones cada {window_seconds} segundos.")
-            return ({
-                "error": "Too Many Requests", 
-                "message": f"Has excedido tu límite de {max_requests} peticiones cada {window_seconds} segundos."
-            }), 429
+            app.logger.warning(
+                f"API key {api_key} desde {client_ip} ha excedido el límite de {max_requests} peticiones cada {window_seconds} segundos."
+            )
+            return (
+                {
+                    "error": "Too Many Requests",
+                    "message": f"Has excedido tu límite de {max_requests} peticiones cada {window_seconds} segundos.",
+                }
+            ), 429
 
     except Exception as e:
         # Fail open: if Redis tracking breaks, log it but don't crash your API
         app.logger.error(f"Error en el rate limiter de Redis: {e}")
         return
+
 
 @app.before_request
 def check_roles():
@@ -208,11 +220,11 @@ def check_roles():
 
     session_user = get_user_from_session()
     endpoint = request.endpoint
-    
-    if not endpoint:
-        return 
 
-    api_key = request.headers.get('X-API-Key')
+    if not endpoint:
+        return
+
+    api_key = request.headers.get("X-API-Key")
     api_key_user = get_user_from_api_key(api_key=api_key)
 
     if session_user:
@@ -221,11 +233,11 @@ def check_roles():
     if api_key_user:
         user = api_key_user
 
-    
     action = request.method
-    
+
     if not check_endpoint_permissions(endpoint, action, user):
         return {"error": "No tienes permisos para acceder a este recurso"}, 403
+
 
 @app.after_request
 def after_request(response: Response):
@@ -240,23 +252,24 @@ def after_request(response: Response):
 
     return response
 
+
 @app.after_request
 def add_rate_limit_headers(response: Response):
-    api_key = request.headers.get('X-API-Key')
-    
+    api_key = request.headers.get("X-API-Key")
+
     if not api_key:
         return response
-    
+
     redis = ConexionRedis()
     max_requests, window_seconds = get_api_key_limit_rate(api_key, redis)
-    
+
     tracking_key = f"rate_limit:{api_key}"
     current_time = time.time()
     clear_before = current_time - window_seconds
 
     try:
         pipe = redis.r.pipeline()
-        
+
         pipe.zremrangebyscore(tracking_key, 0, clear_before)
 
         pipe.zcard(tracking_key)
@@ -270,18 +283,21 @@ def add_rate_limit_headers(response: Response):
 
         if earliest and len(earliest) > 0:
             earliest_score = earliest[0][1]
-            seconds_until_reset = int(max(0, (earliest_score + window_seconds) - current_time))
+            seconds_until_reset = int(
+                max(0, (earliest_score + window_seconds) - current_time)
+            )
         else:
             seconds_until_reset = int(window_seconds)
 
-        response.headers['X-RateLimit-Limit'] = str(max_requests)
-        response.headers['X-RateLimit-Remaining'] = str(remaining_requests)
-        response.headers['X-RateLimit-Reset'] = str(seconds_until_reset)
+        response.headers["X-RateLimit-Limit"] = str(max_requests)
+        response.headers["X-RateLimit-Remaining"] = str(remaining_requests)
+        response.headers["X-RateLimit-Reset"] = str(seconds_until_reset)
 
     except Exception as e:
         app.logger.error(f"Error al agregar headers de rate limit: {e}")
-    
+
     return response
+
 
 # ERRORES GLOBALES
 @api.errorhandler(ValueError)  # Custom error handler for ValueError

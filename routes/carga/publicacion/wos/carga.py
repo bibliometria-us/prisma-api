@@ -16,9 +16,17 @@ class ExtraccionPublicacionWos(ExtraccionPublicacion):
         auto_commit=True,
         autor=None,
         tipo_carga=None,
+        id_investigador=None,
     ) -> None:
 
-        super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
+        super().__init__(
+            db,
+            id_carga,
+            auto_commit,
+            autor=autor,
+            tipo_carga=tipo_carga,
+            id_investigador=id_investigador,
+        )
         self.carga.origen = "WOS"
         self.clase_api = WosAPI
         self.clase_parser = WosParser
@@ -60,7 +68,7 @@ class ExtraccionPublicacionWos(ExtraccionPublicacion):
         parser = WosParser(data=records[0])
         self.carga.datos = parser.datos_carga_publicacion
         self.carga.cargar_publicacion()
-        
+
         return self.carga.id_publicacion
 
     def get_registros_por_investigador(self):
