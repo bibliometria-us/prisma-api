@@ -96,6 +96,7 @@ class RegistroCambiosPublicacionCantidadAutores(RegistroCambiosPublicacion):
 
 class RegistroCambiosPublicacionInvestigadorAutor(RegistroCambiosPublicacion):
     def __init__(self, id, valor, firma, autor=None, origen=None, bd=None):
+        self.firma = firma
         super().__init__(
             id=id,
             tipo_dato="autor",
@@ -106,7 +107,6 @@ class RegistroCambiosPublicacionInvestigadorAutor(RegistroCambiosPublicacion):
             autor=autor,
             bd=bd,
         )
-        self.firma = firma
 
     def generar_comentario(self):
         self.comentario = (

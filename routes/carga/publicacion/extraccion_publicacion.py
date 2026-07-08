@@ -8,7 +8,9 @@ from routes.carga.publicacion.parser import Parser
 
 
 class ExtraccionPublicacion(ABC):
-    def __init__(self, db, id_carga, auto_commit, autor, tipo_carga):
+    def __init__(
+        self, db, id_carga, auto_commit, autor, tipo_carga, id_investigador=None
+    ):
         super().__init__()
         self.carga = CargaPublicacion(
             db=db,
@@ -16,6 +18,7 @@ class ExtraccionPublicacion(ABC):
             auto_commit=auto_commit,
             autor=autor,
             tipo_carga=tipo_carga,
+            id_investigador=id_investigador,
         )
         self.clase_api: API.__class__ = None
         self.clase_parser: Parser.__class__ = None
@@ -27,9 +30,10 @@ class ExtraccionPublicacion(ABC):
 
     def cargar_publicaciones_por_investigador(
         self,
-        id_investigador: str,
+        identificador_origen: str,
         agno_inicio: str = None,
         agno_fin: str = None,
+        id_investigador: str = None,
     ):
         if not self.carga.db:
             self.carga.db = BaseDatos()
@@ -37,12 +41,14 @@ class ExtraccionPublicacion(ABC):
         api = self.clase_api()
         try:
             records = api.get_publicaciones_por_investigador_fecha(
-                id_inves=id_investigador, agno_inicio=agno_inicio, agno_fin=agno_fin
+                id_inves=identificador_origen,
+                agno_inicio=agno_inicio,
+                agno_fin=agno_fin,
             )
 
             if len(records) == 0:
                 raise ValueError(
-                    f"El id {id_investigador} no devuelve ningún resultado."
+                    f"El id {identificador_origen} no devuelve ningún resultado."
                 )
 
         except Exception as e:
@@ -58,6 +64,7 @@ class ExtraccionPublicacion(ABC):
                     auto_commit=self.carga.auto_commit,
                     autor=self.carga.autor,
                     tipo_carga=self.carga.tipo_carga,
+                    id_investigador=int(id_investigador) if id_investigador else None,
                 )
                 extraccion.carga.datos = parser.datos_carga_publicacion
                 extraccion.carga.cargar_publicacion()

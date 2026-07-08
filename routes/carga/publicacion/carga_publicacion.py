@@ -13,6 +13,7 @@ from routes.carga.fuente.registro_cambios_fuente import (
     RegistroCambiosFuenteDatos,
     RegistroCambiosFuenteIdentificadores,
 )
+from routes.carga.publicacion.buscar_firma_autor import BusquedaFirmaAutor
 from routes.carga.publicacion.comparar_autores import (
     ComparacionAutores,
 )
@@ -43,6 +44,7 @@ from routes.carga.publicacion.registro_cambios_publicacion import (
     RegistroCambiosPublicacionFinanciacion,
     RegistroCambiosPublicacionFuente,
     RegistroCambiosPublicacionIdentificadores,
+    RegistroCambiosPublicacionInvestigadorAutor,
     RegistroCambiosPublicacionOpenAccess,
 )
 from routes.carga.registro_cambios import ProblemaCarga, RegistroCambios
@@ -60,12 +62,14 @@ class CargaPublicacion(Carga):
         auto_commit=True,
         autor=None,
         tipo_carga=None,
+        id_investigador=None,
     ) -> None:
         super().__init__(db, id_carga, auto_commit, autor=autor, tipo_carga=tipo_carga)
         self.datos: DatosCargaPublicacion
         self.datos_antiguos: DatosCargaPublicacion
         self.tipos_carga_validos = ["importacion", "bloque"]
         self.id_publicacion = 0
+        self.id_investigador = id_investigador
 
     def carga_publicacion(self):
         pass
@@ -247,25 +251,98 @@ class CargaPublicacion(Carga):
                 if problema:
                     self.problemas_carga.append(problema)
 
+    # ACTUALIZACIÓN DE AUTORES ----------------------------------------------------------------------
+    def get_nombre_investigador(self):
+        if not self.id_investigador:
+            return None
+
+        query = """
+            SELECT CONCAT_WS(' ', i.nombre, i.apellidos) AS nombre_completo
+            FROM prisma.i_investigador i
+            WHERE i.idInvestigador = %(idInvestigador)s
+        """
+        params = {"idInvestigador": self.id_investigador}
+
+        self.db.ejecutarConsulta(query, params)
+        nombre_investigador = self.db.get_first_cell()
+
+        return nombre_investigador
+
+    def actualizar_autores_por_investigador(self):
+        lista_autores = self.datos_antiguos.autores
+
+        if any(
+            autor.id_investigador == self.id_investigador for autor in lista_autores
+        ):
+            return  # El investigador ya está en la lista de autores, no se hace nada
+
+        nombre_investigador = self.get_nombre_investigador()
+        autores_no_vinculados = [
+            autor for autor in lista_autores if not autor.id_investigador
+        ]
+        firmas_autores_no_vinculados = [autor.firma for autor in autores_no_vinculados]
+
+        busqueda_firma_autor = BusquedaFirmaAutor()
+        busqueda_firma_autor.find_author_in_paper(
+            target_name=nombre_investigador,
+            paper_authors=firmas_autores_no_vinculados,
+            direction="backward",
+        )
+
+        candidato = busqueda_firma_autor.get_best_match(min_score=0.6)
+
+        if not candidato:
+            return  # No se encontró un candidato adecuado, no se hace nada
+
+        autor_a_actualizar = next(
+            (
+                autor
+                for autor in autores_no_vinculados
+                if autor.firma == candidato["signature"]
+            ),
+            None,
+        )
+        autor_a_actualizar.id_investigador = self.id_investigador
+
+        self.enlazar_autor(autor_a_actualizar)
+
+    def enlazar_autor(self, autor: DatosCargaAutor):
+        query = """
+            UPDATE prisma.p_autor
+            SET idInvestigador = %(idInvestigador)s
+            WHERE idAutor = %(idAutor)s
+        """
+        params = {
+            "idInvestigador": autor.id_investigador,
+            "idAutor": autor.id_autor,
+        }
+
+        self.db.ejecutarConsulta(query, params)
+
+        if not self.db.error:
+            registro = RegistroCambiosPublicacionInvestigadorAutor(
+                id=self.id_publicacion,
+                valor=autor.id_investigador,
+                firma=autor.firma,
+                origen=self.origen,
+                bd=self.db,
+                autor=self.autor,
+            )
+            self.lista_registros.append(registro)
+
+    def actualizar_autores(self):
+        if self.id_investigador:
+            return self.actualizar_autores_por_investigador()
+
     # INSERCIÓN DE AUTORES ----------------------------------------------------------------------
     def insertar_autores(self):
         """
         Inserta los autores de una publicación.
-        Solo inserta autores si NO existen autores previos para esta publicación.
         """
-        # Verificar si ya existen autores en la BD para esta publicación
-        query_verificar_autores = """
-            SELECT COUNT(*) as count 
-            FROM prisma.p_autor 
-            WHERE idPublicacion = %(idPublicacion)s
-        """
-        params_verificar = {"idPublicacion": self.id_publicacion}
 
-        resultado = self.db.consultaUna(query_verificar_autores, params_verificar)
-
-        # Si ya existen autores, NO insertar (mantener los de la primera fuente)
-        if resultado and resultado["count"] > 0:
-            return None
+        # Si ya existen autores, actualizar
+        if self.datos_antiguos and len(self.datos_antiguos.autores) > 0:
+            return self.actualizar_autores()
 
         # Si no hay autores, proceder con la lógica original
         autores_agrupados = self.datos.contar_autores_agrupados()

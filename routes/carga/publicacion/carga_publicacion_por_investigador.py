@@ -43,9 +43,10 @@ class CargaPublicacionesBloque:
                 autor=self.autor,
             )
             carga_scopus.cargar_publicaciones_por_investigador(
-                id_investigador=identificadores.get("scopus"),
+                identificador_origen=identificadores.get("scopus"),
                 agno_inicio=self.agno_inicio,
                 agno_fin=self.agno_fin,
+                id_investigador=self.id_investigador,
             )
             self.errores += carga_scopus.carga.errores
 
@@ -57,9 +58,10 @@ class CargaPublicacionesBloque:
                 autor=self.autor,
             )
             carga_wos.cargar_publicaciones_por_investigador(
-                id_investigador=identificadores.get("researcherid"),
+                identificador_origen=identificadores.get("researcherid"),
                 agno_inicio=self.agno_inicio,
                 agno_fin=self.agno_fin,
+                id_investigador=self.id_investigador,
             )
             self.errores += carga_wos.carga.errores
 
@@ -71,9 +73,10 @@ class CargaPublicacionesBloque:
                 autor=self.autor,
             )
             carga_openalex.cargar_publicaciones_por_investigador(
-                id_investigador=identificadores.get("openalex"),
+                identificador_origen=identificadores.get("openalex"),
                 agno_inicio=self.agno_inicio,
                 agno_fin=self.agno_fin,
+                id_investigador=self.id_investigador,
             )
             self.errores += carga_openalex.carga.errores
 
@@ -92,6 +95,7 @@ class CargaPublicacionesBloque:
         CASE WHEN arcp_nuevo.id IS NOT NULL THEN 'Nueva' ELSE 'Actualizada' END AS 'Estado',
         CASE WHEN COUNT(CASE WHEN pa.idInvestigador != 0 THEN 1 END) > 0 THEN "Sí" ELSE "No" END AS "Enlazado al menos un autor",
         CASE WHEN COUNT(CASE WHEN pa.idInvestigador = %(id_investigador)s THEN 1 END) > 0 THEN "Sí" ELSE "No" END AS "Enlazado este autor",
+        GROUP_CONCAT(CASE WHEN pa.idInvestigador = %(id_investigador)s THEN pa.firma ELSE NULL END) AS "Firma de este autor",
         CAST(CONCAT(COUNT(CASE WHEN pa.idInvestigador != 0 THEN 1 END), "/", COUNT(pa.idInvestigador)) AS CHAR CHARACTER SET utf8mb4) AS "Enlazados/Autores totales",
         GROUP_CONCAT(CASE WHEN ii.idInvestigador != 0 THEN CONCAT(pa.orden, ". ", ii.apellidos, ", ", ii.nombre, " (", ii.idInvestigador, ")") END SEPARATOR "; ") AS "Autores US",
         id_wos.valor AS 'WOS',
