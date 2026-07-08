@@ -66,6 +66,7 @@ class CargaPublicacionesBloque:
             self.errores += carga_wos.carga.errores
 
         if identificadores.get("openalex"):
+            return  # TODO: Desactivado temporalmente para evitar problemas de carga masiva de OpenAlex. En algún momento habría que hacer configurables los orígenes de datos.
             carga_openalex = ExtraccionPublicacionOpenalex(
                 tipo_carga="bloque",
                 id_carga=self.id_carga,
