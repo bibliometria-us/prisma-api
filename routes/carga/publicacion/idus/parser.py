@@ -193,8 +193,6 @@ class IdusParser(Parser):
     def cargar_titulo_y_tipo(self):
         titulo_revista = self.metadata.get("dc.journaltitle")
         titulo_libro_capitulo = self.metadata.get("dc.relation.ispartof")
-        # Establece título y tipo para libro y congreso en base a los metadatos del tipo de publicación
-        tipo_publicacion = self.datos_carga_publicacion.tipo
 
         # Si existe título de revista, se asigna como título de la fuente y se establece el tipo de fuente como "Revista"
         if titulo_revista:
@@ -207,14 +205,13 @@ class IdusParser(Parser):
                 titulo_libro_capitulo[0]["value"]
             )
 
-        # Si es libro  título de la fuente es el de la propia publicacion (dc.title)
-        if tipo_publicacion in ["Libro", "Capítulo"]:
-            self.datos_carga_publicacion.fuente.set_titulo(
-                self.datos_carga_publicacion.titulo
-            )
-            self.datos_carga_publicacion.fuente.set_tipo("Libro")
+            if self.datos_carga_publicacion.fuente.tiene_issn():
+                self.datos_carga_publicacion.tipo = "Capítulo"
+                self.datos_carga_publicacion.fuente.set_tipo("Libro")
 
-        return None
+            if self.datos_carga_publicacion.fuente.tiene_isbn():
+                self.datos_carga_publicacion.tipo = "Libro"
+                self.datos_carga_publicacion.libro_como_fuente()
 
     def carga_editorial(self):
         valor = self.metadata.get("dc.publisher")
