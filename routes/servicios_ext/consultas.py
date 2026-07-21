@@ -1331,7 +1331,7 @@ def get_financiacion_codigo_nulo_o_menos_4_caracteres(bd: BaseDatos = None) -> d
                                 pp.agno                 AS AGNO
                             FROM prisma.p_financiacion pf
                             LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
-                            WHERE (pf.codigo IS NULL OR LENGTH(TRIM(pf.codigo)) < 4)
+                            WHERE (pf.codigo IS NULL OR LENGTH(TRIM(pf.codigo)) < 4) AND pf.eliminado = 0
                         ) sub
                         LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = sub.ID_PUB
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = pxc.idCentro
@@ -1367,6 +1367,7 @@ def get_financiacion_agencia_nula_o_menos_5_caracteres(bd: BaseDatos = None) -> 
                             FROM prisma.p_financiacion pf
                             LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
                             WHERE (pf.agencia IS NULL OR LENGTH(TRIM(pf.agencia)) < 5)
+                              AND pf.eliminado = 0
                         ) sub
                         LEFT JOIN prisma.publicacionesXcentro pxc ON pxc.idPublicacion = sub.ID_PUB
                         LEFT JOIN prisma.i_centro ic ON ic.idCentro = pxc.idCentro
@@ -1403,6 +1404,7 @@ def get_financiacion_repetida_por_publicacion(bd: BaseDatos = None) -> dict:
                                 pp.titulo               AS TITULO
                             FROM prisma.p_financiacion pf
                             LEFT JOIN prisma.p_publicacion pp ON pp.idPublicacion = pf.publicacion_id
+                            WHERE pf.eliminado = 0
                             GROUP BY pf.codigo, pf.agencia, pf.publicacion_id
                             HAVING COUNT(*) > 1
                         ) duplicados
@@ -1425,7 +1427,7 @@ def get_num_proyectos_con_financiacion(bd: BaseDatos = None) -> dict:
                             COUNT(DISTINCT pf.idProyecto)    AS PROYECTOS_CON_FINANCIACION,
                             (SELECT COUNT(*) FROM prisma_proyectos.proyecto) AS TOTAL_PROYECTOS
                         FROM prisma_proyectos.proyecto pr
-                        INNER JOIN prisma.p_financiacion pf ON pf.idProyecto = pr.id AND pr.visible = 1
+                        INNER JOIN prisma.p_financiacion pf ON pf.idProyecto = pr.id AND pr.visible = 1 AND pf.eliminado = 0
                         """
     try:
         if bd is None:
@@ -1443,7 +1445,7 @@ def get_num_financiacion_con_proyectos(bd: BaseDatos = None) -> dict:
                                 (SELECT COUNT(*) FROM prisma.p_financiacion) AS TOTAL_FINANCIACIONES
                             FROM prisma.p_financiacion pf_con
                             INNER JOIN prisma_proyectos.proyecto pr ON pr.id = pf_con.idProyecto
-                            AND pr.visible = 1
+                            AND pr.visible = 1 and pf_con.eliminado = 0
                         """
     try:
         if bd is None:
