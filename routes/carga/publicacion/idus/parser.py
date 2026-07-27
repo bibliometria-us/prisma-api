@@ -191,27 +191,36 @@ class IdusParser(Parser):
         self.datos_carga_publicacion.fuente.add_identificador(identificador)
 
     def cargar_titulo_y_tipo(self):
-        titulo_revista = self.metadata.get("dc.journaltitle")
-        titulo_libro_capitulo = self.metadata.get("dc.relation.ispartof")
+        titulo_revista = self.metadata.get("dc.journaltitle") #Título de revista
+        titulo_libro_capitulo = self.metadata.get("dc.relation.ispartof") #Título de libro cuando es capítulo
 
         # Si existe título de revista, se asigna como título de la fuente y se establece el tipo de fuente como "Revista"
         if titulo_revista:
             self.datos_carga_publicacion.fuente.set_titulo(titulo_revista[0]["value"])
             self.datos_carga_publicacion.fuente.set_tipo("Revista")
 
-        # Si existe título de libro o capítulo, se asigna como título de la fuente. El tipo de fuente se establecerá posteriormente en función del tipo de publicación
+        # Si existe título de libro/capítulo, se asigna como título de la fuente y se establece el tipo de fuente como "Libro"    
         if titulo_libro_capitulo:
-            self.datos_carga_publicacion.fuente.set_titulo(
-                titulo_libro_capitulo[0]["value"]
-            )
-
-            if self.datos_carga_publicacion.fuente.tiene_issn():
-                self.datos_carga_publicacion.tipo = "Capítulo"
+            # Si es capítulo, se establece el tipo de fuente como "Libro"
+            if self.datos_carga_publicacion.tipo == "Capítulo":
+                self.datos_carga_publicacion.fuente.set_titulo(
+                                titulo_libro_capitulo[0]["value"]
+                            )
                 self.datos_carga_publicacion.fuente.set_tipo("Libro")
 
-            if self.datos_carga_publicacion.fuente.tiene_isbn():
-                self.datos_carga_publicacion.tipo = "Libro"
+             # Si es libro, se establece el tipo de fuente como "Libro" 
+             # y se marca la fuente como libro
+            if self.datos_carga_publicacion.tipo == "Libro":
+                self.datos_carga_publicacion.fuente.set_titulo(
+                                titulo_libro_capitulo[0]["value"]
+                            )
                 self.datos_carga_publicacion.libro_como_fuente()
+            # Si es contribución de congreso, se establece el tipo de fuente como "Libro"
+            if self.datos_carga_publicacion.tipo == "Contribución de congreso":
+                self.datos_carga_publicacion.fuente.set_titulo(
+                                titulo_libro_capitulo[0]["value"]
+                            )
+                self.datos_carga_publicacion.fuente.set_tipo("Libro")
 
     def carga_editorial(self):
         valor = self.metadata.get("dc.publisher")

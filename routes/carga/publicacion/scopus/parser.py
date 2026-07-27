@@ -161,7 +161,8 @@ class ScopusParser(Parser):
         self.datos_carga_publicacion.add_dato(dato)
 
     def cargar_numero(self):
-        valor = self.data.get("article-number")
+        valor = self.data.get("prism:issueIdentifier")
+        # valor = self.data.get("article-number")
         if not valor:
             return None
         dato = DatosCargaDatoPublicacion(tipo="numero", valor=valor)
@@ -169,7 +170,8 @@ class ScopusParser(Parser):
 
     # TODO: ver si procede
     def cargar_numero_issue(self):
-        valor = self.data.get("prism:issueIdentifier")
+        valor = self.data.get("article-number")
+        # valor = self.data.get("prism:issueIdentifier")
         if not valor:
             return None
         dato = DatosCargaDatoPublicacion(tipo="num_articulo", valor=valor)

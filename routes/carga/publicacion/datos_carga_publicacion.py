@@ -196,10 +196,16 @@ class DatosCargaPublicacion(DatosCarga):
         )
 
     def normalizar_fuente(self):
+        # Normaliza la fuente de la publicación según las reglas definidas en el método.
+        
+        # Si la publicación es un libro y la fuente es una colección,
+        # se convierte la fuente en una colección y se trata el libro como fuente.
         if self.es_libro() and self.fuente.es_coleccion():
-            self.fuente_a_coleccion()
-            self.libro_como_fuente()
+            self.fuente_a_coleccion() # Convierte la fuente en una colección
+            self.libro_como_fuente() # Convierte el libro en la fuente
 
+        # Si la publicación es un libro y tiene ISBN pero no ISSN,
+        # se trata el libro como publicacion y fuente a la vez.
         if (
             self.es_libro()
             and self.fuente.tiene_isbn()
@@ -207,10 +213,17 @@ class DatosCargaPublicacion(DatosCarga):
         ):
             self.libro_como_fuente()
 
+        # Si la publicación es un libro, la fuente no tiene ISSN ni ISBN, 
+        # y la publicación tiene DOI,
+        # se trata el libro como fuente y se copia el DOI de la publicación a la fuente.
         if self.es_libro() and not self.fuente.tiene_issn_e_isbn() and self.tiene_doi():
             self.libro_como_fuente()
             self.copiar_doi_a_fuente()
 
+        # Si la publicación es un capítulo y la fuente tiene ISSN e ISBN,
+        # es porque la publicación es un capítulo de un libro que pertenece a una colección.
+        # se convierte la fuente en una colección, se trata el libro como fuente,
+        # y se copian los identificadores ISSN a la colección y los ISBN a la fuente.
         if self.es_capitulo() and self.fuente.tiene_issn_e_isbn():
             self.fuente_a_coleccion()
             self.libro_como_fuente()
@@ -218,6 +231,7 @@ class DatosCargaPublicacion(DatosCarga):
             self.fuente.identificadores = self.fuente.get_isbns()
 
     def fuente_a_coleccion(self):
+        # Convierte la fuente de la publicación en una colección.
         self.fuente.coleccion = copy.deepcopy(self.fuente)
         # Limpiar isbns
         self.fuente.coleccion.identificadores = self.fuente.get_issns()

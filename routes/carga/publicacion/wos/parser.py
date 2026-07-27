@@ -263,6 +263,7 @@ class WosParser(Parser):
             if id["type"] == "art_no":
                 # Corregido: usar DatosCargaDatoPublicacion
                 dato = DatosCargaDatoPublicacion(tipo="num_articulo", valor=id["value"])
+                dato.valor = dato.valor.replace("ARTN ", "")
                 self.datos_carga_publicacion.add_dato(dato)
 
     # TODO: No P.Ini y P.fin - viene el numero de paginas totales
