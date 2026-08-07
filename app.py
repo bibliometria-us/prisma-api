@@ -51,6 +51,8 @@ from security.check_users import check_endpoint_permissions, get_user_from_api_k
 from security.protected_routes import mandatory_auth_endpoints
 from celery import Celery
 
+from security.secrets import get_flask_secret_key
+
 prisma_base_url = local_config.api_domain
 
 app = Flask(__name__)
@@ -61,7 +63,7 @@ CORS(
     expose_headers=["Content-Disposition", "ETag", "Date", "EMAIL"],
 )
 
-app.config["SECRET_KEY"] = "onelogindemopytoolkit"
+app.config["SECRET_KEY"] = get_flask_secret_key()
 app.config["SAML_PATH"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "saml"
 )

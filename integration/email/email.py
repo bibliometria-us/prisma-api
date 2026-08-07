@@ -109,7 +109,8 @@ def enviar_correo(
         server.starttls()
         server.login(correo["usuario"], correo["clave"])
         # server.login(Claves.correo['usuario'], Claves.correo['claves'])
-        server.sendmail("bibliometria@us.es", destinatarios, msg.as_string())
+        # server.sendmail("bibliometria@us.es", destinatarios, msg.as_string())
+        server.sendmail("prisma@us.es", destinatarios, msg.as_string())
         txt_destinatarios = ",".join(destinatarios)
         salida(
             "{}: Correo envíado a {}".format(
