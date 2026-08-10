@@ -67,6 +67,8 @@ app.config["SECRET_KEY"] = get_flask_secret_key()
 app.config["SAML_PATH"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "saml"
 )
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
 api_bp = Blueprint("api", __name__, url_prefix=local_config.api_base_path)
 app.config.from_object("celery_config")
 
