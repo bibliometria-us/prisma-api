@@ -68,6 +68,10 @@ app.config["SAML_PATH"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "saml"
 )
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = True 
+app.config["SESSION_COOKIE_NAME"] = "id"
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 api_bp = Blueprint("api", __name__, url_prefix=local_config.api_base_path)
 app.config.from_object("celery_config")
