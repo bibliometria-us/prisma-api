@@ -181,6 +181,7 @@ class ImportarInvestigadoresRRHH:
 
             self.generar_informe()
             self.generar_informe_gestion()
+            self.actualizar_fecha_insercion()
 
             if dry_run:
                 self.db.rollback()
@@ -387,3 +388,13 @@ class ImportarInvestigadoresRRHH:
         self.db.ejecutarConsulta(query)
 
         return self.db.get_first_cell()
+
+    def actualizar_fecha_insercion(self):
+
+        query = """UPDATE a_configuracion
+            SET valor = %(fecha)s
+            WHERE variable = 'FECHAACTUALIZACION'"""
+
+        params = {"fecha": datetime.datetime.now().date().strftime("%d/%m/%Y")}
+
+        self.db.ejecutarConsulta(query, params=params)
