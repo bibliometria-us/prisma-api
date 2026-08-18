@@ -19,6 +19,7 @@ from routes import (
     resultado,
     usuario,
 )
+from v0_1 import v0_1_bp
 from routes.investigador.main import investigador_namespace
 from routes.informes.main import informe_namespace
 from routes.carga.main import carga_namespace
@@ -68,7 +69,7 @@ app.config["SAML_PATH"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "saml"
 )
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = True 
+app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_NAME"] = "id"
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -152,21 +153,24 @@ def check_api_key_ip_usage(api_key: str, redis: ConexionRedis):
     except Exception as e:
         app.logger.error(f"Error en el seguimiento de uso de IPs de Redis: {e}")
         return
-    
+
+
 @app.before_request
 def check_disabled_endpoint():
     if request.method == "OPTIONS":
         return
-    
+
     if not request.endpoint:
         return
-    
-    endpoint = request.endpoint.replace("api.","")
+
+    endpoint = request.endpoint.replace("api.", "")
     disabled_endpoints = local_config.disabled_endpoints or []
 
     if endpoint in disabled_endpoints:
-        return {"error": "Este servicio está desactivado temporalmente por tareas de mantenimiento."}, 503 
-    
+        return {
+            "error": "Este servicio está desactivado temporalmente por tareas de mantenimiento."
+        }, 503
+
     return
 
 
@@ -344,7 +348,7 @@ def index():
     attributes = False
     paint_logout = False
     redirect_url = request.args.get("redirect_url") or local_config.prisma_url
-    
+
     if "sso" in request.args:
         return redirect(auth.login(return_to=redirect_url))
         # If AuthNRequest ID need to be stored in order to later validate it, do instead
@@ -469,6 +473,7 @@ def metadata():
 
 
 app.register_blueprint(api_bp)
+app.register_blueprint(v0_1_bp)
 
 if __name__ == "__main__":
     app.run(port=8001)
