@@ -686,6 +686,15 @@ class CargaPublicacion(Carga):
                 self.lista_registros.append(registro)
 
     def insertar_fuente(self, tipo: str = "fuente") -> int:
+        fuente_valida = True
+        try:
+            self.datos.fuente.validate()
+        except ErrorCargaPublicacion:
+            fuente_valida = False
+
+        if not self.datos.requiere_fuente() and not fuente_valida:
+            return
+
         id_fuente = self.buscar_fuente(tipo=tipo)
 
         if tipo == "fuente":
