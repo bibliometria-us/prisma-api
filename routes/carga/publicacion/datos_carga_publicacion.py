@@ -190,6 +190,16 @@ class DatosCargaPublicacion(DatosCarga):
         tipos = ["Libro"]
         return self.tipo in tipos
 
+    def requiere_fuente(self):
+        if not (
+            (
+                self.tipo == "Contribución de congreso"
+                and self.fuente_datos == "Crossref"
+            )
+            or (self.tipo == "Tesis" and self.fuente_datos == "IDUS")
+        ):
+            return True
+
     def tiene_doi(self) -> bool:
         return any(
             identificador.tipo == "doi" for identificador in self.identificadores
@@ -197,12 +207,12 @@ class DatosCargaPublicacion(DatosCarga):
 
     def normalizar_fuente(self):
         # Normaliza la fuente de la publicación según las reglas definidas en el método.
-        
+
         # Si la publicación es un libro y la fuente es una colección,
         # se convierte la fuente en una colección y se trata el libro como fuente.
         if self.es_libro() and self.fuente.es_coleccion():
-            self.fuente_a_coleccion() # Convierte la fuente en una colección
-            self.libro_como_fuente() # Convierte el libro en la fuente
+            self.fuente_a_coleccion()  # Convierte la fuente en una colección
+            self.libro_como_fuente()  # Convierte el libro en la fuente
 
         # Si la publicación es un libro y tiene ISBN pero no ISSN,
         # se trata el libro como publicacion y fuente a la vez.
@@ -213,7 +223,7 @@ class DatosCargaPublicacion(DatosCarga):
         ):
             self.libro_como_fuente()
 
-        # Si la publicación es un libro, la fuente no tiene ISSN ni ISBN, 
+        # Si la publicación es un libro, la fuente no tiene ISSN ni ISBN,
         # y la publicación tiene DOI,
         # se trata el libro como fuente y se copia el DOI de la publicación a la fuente.
         if self.es_libro() and not self.fuente.tiene_issn_e_isbn() and self.tiene_doi():
@@ -306,10 +316,7 @@ class DatosCargaPublicacion(DatosCarga):
             raise ErrorCargaPublicacion("La publicación no contiene título.")
 
         # Validar fuente: título, tipo y ISSN o ISBN (CASO ESPECIAL: Ponencia Crossref salta validación de fuente porque no trae ISSN ni ISBN pero se considera válida)
-        if not (
-            (self.tipo == "Ponencia" and self.fuente_datos == "Crossref")
-            or (self.tipo == "Tesis" and self.fuente_datos == "IDUS")
-        ):
+        if self.requiere_fuente():
             self.validar_fuente()
 
         if not self.tipo:
