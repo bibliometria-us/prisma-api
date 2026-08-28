@@ -1,0 +1,17 @@
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+show_error_codes = true
+explicit_package_bases = true
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore mutable class attribute warning for SQLAlchemy models
+"**/infrastructure/database/models/**/models.py" = ["RUF012"]

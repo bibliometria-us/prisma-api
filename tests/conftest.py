@@ -1,12 +1,17 @@
 # tests/conftest.py
+from typing import Generator
+
 import pytest
-from sqlalchemy import create_engine, text, event, DDL
+import redis
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
-from v0_1.database import Base
+
+from v0_1.infrastructure.database.models.base import Base
 
 # Connection URLs
 TEST_MARIADB_URL = "mariadb+pymysql://root:rootpass@prisma_mariadb_test:3306"
 TEST_POSTGRES_URL = "postgresql+psycopg://postgres:postgres@postgres_test:5432"
+TEST_REDIS_URL = "redis://redis:6379/15"
 
 DATABASES = ["test", "prisma"]
 
@@ -84,3 +89,22 @@ def db_session(engine):
     session.close()
     transaction.rollback()
     connection.close()
+
+
+@pytest.fixture(scope="function")
+def redis_client() -> Generator[redis.Redis, None, None]:
+    """
+    Provides a Redis client for testing and automatically flushes state
+    after each test function for complete test isolation.
+    """
+    client = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=False)
+
+    yield client
+
+    # Clean up Redis database after test execution without calling flushdb()
+    try:
+        keys = client.keys("*")
+        if keys:
+            client.delete(*keys)
+    except (redis.RedisError, NotImplementedError, Exception):
+        pass
