@@ -61,10 +61,10 @@ class DummyItemSQLRepository(BaseSQLAlchemyRepository[DummyItem, DummyItemORM, s
 class DummyItemCachedRepository(BaseCachedSQLRepository[DummyItem, DummyItemORM, str]):
     def __init__(self, session: Session, redis_client: redis.Redis) -> None:
         sql_repo = DummyItemSQLRepository(session=session)
-        redis_repo = BaseRedisRepository[DummyItem, str](
+        redis_repo = BaseRedisRepository[DummyItem, DummyItemORM, str](
             redis_client=redis_client,
             domain_cls=DummyItem,
-            prefix="dummy_items",
+            orm_cls=DummyItemORM,  # Reads schema='test' & table='dummy_items'
         )
         super().__init__(
             sql_repo=sql_repo,

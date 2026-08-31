@@ -18,25 +18,23 @@ K_contra = TypeVar("K_contra", contravariant=True)
 
 
 class BaseCachedSQLRepository(BaseRepositoryPort[T, K_contra], Generic[T, M, K_contra]):
-    """Generic cached repository that fulfills BaseRepositoryPort."""
+    """Generic cached repository using {db_name}_{table_name}_{key} Redis keys."""
 
     def __init__(
         self,
         sql_repo: BaseSQLAlchemyRepository[T, M, K_contra],
-        redis_repo: BaseRedisRepository[T, K_contra],
-        get_id_func: Callable[[T], K_contra],  # <--- Updated type hint
+        redis_repo: BaseRedisRepository[T, M, K_contra],
+        get_id_func: Callable[[T], K_contra],
     ) -> None:
         self.sql = sql_repo
         self.redis = redis_repo
         self._get_id = get_id_func
 
     def get_by_id(self, entity_id: K_contra) -> T | None:
-        # 1. Check Redis
         cached = self.redis.get(entity_id)
         if cached:
             return cached
 
-        # 2. Check SQL
         entity = self.sql.get_by_id(entity_id)
         if entity:
             self.redis.put(entity_id, entity)
@@ -44,10 +42,7 @@ class BaseCachedSQLRepository(BaseRepositoryPort[T, K_contra], Generic[T, M, K_c
         return entity
 
     def save(self, entity: T) -> None:
-        # 1. Persist to DB
         self.sql.save(entity)
-
-        # 2. Update Cache
         entity_id = self._get_id(entity)
         self.redis.put(entity_id, entity)
 
