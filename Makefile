@@ -1,6 +1,6 @@
 .PHONY: checkall fix lint typecheck securitycheck test \
         start-celery restart-celery stop-celery redeploy-celery \
-        start-api restart-api stop-api redeploy-api
+        start-api restart-api stop-api redeploy-api pre-commit
 
 # Variables
 SRC_DIR = v0_1
@@ -50,3 +50,5 @@ fix:
 
 checkall: typecheck securitycheck lint
 	@echo "All checks passed successfully!"
+
+pre-commit: fix checkall test

@@ -1,26 +1,22 @@
-# v0_1/infrastructure/adapters/secondary/database/unit_of_work.py
+import inspect
+import logging
 from collections.abc import Callable
 from types import TracebackType
-from typing import Self
 
 import redis
 from sqlalchemy.orm import Session
+from typing_extensions import Self
 
-from v0_1.application.ports.secondary.repository.unit_of_work_port import UnitOfWorkPort
+logger = logging.getLogger(__name__)
 
 
-class UnitOfWork(UnitOfWorkPort):
+class UnitOfWork:
     def __init__(
         self, session: Session, redis_client: redis.Redis | None = None
     ) -> None:
         self.session = session
         self.redis = redis_client
-        self._staged_cache_actions: list[Callable[[redis.client.Pipeline], None]] = []
-
-    def stage_cache_action(
-        self, action: Callable[[redis.client.Pipeline], None]
-    ) -> None:
-        self._staged_cache_actions.append(action)
+        self._staged_cache_actions: list[Callable] = []
 
     def __enter__(self) -> Self:
         return self
@@ -31,10 +27,13 @@ class UnitOfWork(UnitOfWorkPort):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        if exc_type is not None:
+        if exc_type:
             self.rollback()
         else:
             self.commit()
+
+    def stage_cache_action(self, action: Callable) -> None:
+        self._staged_cache_actions.append(action)
 
     def commit(self) -> None:
         try:
@@ -43,15 +42,21 @@ class UnitOfWork(UnitOfWorkPort):
                 try:
                     pipe = self.redis.pipeline()
                     for action in self._staged_cache_actions:
-                        action(pipe)
+                        sig = inspect.signature(action)
+                        if len(sig.parameters) > 0:
+                            action(pipe)
+                        else:
+                            action()
                     pipe.execute()
-                except redis.RedisError:
-                    pass
+                except (redis.RedisError, AttributeError, TypeError) as cache_exc:
+                    logger.error(
+                        "Failed to execute staged cache actions post-commit: %s",
+                        cache_exc,
+                    )
+            self._staged_cache_actions.clear()
         except Exception:
             self.rollback()
             raise
-        finally:
-            self._staged_cache_actions.clear()
 
     def rollback(self) -> None:
         self.session.rollback()

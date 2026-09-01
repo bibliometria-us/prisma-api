@@ -1,9 +1,6 @@
-# tests/test_base.py
 import pytest
 import redis
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Session
 
 from v0_1.infrastructure.adapters.secondary.database.base_cached_sql_repo import (
     BaseCachedSQLRepository,
@@ -11,163 +8,107 @@ from v0_1.infrastructure.adapters.secondary.database.base_cached_sql_repo import
 from v0_1.infrastructure.adapters.secondary.database.base_redis_repo import (
     BaseRedisRepository,
 )
-from v0_1.infrastructure.adapters.secondary.database.base_sqlalchemy_repo import (
-    BaseSQLAlchemyRepository,
+from tests.v0_1.conftest_models import (
+    SimpleItem,
+    SimpleItemORM,
+    SimpleItemSQLRepo,
+    Order,
+    OrderItem,
+    OrderORM,
+    OrderSQLRepo,
+    TenantUser,
+    TenantUserORM,
+    TenantUserSQLRepo,
 )
-from v0_1.infrastructure.database.models.base import Base
 
 
-# ---------------------------------------------------------------------------
-# 1. Test Domain Model (Pydantic)
-# ---------------------------------------------------------------------------
-class DummyItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    name: str
-
-
-# ---------------------------------------------------------------------------
-# 2. Test SQLAlchemy ORM Model
-# ---------------------------------------------------------------------------
-class DummyItemORM(Base):
-    __tablename__ = "dummy_items"
-    __table_args__ = {"schema": "test"}
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-
-
-# ---------------------------------------------------------------------------
-# 3. Sub-Repositories & Composite Adapter
-# ---------------------------------------------------------------------------
-class DummyItemSQLRepository(BaseSQLAlchemyRepository[DummyItem, DummyItemORM, str]):
-    def __init__(self, session: Session) -> None:
-        super().__init__(session=session, domain_cls=DummyItem, orm_cls=DummyItemORM)
-
-    def _to_domain(self, orm_model: DummyItemORM) -> DummyItem:
-        return DummyItem.model_validate(orm_model)
-
-    def _to_orm(self, domain_entity: DummyItem) -> DummyItemORM:
-        return DummyItemORM(id=domain_entity.id, name=domain_entity.name)
-
-
-class DummyItemCachedRepository(BaseCachedSQLRepository[DummyItem, DummyItemORM, str]):
-    def __init__(self, session: Session, redis_client: redis.Redis) -> None:
-        sql_repo = DummyItemSQLRepository(session=session)
-        redis_repo = BaseRedisRepository[DummyItem, DummyItemORM, str](
-            redis_client=redis_client,
-            domain_cls=DummyItem,
-            orm_cls=DummyItemORM,
-        )
-        super().__init__(
-            sql_repo=sql_repo,
-            redis_repo=redis_repo,
-            get_id_func=lambda item: item.id,
-        )
-
-
-# ---------------------------------------------------------------------------
-# 4. Fixtures
-# ---------------------------------------------------------------------------
-@pytest.fixture
-def repo(db_session: Session, redis_client: redis.Redis) -> DummyItemCachedRepository:
-    return DummyItemCachedRepository(session=db_session, redis_client=redis_client)
-
-
-# ---------------------------------------------------------------------------
-# 5. Unit Tests
-# ---------------------------------------------------------------------------
-def test_save_and_get_by_id(
-    repo: DummyItemCachedRepository, db_session: Session
+@pytest.mark.parametrize(
+    "entity, entity_id, repo_cls, sql_repo_cls, orm_cls, updated_entity",
+    [
+        # Case 1: Basic Object
+        (
+            SimpleItem(id="item-1", name="Basic Item"),
+            "item-1",
+            SimpleItem,
+            SimpleItemSQLRepo,
+            SimpleItemORM,
+            SimpleItem(id="item-1", name="Updated Basic Item"),
+        ),
+        # Case 2: Relationships
+        (
+            Order(
+                id="ord-1",
+                customer="Alice",
+                items=[OrderItem(id="oi-1", product_name="Book", quantity=2)],
+            ),
+            "ord-1",
+            Order,
+            OrderSQLRepo,
+            OrderORM,
+            Order(
+                id="ord-1",
+                customer="Alice",
+                items=[OrderItem(id="oi-1", product_name="Book", quantity=5)],
+            ),
+        ),
+        # Case 3: Tuple Composite Primary Key
+        (
+            TenantUser(tenant_id="t-100", user_id="u-500", role="Admin"),
+            ("t-100", "u-500"),
+            TenantUser,
+            TenantUserSQLRepo,
+            TenantUserORM,
+            TenantUser(tenant_id="t-100", user_id="u-500", role="Owner"),
+        ),
+        # Case 4: Dict Composite Primary Key
+        (
+            TenantUser(tenant_id="t-100", user_id="u-500", role="Admin"),
+            {"tenant_id": "t-100", "user_id": "u-500"},
+            TenantUser,
+            TenantUserSQLRepo,
+            TenantUserORM,
+            TenantUser(tenant_id="t-100", user_id="u-500", role="Owner"),
+        ),
+    ],
+)
+def test_repository_crud_lifecycle(
+    db_session: Session,
+    redis_client: redis.Redis,
+    entity,
+    entity_id,
+    repo_cls,
+    sql_repo_cls,
+    orm_cls,
+    updated_entity,
 ) -> None:
-    item = DummyItem(id="item-1", name="Test Item")
+    sql_repo = sql_repo_cls(session=db_session)
+    redis_repo = BaseRedisRepository(
+        redis_client=redis_client, domain_cls=repo_cls, orm_cls=orm_cls
+    )
 
-    repo.save(item)
+    # Initialize repository WITHOUT get_id_func
+    repo = BaseCachedSQLRepository(sql_repo=sql_repo, redis_repo=redis_repo)
+
+    # 1. Save & Verify Write-Through Caching
+    repo.save(entity)
     db_session.flush()
 
-    retrieved = repo.get_by_id("item-1")
-    assert retrieved is not None
-    assert retrieved.id == "item-1"
-    assert retrieved.name == "Test Item"
+    retrieved = repo.get_by_id(entity_id)
+    assert retrieved == entity
+    assert repo.redis.get(entity_id) == entity
 
-    cached = repo.redis.get("item-1")
-    assert cached is not None
-    assert cached.name == "Test Item"
-
-
-def test_get_by_id_hits_cache_and_bypasses_sql_on_repeat_read(
-    repo: DummyItemCachedRepository, db_session: Session
-) -> None:
-    item = DummyItem(id="item-1", name="Database Only Item")
-    repo.sql.save(item)
+    # 2. Update & Verify Cache Updates
+    repo.save(updated_entity)
     db_session.flush()
 
-    retrieved_1 = repo.get_by_id("item-1")
-    assert retrieved_1 is not None
-    assert repo.redis.get("item-1") is not None
+    retrieved_updated = repo.get_by_id(entity_id)
+    assert retrieved_updated == updated_entity
+    assert repo.redis.get(entity_id) == updated_entity
 
-    repo.sql.delete_by_id("item-1")
+    # 3. Delete & Verify Cache Eviction
+    repo.delete_by_id(entity_id)
     db_session.flush()
 
-    retrieved_2 = repo.get_by_id("item-1")
-    assert retrieved_2 is not None
-    assert retrieved_2.name == "Database Only Item"
-
-
-def test_save_updates_existing_record_and_invalidates_cache(
-    repo: DummyItemCachedRepository, db_session: Session
-) -> None:
-    item = DummyItem(id="item-1", name="Original Name")
-    repo.save(item)
-    db_session.flush()
-
-    updated_item = DummyItem(id="item-1", name="Updated Name")
-    repo.save(updated_item)
-    db_session.flush()
-
-    retrieved = repo.get_by_id("item-1")
-    assert retrieved is not None
-    assert retrieved.name == "Updated Name"
-
-    cached = repo.redis.get("item-1")
-    assert cached is not None
-    assert cached.name == "Updated Name"
-
-
-def test_get_by_id_returns_none_when_not_found(
-    repo: DummyItemCachedRepository,
-) -> None:
-    retrieved = repo.get_by_id("non-existent-id")
-    assert retrieved is None
-
-
-def test_list_all(repo: DummyItemCachedRepository, db_session: Session) -> None:
-    item1 = DummyItem(id="item-1", name="Alpha")
-    item2 = DummyItem(id="item-2", name="Beta")
-    repo.save(item1)
-    repo.save(item2)
-    db_session.flush()
-
-    results = repo.list_all()
-
-    assert len(results) == 2
-    ids = {item.id for item in results}
-    assert ids == {"item-1", "item-2"}
-
-
-def test_delete_by_id_removes_from_both_sql_and_redis(
-    repo: DummyItemCachedRepository, db_session: Session
-) -> None:
-    item = DummyItem(id="item-1", name="To Be Deleted")
-    repo.save(item)
-    db_session.flush()
-
-    assert repo.redis.get("item-1") is not None
-
-    repo.delete_by_id("item-1")
-    db_session.flush()
-
-    assert repo.get_by_id("item-1") is None
-    assert repo.redis.get("item-1") is None
-    assert repo.sql.get_by_id("item-1") is None
+    assert repo.get_by_id(entity_id) is None
+    assert repo.redis.get(entity_id) is None
+    assert repo.sql.get_by_id(entity_id) is None
