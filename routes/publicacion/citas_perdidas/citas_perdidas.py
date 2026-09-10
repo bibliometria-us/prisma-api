@@ -1,6 +1,7 @@
 import os
 import glob
 import shutil
+from routes.publicacion.citas_perdidas import citas_perdidas # noqa: F401
 from typing import Dict, List
 from celery import shared_task
 import pandas as pd

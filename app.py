@@ -30,6 +30,7 @@ import os
 import os
 from flask import (
     Flask,
+    jsonify,
     request,
     redirect,
     url_for,
@@ -332,6 +333,24 @@ def prepare_flask_request(request):
         "post_data": request.form.copy(),
     }
 
+@app.route('/whoami', methods=['GET'])
+def debug_info():
+    # Handle proxy IP resolution
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
+    x_forwarded_for = request.headers.get('X-Forwarded-For')
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        client_ip = request.remote_addr
+
+    return jsonify({
+        "ip_address": client_ip,
+        "user_agent": request.headers.get("User-Agent"),
+        "accept_language": request.headers.get("Accept-Language"),
+        "encoding": request.headers.get("Accept-Encoding"),
+        "is_secure": scheme == "https",
+        "host": request.host,
+    })
 
 @api_bp.route("/auth/", methods=["GET", "POST"], endpoint="auth")
 def index():
