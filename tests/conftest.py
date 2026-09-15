@@ -16,20 +16,26 @@ TEST_REDIS_URL = "redis://redis:6379/15"
 DATABASES = ["test", "prisma"]
 
 
+from sqlalchemy import text
+
+
 def setup_databases(engine, dialect_name: str):
-    """Handles engine-specific database and schema creation setup."""
+    """Handles engine-specific database and schema teardown and setup."""
     if dialect_name in ("mariadb", "mysql"):
         for db_name in DATABASES:
             with engine.connect().execution_options(
                 isolation_level="AUTOCOMMIT"
             ) as conn:
-                conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {db_name}"))
+                # Drop existing database before recreating
+                conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
+                conn.execute(text(f"CREATE DATABASE {db_name}"))
 
     elif dialect_name == "postgresql":
-        # Create schemas in PostgreSQL if defined in model __table_args__
         with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
             for schema_name in DATABASES:
-                conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+                # CASCADE ensures all tables inside the schema are dropped as well
+                conn.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
+                conn.execute(text(f"CREATE SCHEMA {schema_name}"))
 
 
 @pytest.fixture(
@@ -102,12 +108,19 @@ def redis_client() -> Generator[redis.Redis, None, None]:
     """
     client = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=False)
 
+    def _clear_db() -> None:
+        try:
+            keys = client.keys("*")
+            if keys:
+                # Cast keys to a list to ensure compatibility across types
+                client.delete(*list(keys))
+        except (redis.RedisError, NotImplementedError, Exception):
+            pass
+
+    # 1. Clear database BEFORE test runs
+    _clear_db()
+
     yield client
 
-    # Clean up Redis database after test execution without calling flushdb()
-    try:
-        keys = client.keys("*")
-        if keys:
-            client.delete(*keys)
-    except (redis.RedisError, NotImplementedError, Exception):
-        pass
+    # 2. Clear database AFTER test completes
+    _clear_db()

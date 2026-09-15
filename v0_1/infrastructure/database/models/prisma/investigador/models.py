@@ -11,6 +11,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.mysql import (
     BIGINT,
     INTEGER,
+    MEDIUMINT,
     SMALLINT,
     TINYINT,
     VARCHAR,
@@ -24,7 +25,7 @@ class IArea(Base):
     __tablename__ = "i_area"
     __table_args__ = (
         Index("idxRama", "idRama"),
-        Index("nombre_UNIQUE", "nombre", unique=True),
+        Index("nombre_UNIQUE", "nombre"),
         {"schema": "prisma"},
     )
 
@@ -32,7 +33,7 @@ class IArea(Base):
         SMALLINT(3, unsigned=True, zerofill=True), primary_key=True
     )
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    idRama: Mapped[int] = mapped_column(TINYINT(3, unsigned=True), nullable=False)
+    idRama: Mapped[int] = mapped_column(MEDIUMINT(3, unsigned=True), nullable=False)
 
 
 class IBiblioteca(Base):
@@ -377,7 +378,7 @@ class IInvestigador(Base):
     )
     idCategoria: Mapped[str] = mapped_column(String(8), nullable=False)
     idArea: Mapped[int] = mapped_column(
-        SMALLINT(3, unsigned=True, zerofill=True), nullable=False
+        MEDIUMINT(3, unsigned=True, zerofill=True), nullable=False
     )
     idDepartamento: Mapped[str] = mapped_column(String(4), nullable=False)
     idCentro: Mapped[str] = mapped_column(String(5), nullable=False)

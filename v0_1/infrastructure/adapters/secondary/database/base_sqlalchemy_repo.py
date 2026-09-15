@@ -1,15 +1,18 @@
 # v0_1/infrastructure/adapters/secondary/database/base_sqlalchemy_repo.py
 from typing import Any, Generic, TypeVar
 
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from v0_1.infrastructure.adapters.secondary.database.helpers import (
     extract_primary_key,
 )
 
-T = TypeVar("T")
-M = TypeVar("M")
-K_contra = TypeVar("K_contra", contravariant=True)
+T = TypeVar("T")  # Domain Entity (e.g., Publicacion)
+M = TypeVar("M")  # ORM Model (e.g., PublicacionORM)
+K_contra = TypeVar(
+    "K_contra", contravariant=True
+)  # Primary Key Type (e.g., str or int)
 
 
 class BaseSQLAlchemyRepository(Generic[T, M, K_contra]):
@@ -54,6 +57,61 @@ class BaseSQLAlchemyRepository(Generic[T, M, K_contra]):
         if orm_model:
             self.session.delete(orm_model)
 
-    def list_all(self) -> list[T]:
-        orm_models = self.session.query(self.orm_cls).all()
-        return [self._to_domain(m) for m in orm_models]
+    def _get_total_count(self, stmt: Select[Any]) -> int:
+        # Strip ordering/limit/offset for counting performance
+        count_stmt = select(func.count()).select_from(
+            stmt.order_by(None).limit(None).offset(None).subquery()
+        )
+
+        return self.session.scalar(count_stmt) or 0
+
+    def _list_offset(
+        self, stmt: Select, page: int | None = None, page_size: int | None = None
+    ) -> tuple[list[T], int]:
+        """
+        Fetches records using direct offset and limit bounds.
+        """
+        offset = None
+        limit = None
+
+        if page and page_size:
+            limit = page_size
+            offset = (page - 1) * page_size
+
+        # Get total count before slicing
+        total_count = self._get_total_count(stmt=stmt)
+        # Apply offset if provided
+        if offset is not None:
+            stmt = stmt.offset(max(0, offset))
+
+        # Apply limit if provided
+        if limit is not None:
+            stmt = stmt.limit(max(1, limit))
+
+        orm_items = self.session.scalars(stmt).all()
+        items = [self._to_domain(item) for item in orm_items]
+
+        return (items, total_count)
+
+    def list_all(self) -> tuple[list[T], int]:
+        stmt = select(self.orm_cls)
+        return self._list_offset(stmt=stmt)
+
+    def list_all_paginated_offset(
+        self, page: int, page_size: int
+    ) -> tuple[list[T], int]:
+        stmt = select(self.orm_cls)
+        return self._list_offset(stmt=stmt, page=page, page_size=page_size)
+
+    def list_filtered_offset(
+        self, stmt: Select, page: int | None = None, page_size: int | None = None
+    ) -> tuple[list[T], int]:
+        return self._list_offset(stmt=stmt, page=page, page_size=page_size)
+
+    def list_all_filtered(self, stmt: Select) -> tuple[list[T], int]:
+        return self._list_offset(stmt=stmt)
+
+    def list_filtered_paginated_offset(
+        self, stmt: Select, page: int, page_size: int
+    ) -> tuple[list[T], int]:
+        return self._list_offset(stmt=stmt, page=page, page_size=page_size)

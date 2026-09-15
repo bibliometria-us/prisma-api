@@ -4,6 +4,7 @@ from collections.abc import Callable
 from types import TracebackType
 
 import redis
+import redis.client
 from sqlalchemy.orm import Session
 from typing_extensions import Self
 
@@ -17,6 +18,9 @@ class UnitOfWork:
         self.session = session
         self.redis = redis_client
         self._staged_cache_actions: list[Callable] = []
+        self.pipeline: redis.client.Pipeline | None = (
+            self.redis.pipeline() if self.redis else None
+        )
 
     def __enter__(self) -> Self:
         return self
@@ -37,22 +41,25 @@ class UnitOfWork:
 
     def commit(self) -> None:
         try:
+            # 1. First-class persistence commit in SQL
             self.session.commit()
+
+            # 2. Sequential post-commit cache operations
             if self.redis and self._staged_cache_actions:
-                try:
-                    pipe = self.redis.pipeline()
-                    for action in self._staged_cache_actions:
+                for action in self._staged_cache_actions:
+                    try:
                         sig = inspect.signature(action)
                         if len(sig.parameters) > 0:
-                            action(pipe)
+                            # Pass standard redis client instead of pipeline
+                            action(self.redis)
                         else:
                             action()
-                    pipe.execute()
-                except (redis.RedisError, AttributeError, TypeError) as cache_exc:
-                    logger.error(
-                        "Failed to execute staged cache actions post-commit: %s",
-                        cache_exc,
-                    )
+                    except (redis.RedisError, AttributeError, TypeError) as cache_exc:
+                        logger.error(
+                            "Failed to execute staged cache action post-commit: %s",
+                            cache_exc,
+                        )
+
             self._staged_cache_actions.clear()
         except Exception:
             self.rollback()

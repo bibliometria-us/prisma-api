@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Integer, String, cast, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 from v0_1.infrastructure.adapters.secondary.database.base_sqlalchemy_repo import (
@@ -34,6 +34,17 @@ class SimpleItemSQLRepo(BaseSQLAlchemyRepository[SimpleItem, SimpleItemORM, str]
 
     def _to_orm(self, domain: SimpleItem) -> SimpleItemORM:
         return SimpleItemORM(id=domain.id, name=domain.name)
+
+    def get_lower_than_id(
+        self, simpleitem_id: int, page: int = None, page_size: int = None
+    ) -> tuple[list[SimpleItem], int]:
+        digits_str = func.regexp_substr(SimpleItemORM.name, r"\d+")
+        stmt = select(SimpleItemORM).where(
+            digits_str.isnot(None),
+            digits_str != "",
+            cast(digits_str, Integer) <= simpleitem_id,
+        )
+        return self.list_filtered_offset(stmt=stmt, page=page, page_size=page_size)
 
 
 # ---------------------------------------------------------------------------

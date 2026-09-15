@@ -37,7 +37,7 @@ typecheck:
 	mypy $(SRC_DIR)
 
 securitycheck:
-	bandit -c .bandit.yaml -r ./$(SRC_DIR)
+	bandit -c .bandit.yaml -r ./$(SRC_DIR) app.py
 
 test:
 	pytest
@@ -52,3 +52,6 @@ checkall: typecheck securitycheck lint
 	@echo "All checks passed successfully!"
 
 pre-commit: fix checkall test
+
+coverage: 
+	pytest --cov

@@ -106,7 +106,7 @@ def test_repository_crud_lifecycle(
     assert repo.redis.get(entity_id) == updated_entity
 
     # 3. Delete & Verify Cache Eviction
-    repo.delete_by_id(entity_id)
+    repo.delete(entity)
     db_session.flush()
 
     assert repo.get_by_id(entity_id) is None
