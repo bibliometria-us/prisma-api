@@ -10,7 +10,7 @@ from sqlalchemy.dialects.mysql import (
     MEDIUMTEXT,
 )
 
-from v0_1.infrastructure.database.models.base import Base
+from v0_1.infrastructure.database.orm.base import Base
 
 t_cambios_editor = Table(
     "cambios_editor",

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from v0_1.infrastructure.adapters.secondary.database.base_sqlalchemy_repo import (
     BaseSQLAlchemyRepository,
 )
-from v0_1.infrastructure.database.models.base import Base
+from v0_1.infrastructure.database.orm.base import Base
 
 
 # ---------------------------------------------------------------------------

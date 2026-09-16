@@ -13,7 +13,7 @@ from sqlalchemy.dialects.mysql import (
     TINYINT,
 )
 
-from v0_1.infrastructure.database.models.base import Base
+from v0_1.infrastructure.database.orm.base import Base
 
 t_i_investigador_activo = Table(
     "i_investigador_activo",

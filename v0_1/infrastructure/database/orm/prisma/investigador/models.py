@@ -18,7 +18,7 @@ from sqlalchemy.dialects.mysql import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from v0_1.infrastructure.database.models.base import Base
+from v0_1.infrastructure.database.orm.base import Base
 
 
 class IArea(Base):

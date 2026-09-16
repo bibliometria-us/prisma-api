@@ -6,7 +6,7 @@ import redis
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
-from v0_1.infrastructure.database.models.base import Base
+from v0_1.infrastructure.database.orm.base import Base
 
 # Connection URLs
 TEST_MARIADB_URL = "mariadb+pymysql://root:rootpass@prisma_mariadb_test:3306"

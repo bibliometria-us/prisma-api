@@ -14,4 +14,4 @@ explicit_package_bases = true
 
 [tool.ruff.lint.per-file-ignores]
 # Ignore mutable class attribute warning for SQLAlchemy models
-"**/infrastructure/database/models/**/models.py" = ["RUF012"]
+"**/infrastructure/database/orm/**/models.py" = ["RUF012"]
