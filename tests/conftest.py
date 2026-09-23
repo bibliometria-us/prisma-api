@@ -13,7 +13,16 @@ TEST_MARIADB_URL = "mariadb+pymysql://root:rootpass@prisma_mariadb_test:3306"
 TEST_POSTGRES_URL = "postgresql+psycopg://postgres:postgres@postgres_test:5432"
 TEST_REDIS_URL = "redis://redis:6379/15"
 
-DATABASES = ["test", "prisma"]
+DATABASES = [
+    "test",
+    "prisma",
+    "prisma_resultado",
+    "api",
+    "config",
+    "prisma_cvn",
+    "prisma_erasmus_plus",
+    "prisma_proyectos",
+]
 
 
 from sqlalchemy import text
