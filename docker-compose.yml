@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  api:
+    image: prisma_api
+    expose:
+      - 8001
+      - 8002
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prisma_api
+    hostname: prisma_api
+    volumes:
+      - ~/podman/api/app:/app:z
+      - ~/podman/api/vscode-server:/root/.vscode-server:z
+      - /etc/localtime:/etc/localtime:ro
+      # - /home/operador/.gitcredentials:/root/.gitcredentials:z
+    networks:
+      - prisma
+    secrets:
+      - flask_secret_key
+      - database_user
+      - database_password
+    environment:
+      - DEBUG=${DEBUG}
+      - DATABASE_URL_PREFIX=${DATABASE_URL_PREFIX}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+    command: [ "bash", "start.sh" ]
+    init: true
+    #command: "sleep infinity"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.0
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - /root/redis
+      - /etc/localtime:/etc/localtime:ro
+    command:
+      - bash
+      - -c
+      - redis-server --appendonly yes --maxmemory 2G
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+    environment:
+      - REDIS_PASSWORD="vR26.mh:'`%|Q?|hV$Yu^omC0iTt='\2"
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+    networks:
+      - prisma
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+networks:
+  default:
+  prisma:
+    name: prisma
+    external: true
+
+secrets:
+  flask_secret_key:
+    external: true
+  database_user:
+    external: true
+  database_password:
+    external: true
