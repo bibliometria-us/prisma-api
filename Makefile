@@ -1,3 +1,11 @@
+.PHONY: checkall fix lint typecheck securitycheck test \
+        start-celery restart-celery stop-celery redeploy-celery \
+        start-api restart-api stop-api redeploy-api pre-commit \
+		coverage deploy debug
+
+# Variables
+SRC_DIR = v0_1
+
 start-celery:
 	systemctl start prisma-celery
 
@@ -8,10 +16,9 @@ stop-celery:
 	systemctl stop prisma-celery
 
 redeploy-celery:
-	cat /var/www/prisma-api/system/prisma-celery.service > /etc/systemd/system/prisma-celery.service
-	systemctl daemon-reload
-	make restart-celery
-
+	sudo cp /var/www/prisma-api/system/prisma-celery.service /etc/systemd/system/prisma-celery.service
+	sudo systemctl daemon-reload
+	$(MAKE) restart-celery
 
 start-api:
 	systemctl start prisma-api
@@ -23,6 +30,40 @@ stop-api:
 	systemctl stop prisma-api
 
 redeploy-api:
-	cat /var/www/prisma-api/system/prisma-api.service > /etc/systemd/system/prisma-api.service
-	systemctl daemon-reload
-	make restart-api
+	sudo cp /var/www/prisma-api/system/prisma-api.service /etc/systemd/system/prisma-api.service
+	sudo systemctl daemon-reload
+	$(MAKE) restart-api
+
+typecheck:
+	mypy $(SRC_DIR)
+
+securitycheck:
+	bandit -c .bandit.yaml -r ./$(SRC_DIR) app.py
+
+test:
+	pytest
+
+lint:
+	ruff check $(SRC_DIR)
+
+fix:
+	ruff check --fix $(SRC_DIR)
+
+checkall: typecheck securitycheck lint
+	@echo "All checks passed successfully!"
+
+pre-commit: fix checkall test
+
+coverage: 
+	pytest --cov
+
+deploy:
+	podman compose down
+	DEBUG=false podman compose up -d
+
+debug:
+	podman compose down
+	DEBUG=true podman compose up -d
+
+secrets:
+	./manage_secrets.sh

@@ -9,6 +9,7 @@ from utils.format import table_to_pandas
 from utils.timing import func_timer as timer
 import pandas as pd
 
+
 class BaseDatos:
     """
     Clase que representa un objeto Base de Datos, el cual es necesario para en ciertas funciones
@@ -41,9 +42,11 @@ class BaseDatos:
         Permite establecer una conexion con la bd.
         """
         self.connection = mysql.connector.connect(
-            host=claves.db_host if not self.test else claves.test_db_host,
-            user=claves.db_user if not self.test else claves.test_db_user,
-            password=claves.db_password if not self.test else claves.test_db_password,
+            host=claves.db_host if not self.test else claves.test_mariadb_host,
+            user=claves.db_user if not self.test else claves.test_mariadb_user,
+            password=(
+                claves.db_password if not self.test else claves.test_mariadb_password
+            ),
             database=self.database,
             autocommit=True,
             allow_local_infile=self.local_infile,
@@ -140,31 +143,33 @@ class BaseDatos:
         self.result = result
         return result
 
-    def cache_query_redis(self, query: str, tracking_key: str, params: dict = {}, ttl: int = 3600):
+    def cache_query_redis(
+        self, query: str, tracking_key: str, params: dict = {}, ttl: int = 3600
+    ):
         tracking_key = f"db_query:{tracking_key}"
 
         redis = ConexionRedis()
 
         result = redis.r.get(tracking_key)
-        
+
         if result:
             result = eval(result)
-            
+
             if not result:
                 self.result = []
                 return []
-            
+
             headers = list(result[0].keys())
             rows = [[row.get(key) for key in headers] for row in result]
             result = [headers] + rows
-            
+
             self.result = result
             return result
-        
+
         self.ejecutarConsulta(query, params)
         df = self.get_dataframe()
         result = df.to_dict(orient="records")
-        
+
         redis.r.set(tracking_key, str(result), ex=ttl)
 
     def get_first_cell(self):

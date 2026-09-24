@@ -1,0 +1,148 @@
+# tests/conftest.py
+from typing import Generator
+
+import pytest
+import redis
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.orm import sessionmaker
+
+from v0_1.infrastructure.database.orm.base import Base
+import db.claves as db_config
+
+# Connection URLs
+mariadb_host = db_config.test_mariadb_host
+mariadb_port = db_config.test_mariadb_port
+mariadb_user = db_config.test_mariadb_user
+mariadb_password = db_config.test_mariadb_password
+
+TEST_MARIADB_URL = (
+    f"mariadb+pymysql://{mariadb_user}:{mariadb_password}@{mariadb_host}:{mariadb_port}"
+)
+
+postgres_host = db_config.test_postgres_host
+postgres_port = db_config.test_postgres_port
+postgres_user = db_config.test_postgres_user
+postgres_password = db_config.test_postgres_password
+TEST_POSTGRES_URL = f"postgresql+psycopg://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}"
+TEST_REDIS_URL = "redis://redis:6379/15"
+
+DATABASES = [
+    "test",
+    "prisma",
+    "prisma_resultado",
+    "api",
+    "config",
+    "prisma_cvn",
+    "prisma_erasmus_plus",
+    "prisma_proyectos",
+]
+
+
+from sqlalchemy import text
+
+
+def setup_databases(engine, dialect_name: str):
+    """Handles engine-specific database and schema teardown and setup."""
+    if dialect_name in ("mariadb", "mysql"):
+        for db_name in DATABASES:
+            with engine.connect().execution_options(
+                isolation_level="AUTOCOMMIT"
+            ) as conn:
+                # Drop existing database before recreating
+                conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
+                conn.execute(text(f"CREATE DATABASE {db_name}"))
+
+    elif dialect_name == "postgresql":
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            for schema_name in DATABASES:
+                # CASCADE ensures all tables inside the schema are dropped as well
+                conn.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
+                conn.execute(text(f"CREATE SCHEMA {schema_name}"))
+
+
+@pytest.fixture(
+    scope="session", params=["mariadb", "postgres"], ids=["MariaDB", "Postgres"]
+)
+def engine(request):
+    """
+    Parametrized session-scoped fixture.
+    Creates and yields an engine for each database target.
+    """
+    db_type = request.param
+
+    if db_type == "mariadb":
+        url = TEST_MARIADB_URL
+    else:
+        url = TEST_POSTGRES_URL
+
+    engine = create_engine(url)
+    dialect_name = engine.dialect.name
+
+    # 1. Create target databases/schemas
+    setup_databases(engine, dialect_name)
+
+    # 2. Create tables
+    Base.metadata.create_all(bind=engine)
+
+    yield engine
+
+    # 3. Cleanup on session teardown
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def db_session(engine):
+    """
+    Provide an isolated DB session for each test function.
+    Rolls back all inserts/updates/deletes automatically after each test.
+    """
+    connection = engine.connect()
+    transaction = connection.begin()
+
+    Session = sessionmaker(bind=connection, expire_on_commit=False)
+    session = Session()
+
+    # Create a nested transaction (savepoint)
+    session.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(session, transaction):
+        """Re-establish savepoint if code explicitly called session.commit()."""
+        if transaction.nested and not transaction._parent.nested:
+            session.begin_nested()
+
+    yield session
+
+    session.close()
+
+    if transaction.is_active:
+        transaction.rollback()
+
+    connection.close()
+
+
+@pytest.fixture(scope="function")
+def redis_client() -> Generator[redis.Redis, None, None]:
+    """
+    Provides a Redis client for testing and automatically flushes state
+    after each test function for complete test isolation.
+    """
+    client = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=False)
+
+    def _clear_db() -> None:
+        try:
+            keys = client.keys("*")
+            if keys:
+                # Cast keys to a list to ensure compatibility across types
+                client.delete(*list(keys))
+        except (redis.RedisError, NotImplementedError, Exception):
+            pass
+
+    # 1. Clear database BEFORE test runs
+    _clear_db()
+
+    yield client
+
+    # 2. Clear database AFTER test completes
+    _clear_db()
