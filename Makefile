@@ -60,12 +60,11 @@ coverage:
 build_env:
 	~/podman/build_env.sh
 
-
-deploy:
+deploy: build_env
 	podman compose down
 	DEBUG=false podman compose up -d
 
-debug:
+debug: build_env
 	podman compose down
 	DEBUG=true podman compose up -d
 
