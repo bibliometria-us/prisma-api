@@ -2,14 +2,16 @@ import os
 from alembic import context
 
 from security.secrets import get_secret
+import db.claves as db_config
 
 config = context.config
 
-prefix = os.getenv("DATABASE_URL_PREFIX")
-user = get_secret("database_user")
-password = get_secret("database_password")
-host = os.getenv("DATABASE_HOST")
-port = os.getenv("DATABASE_PORT")
+
+prefix = db_config.db_url_prefix
+user = db_config.db_user
+password = db_config.db_password
+host = db_config.db_host
+port = db_config.db_port
 
 if not all([prefix, user, password, host, port]):
     raise ValueError(

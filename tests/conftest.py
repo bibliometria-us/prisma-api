@@ -7,10 +7,23 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
 from v0_1.infrastructure.database.orm.base import Base
+import db.claves as db_config
 
 # Connection URLs
-TEST_MARIADB_URL = "mariadb+pymysql://root:rootpass@prisma_mariadb_test:3306"
-TEST_POSTGRES_URL = "postgresql+psycopg://postgres:postgres@postgres_test:5432"
+mariadb_host = db_config.test_mariadb_host
+mariadb_port = db_config.test_mariadb_port
+mariadb_user = db_config.test_mariadb_user
+mariadb_password = db_config.test_mariadb_password
+
+TEST_MARIADB_URL = (
+    f"mariadb+pymysql://{mariadb_user}:{mariadb_password}@{mariadb_host}:{mariadb_port}"
+)
+
+postgres_host = db_config.test_postgres_host
+postgres_port = db_config.test_postgres_port
+postgres_user = db_config.test_postgres_user
+postgres_password = db_config.test_postgres_password
+TEST_POSTGRES_URL = f"postgresql+psycopg://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}"
 TEST_REDIS_URL = "redis://redis:6379/15"
 
 DATABASES = [
