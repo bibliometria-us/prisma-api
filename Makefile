@@ -1,7 +1,7 @@
 .PHONY: checkall fix lint typecheck securitycheck test \
         start-celery restart-celery stop-celery redeploy-celery \
         start-api restart-api stop-api redeploy-api pre-commit \
-		coverage deploy debug
+	coverage deploy debug build_env
 
 # Variables
 SRC_DIR = v0_1
@@ -56,6 +56,10 @@ pre-commit: fix checkall test
 
 coverage: 
 	pytest --cov
+
+build_env:
+	~/podman/build_env.sh
+
 
 deploy:
 	podman compose down
