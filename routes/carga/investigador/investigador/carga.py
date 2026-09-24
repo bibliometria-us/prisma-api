@@ -41,7 +41,12 @@ class CargaInvestigador(Carga):
         self.datos.sanitize()
         self.datos.close()
 
-        self.buscar_investigador()
+        investigador_antiguo = self.buscar_investigador()
+        ultimo_contrato = (
+            self.datos_antiguos.get_last_contrato() if investigador_antiguo else None
+        )
+        if ultimo_contrato and ultimo_contrato.categoria.id == "honor":
+            return
 
         if self.datos.get_last_contrato().es_virtual():
             self._cargar_investigador_virtual()
@@ -477,6 +482,7 @@ class CargaInvestigador(Carga):
         if self.datos_antiguos:
             self.datos.id = busqueda.datos.id
             self.datos_antiguos.close()
+            return self.datos_antiguos
 
     def limpiar_registros_importacion(self):
         pass
